@@ -32,8 +32,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth ->
-                auth.requestMatchers("/api/auth/**", "/api/products/**").permitAll()
+                auth//.requestMatchers("/api/auth/**", "/api/products/**").permitAll()
                     .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                    .requestMatchers("/api/products/**").permitAll()
+                    .requestMatchers("/api/orders/**").authenticated()
                     .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
