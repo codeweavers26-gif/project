@@ -1,6 +1,5 @@
 package com.project.backend.config;
 
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,32 +22,30 @@ import lombok.RequiredArgsConstructor;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthFilter jwtAuthFilter;
-    private final UserDetailsServiceImpl userDetailsService;
+	private final JwtAuthFilter jwtAuthFilter;
+	private final UserDetailsServiceImpl userDetailsService;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth ->
-                auth//.requestMatchers("/api/auth/**", "/api/products/**").permitAll()
-                    .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
-                    .requestMatchers("/api/products/**").permitAll()
-                    .requestMatchers("/api/orders/**").authenticated()
-                    .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .httpBasic(Customizer.withDefaults());
-        return http.build();
-    }
+	@Bean
+	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+		http.csrf(csrf -> csrf.disable())
+				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.authorizeHttpRequests(auth -> auth// .requestMatchers("/api/auth/**", "/api/products/**").permitAll()
+						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll().requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers("/api/admin/**").hasAuthority("ADMIN").requestMatchers("/api/products/**")
+						.permitAll().requestMatchers("/api/orders/**").authenticated().anyRequest().authenticated())
+				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+				.httpBasic(Customizer.withDefaults());
+		return http.build();
+	}
 
-    @Bean
-    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) {
-    	return config.getAuthenticationManager();
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) {
+		return config.getAuthenticationManager();
 
-    }
+	}
 }
