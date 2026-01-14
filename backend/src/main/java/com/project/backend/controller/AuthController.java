@@ -71,15 +71,16 @@ public class AuthController {
     public ResponseEntity<MessageResponse> logout(Authentication authentication) {
 
         if (authentication == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("No active session found"));
+            // Idempotent logout
+            return ResponseEntity.ok(
+                new MessageResponse("Logged out successfully")
+            );
         }
 
-        String email = authentication.getName();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        authService.logout(user);
-
-        return ResponseEntity.ok(new MessageResponse("Logged out successfully"));
+        authService.logout(authentication.getName());
+        return ResponseEntity.ok(
+            new MessageResponse("Logged out successfully")
+        );
     }
+
 }
