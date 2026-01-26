@@ -34,20 +34,40 @@ public class SecurityConfig {
 
 	@Value("${app.cors.allowedOrigins}")
 	private String[] allowedOrigins;
-	
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-		.csrf(csrf -> csrf.disable())
-				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth// .requestMatchers("/api/auth/**", "/api/products/**").permitAll()
-						 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() 
-						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll().requestMatchers("/api/auth/**").permitAll()
-						.requestMatchers("/api/admin/**").hasAuthority("ADMIN").requestMatchers("/api/products/**")
-						.permitAll().requestMatchers("/api/orders/**").authenticated().anyRequest().authenticated())
-				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-				.httpBasic(Customizer.withDefaults());
-		return http.build();
+
+	    http
+	        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+	        .csrf(csrf -> csrf.disable())
+	        .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+	        .authorizeHttpRequests(auth -> auth
+
+	            // Preflight requests
+	            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+	            // Swagger
+	            .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+
+	            // Auth APIs (login/register/refresh)
+	            .requestMatchers("/api/auth/**").permitAll()
+
+	            // Admin APIs
+	            .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+	            // Customer APIs
+	            .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
+
+	            // Orders require any logged-in user
+	            .requestMatchers("/api/orders/**").authenticated()
+
+	            // Everything else
+	            .anyRequest().authenticated()
+	        )
+	        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+	        .httpBasic(Customizer.withDefaults());
+
+	    return http.build();
 	}
 
 	@Bean

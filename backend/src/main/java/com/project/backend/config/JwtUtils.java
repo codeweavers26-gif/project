@@ -2,15 +2,14 @@ package com.project.backend.config;
 
 import java.security.Key;
 import java.util.Date;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-//jwtconfig
+import com.project.backend.entity.User;
 
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtUtils {
@@ -25,11 +24,13 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    public String generateAccessToken(String username) {
+    public String generateAccessToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtExpirationMs);
+
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(user.getEmail())
+                .claim("role", user.getRole().name())
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(key(), SignatureAlgorithm.HS512)
@@ -37,7 +38,13 @@ public class JwtUtils {
     }
 
     public String getUsernameFromToken(String token) {
-        return Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody().getSubject();
+        return Jwts.parserBuilder().setSigningKey(key()).build()
+                .parseClaimsJws(token).getBody().getSubject();
+    }
+
+    public String getRoleFromToken(String token) {
+        return Jwts.parserBuilder().setSigningKey(key()).build()
+                .parseClaimsJws(token).getBody().get("role", String.class);
     }
 
     public boolean validateToken(String token) {

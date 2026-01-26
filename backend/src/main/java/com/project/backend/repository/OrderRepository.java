@@ -32,5 +32,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 	// For orderId search with pagination
 	@Query("SELECT o FROM Order o WHERE o.id = :orderId")
 	Page<Order> findById(@Param("orderId") Long orderId, Pageable pageable);
+	
+	@Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status = 'DELIVERED'")
+	Double getTotalSales();
+
+	@Query("SELECT COUNT(o) FROM Order o WHERE o.status = 'DELIVERED'")
+	Long countDeliveredOrders();
+
+	@Query("SELECT SUM(oi.quantity) FROM OrderItem oi JOIN oi.order o WHERE o.status = 'DELIVERED'")
+	Long getTotalItemsSold();
+
 
 }
