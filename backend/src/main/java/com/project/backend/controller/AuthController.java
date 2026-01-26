@@ -3,11 +3,14 @@ package com.project.backend.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.project.backend.ResponseDto.AuthResponse;
 import com.project.backend.ResponseDto.MessageResponse;
-import com.project.backend.entity.User;
+import com.project.backend.entity.Role;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.AuthRequest;
 import com.project.backend.requestDto.RegisterRequest;
@@ -43,12 +46,13 @@ public class AuthController {
     // LOGIN
     // ==========================
     @Operation(summary = "Login user and generate JWT tokens")
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
-            @Validated @RequestBody AuthRequest req) {
-
-        AuthResponse resp = authService.login(req);
-        return ResponseEntity.ok(resp);
+    @PostMapping("/admin/login")
+    public ResponseEntity<AuthResponse> adminLogin(@RequestBody AuthRequest req) {
+        return ResponseEntity.ok(authService.login(req, Role.ADMIN));
+    }
+    @PostMapping("/customer/login")
+    public ResponseEntity<AuthResponse> customerLogin(@RequestBody AuthRequest req) {
+        return ResponseEntity.ok(authService.login(req, Role.CUSTOMER));
     }
 
     // ==========================

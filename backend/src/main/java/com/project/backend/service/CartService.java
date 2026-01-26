@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.project.backend.ResponseDto.CartItemResponseDto;
 import com.project.backend.entity.Cart;
 import com.project.backend.entity.Product;
+import com.project.backend.entity.ProductImage;
 import com.project.backend.entity.User;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.repository.CartRepository;
@@ -52,12 +53,23 @@ public class CartService {
                         .cartId(cart.getId())
                         .productId(cart.getProduct().getId())
                         .productName(cart.getProduct().getName())
-                        .imageUrl(cart.getProduct().getImageUrl())
+                        .imageUrl(getPrimaryImage(cart.getProduct()))
                         .price(cart.getProduct().getPrice())
                         .quantity(cart.getQuantity())
                         .totalPrice(cart.getQuantity() * cart.getProduct().getPrice())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+
+    private String getPrimaryImage(Product product) {
+        return product.getImages() != null && !product.getImages().isEmpty()
+                ? product.getImages().stream()
+                    .sorted((a, b) -> a.getPosition().compareTo(b.getPosition()))
+                    .findFirst()
+                    .map(ProductImage::getImageUrl)
+                    .orElse(null)
+                : null;
     }
 
     // UPDATE QUANTITY

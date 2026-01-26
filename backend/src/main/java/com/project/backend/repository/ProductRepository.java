@@ -22,6 +22,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     		Page<Product> findAvailableProducts(
     		        @Param("locationId") Long locationId,
     		        Pageable pageable);
+    
+    @Query("SELECT SUM(p.stock) FROM Product p WHERE p.isActive = true")
+    Long getTotalStock();
+
 
 }
 
