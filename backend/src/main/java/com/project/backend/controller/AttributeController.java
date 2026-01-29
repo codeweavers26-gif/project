@@ -19,8 +19,8 @@ public class AttributeController {
 
     private final AttributeService attributeService;
 
-    @GetMapping("/{categoryId}/attributes")
-    public List<AttributeResponseDto> getAttributes(@PathVariable Long categoryId) {
-        return attributeService.getAttributesByCategory(categoryId);
-    }
+//    @GetMapping("/{categoryId}/attributes")
+//    public List<AttributeResponseDto> getAttributes(@PathVariable Long categoryId) {
+//        return attributeService.getAttributesByCategory(categoryId);
+//    }
 }
