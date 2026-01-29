@@ -179,7 +179,7 @@ public class ProductService {
 
     // ADMIN VIEW ALL
     public List<ProductResponseDto> getAll() {
-
+System.err.println("dcfv");
         return productRepository.findAll()
                 .stream()
                 .map(this::mapToResponse)
