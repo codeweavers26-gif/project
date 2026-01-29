@@ -73,6 +73,10 @@ public class ProductRequestDto {
     @Schema(description = "List of product image URLs (maximum 6 allowed)")
     private List<String> images;
 
-    @Schema(description = "Product attributes like color, size, material")
-    private Map<String, String> attributes;
+//    @Schema(description = "Product attributes like color, size, material")
+//    private Map<String, String> attributes;
+    
+    @Schema(description = "Category ID to which product belongs", example = "2")
+    private Long categoryId;
+
 }
