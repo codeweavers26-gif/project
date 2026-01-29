@@ -15,8 +15,8 @@ public class AttributeConfigService {
 
     private final AttributeConfigRepository repository;
 
-    public List<AttributeConfig> getActiveAttributes() {
-        return repository.findByActiveTrue();
-    }
+//    public List<AttributeConfig> getActiveAttributes() {
+//        return repository.findByActiveTrue();
+//    }
 }
 
