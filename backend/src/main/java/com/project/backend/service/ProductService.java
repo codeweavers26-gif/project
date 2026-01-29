@@ -16,6 +16,7 @@ import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductAttribute;
 import com.project.backend.entity.ProductImage;
 import com.project.backend.exception.NotFoundException;
+import com.project.backend.repository.AttributeConfigRepository;
 import com.project.backend.repository.LocationRepository;
 import com.project.backend.repository.ProductAttributeRepository;
 import com.project.backend.repository.ProductImageRepository;
@@ -34,6 +35,7 @@ public class ProductService {
     private final LocationRepository locationRepository;
     private final ProductAttributeRepository productAttributeRepository ;
     private final ProductImageRepository productImageRepository;
+    private final AttributeConfigRepository attributeConfigRepository;
 
     // CREATE PRODUCT
     @Transactional
@@ -43,6 +45,20 @@ public class ProductService {
         if (dto.getImages() != null && dto.getImages().size() > 6) {
             throw new RuntimeException("Maximum 6 images allowed per product");
         }
+        
+      
+//        List<AttributeConfig> configs =
+//                attributeConfigRepository.findByCategoryIdAndActiveTrue(dto.getCategoryId());
+//
+//        for (AttributeConfig config : configs) {
+//            if (Boolean.TRUE.equals(config.getRequired())) {
+//                if (dto.getAttributes() == null ||
+//                    !dto.getAttributes().containsKey(config.getName())) {
+//                    throw new RuntimeException(config.getName() + " is required");
+//                }
+//            }
+//        }
+//
 
         Product product = Product.builder()
                 .name(dto.getName())
@@ -81,16 +97,16 @@ public class ProductService {
         }
 
         // 🏷️ Save Attributes
-        if (dto.getAttributes() != null) {
-            dto.getAttributes().forEach((key, value) -> {
-                ProductAttribute attr = ProductAttribute.builder()
-                        .product(product)
-                        .name(key)
-                        .value(value)
-                        .build();
-                productAttributeRepository.save(attr);
-            });
-        }
+//        if (dto.getAttributes() != null) {
+//            dto.getAttributes().forEach((key, value) -> {
+//                ProductAttribute attr = ProductAttribute.builder()
+//                        .product(product)
+//                        .name(key)
+//                        .value(value)
+//                        .build();
+//                productAttributeRepository.save(attr);
+//            });
+     //   }
 
         return mapToResponse(product);
     }
@@ -149,22 +165,22 @@ public class ProductService {
         }
 
         // 🏷️ Replace Attributes
-        if (dto.getAttributes() != null) {
-            productAttributeRepository.deleteByProduct(product);
+//        if (dto.getAttributes() != null) {
+//            productAttributeRepository.deleteByProduct(product);
 
-            dto.getAttributes().forEach((key, value) ->
-                    productAttributeRepository.save(
-                            ProductAttribute.builder()
-                                    .product(product)
-                                    .name(key)
-                                    .value(value)
-                                    .build()
-                    )
-            );
-        }
-
+//            dto.getAttributes().forEach((key, value) ->
+//                    productAttributeRepository.save(
+//                            ProductAttribute.builder()
+//                                    .product(product)
+//                                    .name(key)
+//                                    .value(value)
+//                                    .build()
+//                    )
+//            );
         return mapToResponse(product);
-    }
+
+
+           }
 
 
     // SOFT DELETE
