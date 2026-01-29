@@ -17,9 +17,9 @@ import lombok.RequiredArgsConstructor;
 public class AttributeConfigController {
 
     private final AttributeConfigService service;
-
-    @GetMapping
-    public List<AttributeConfig> getAttributesForProductCreate() {
-        return service.getActiveAttributes();
-    }
+//
+//    @GetMapping
+//    public List<AttributeConfig> getAttributesForProductCreate() {
+//        return service.getActiveAttributes();
+//    }
 }

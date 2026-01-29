@@ -9,9 +9,9 @@ import com.project.backend.entity.AttributeConfig;
 
 @Repository
 public interface AttributeConfigRepository extends JpaRepository<AttributeConfig, Long> {
-    List<AttributeConfig> findByCategoryIdAndActiveTrue(Long categoryId);
+ //   List<AttributeConfig> findByCategoryIdAndActiveTrue(Long categoryId);
 
-	List<AttributeConfig> findByActiveTrue();
+	//List<AttributeConfig> findByActiveTrue();
 }
 
 
