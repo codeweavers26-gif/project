@@ -1,7 +1,9 @@
 package com.project.backend.config;
 
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,15 +13,12 @@ public class SwaggerConfig {
 
     @Bean
     public OpenAPI brandShopAPI() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("BrandShop API Documentation")
-                        .description("API documentation for BrandShop project (Auth, Products, Orders, Users, Addresses)")
-                        .version("1.0")
-                        .contact(new Contact()
-                                .name("Your Name")
-                                .email("your-email@example.com")
-                        )
-                );
-    }
+    	final String securitySchemeName = "Bearer Authentication";
+		return new OpenAPI()
+				.info(new Info().title("R&R API").version("v1.0")
+						.description("API documentation with JWT authentication"))
+				.components(new Components().addSecuritySchemes(securitySchemeName,
+						new SecurityScheme().name(securitySchemeName).type(SecurityScheme.Type.HTTP).scheme("bearer")
+								.bearerFormat("JWT")));
+	}
 }

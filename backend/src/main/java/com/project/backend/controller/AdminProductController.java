@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +20,7 @@ import com.project.backend.requestDto.ProductRequestDto;
 import com.project.backend.service.ProductService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,20 +28,22 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/admin/products")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Admin - Products")
 public class AdminProductController {
 
     private final ProductService productService;
 
-    @Operation(summary = "Add new product")
+    @Operation(summary = "Add product", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @PostMapping
     public ResponseEntity<ProductResponseDto> addProduct(
     		@Valid  @RequestBody ProductRequestDto dto) {
         return ResponseEntity.ok(productService.create(dto));
     }
 
-    @Operation(summary = "Update product")
+    @Operation(summary = "Update product", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDto> updateProduct(
             @PathVariable Long id,
@@ -53,9 +58,18 @@ public class AdminProductController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Get all products (admin)")
+    @Operation(summary = "Get product", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @GetMapping
     public ResponseEntity<List<ProductResponseDto>> getAllProducts() {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        System.out.println("=== AUTH DEBUG ===");
+        System.out.println("Principal: " + auth.getPrincipal());
+        System.out.println("Authorities: " + auth.getAuthorities());
+        System.out.println("Credentials: " + auth.getCredentials());
+        System.out.println("==================");
         return ResponseEntity.ok(productService.getAll());
     }
 }
