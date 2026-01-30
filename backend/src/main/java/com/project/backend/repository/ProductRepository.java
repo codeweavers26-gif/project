@@ -26,6 +26,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT SUM(p.stock) FROM Product p WHERE p.isActive = true")
     Long getTotalStock();
 
+    Long countByStockLessThan(Integer stock);
 
 }
 

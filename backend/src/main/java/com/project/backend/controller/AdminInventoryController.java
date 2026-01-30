@@ -17,19 +17,23 @@ import com.project.backend.entity.ProductInventory;
 import com.project.backend.requestDto.InventoryRequestDto;
 import com.project.backend.service.InventoryService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/admin/inventory")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Admin - Inventory")
 public class AdminInventoryController {
 
 	private final InventoryService inventoryService;
 
 	@PostMapping
+	  @Operation(summary = "Add inventory (Admin)", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
 	public ResponseEntity<Void> upsertInventory(@Validated @RequestBody InventoryRequestDto dto) {
 
 		inventoryService.upsertInventory(dto);
@@ -37,18 +41,24 @@ public class AdminInventoryController {
 	}
 
 	@GetMapping("/product/{productId}")
+	  @Operation(summary = "get inventory details by product id (Admin)", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
 	public ResponseEntity<List<ProductInventory>> getInventoryByProduct(@PathVariable Long productId) {
 
 		return ResponseEntity.ok(inventoryService.getInventoryByProduct(productId));
 	}
 
 	@GetMapping("/location/{locationId}")
+	  @Operation(summary = "get inventory details by location (Admin)", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
 	public ResponseEntity<List<ProductInventory>> getInventoryByLocation(@PathVariable Long locationId) {
 
 		return ResponseEntity.ok(inventoryService.getInventoryByLocation(locationId));
 	}
 
 	@GetMapping("/low-stock")
+	  @Operation(summary = "get inventory details having low stock", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
 	public ResponseEntity<List<ProductInventory>> getLowStock(@RequestParam(defaultValue = "5") int threshold) {
 
 		return ResponseEntity.ok(inventoryService.getLowStock(threshold));

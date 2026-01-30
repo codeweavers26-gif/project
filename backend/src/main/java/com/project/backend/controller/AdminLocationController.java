@@ -10,19 +10,21 @@ import com.project.backend.requestDto.LocationRequestDto;
 import com.project.backend.service.LocationService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/admin/locations")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Admin - Locations")
 public class AdminLocationController {
 
     private final LocationService locationService;
 
-    @Operation(summary = "Add new location (Admin)")
+    @Operation(summary = "Add new location (Admin)", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @PostMapping
     public ResponseEntity<Location> createLocation(
             @Validated @RequestBody LocationRequestDto dto) {
@@ -32,6 +34,8 @@ public class AdminLocationController {
         );
     }
     @PutMapping("/{id}")
+    @Operation(summary = "update location (Admin)", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     public ResponseEntity<Location> updateLocation(
             @PathVariable Long id,
             @Validated @RequestBody LocationRequestDto dto) {
@@ -40,6 +44,8 @@ public class AdminLocationController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "delete location (Admin)", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     public ResponseEntity<Void> disableLocation(@PathVariable Long id) {
         locationService.disableLocation(id);
         return ResponseEntity.noContent().build();
