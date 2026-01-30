@@ -1,18 +1,19 @@
 package com.project.backend.service;
 
 import java.time.DayOfWeek;
-import java.time.LocalDateTime;
-import java.time.temporal.TemporalAdjusters;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 
 import org.springframework.stereotype.Service;
 
 import com.project.backend.ResponseDto.AdminDashboardResponse;
-import com.project.backend.ResponseDto.AlertSummaryDto;
 import com.project.backend.ResponseDto.CustomerSummaryDto;
 import com.project.backend.ResponseDto.OrderStatusCountDto;
 import com.project.backend.ResponseDto.OrdersSummaryDto;
 import com.project.backend.ResponseDto.RevenueSummaryDto;
-import com.project.backend.ResponseDto.ShippingSummaryDto;
+import com.project.backend.entity.OrderStatus;
+import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.Role;
 import com.project.backend.repository.CartRepository;
 import com.project.backend.repository.OrderRepository;
@@ -54,10 +55,21 @@ public class AdminDashboardService {
     }
     
     public OrdersSummaryDto getOrdersSummary() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
-        LocalDateTime startOfWeek = now.with(DayOfWeek.MONDAY).toLocalDate().atStartOfDay();
-        LocalDateTime startOfMonth = now.with(TemporalAdjusters.firstDayOfMonth()).toLocalDate().atStartOfDay();
+    	Instant now = Instant.now();
+
+    	Instant startOfDay = now.truncatedTo(ChronoUnit.DAYS);
+
+    	Instant startOfWeek = now
+    	        .atZone(ZoneId.systemDefault())
+    	        .with(DayOfWeek.MONDAY)
+    	        .truncatedTo(ChronoUnit.DAYS)
+    	        .toInstant();
+
+    	Instant startOfMonth = now
+    	        .atZone(ZoneId.systemDefault())
+    	        .withDayOfMonth(1)
+    	        .truncatedTo(ChronoUnit.DAYS)
+    	        .toInstant();
 
         return new OrdersSummaryDto(
                 orderRepository.countByCreatedAtAfter(startOfDay),
@@ -69,19 +81,33 @@ public class AdminDashboardService {
     // 2️⃣ Orders by Status
     public OrderStatusCountDto getOrderStatusCounts() {
         return new OrderStatusCountDto(
-                orderRepository.countByStatus("PENDING"),
-                orderRepository.countByStatus("SHIPPED"),
-                orderRepository.countByStatus("CANCELLED"),
-                orderRepository.countByStatus("DELIVERED")
+                orderRepository.countByStatus(OrderStatus.PENDING),
+                orderRepository.countByStatus(OrderStatus.SHIPPED),
+                orderRepository.countByStatus(OrderStatus.CANCELLED),
+                orderRepository.countByStatus(OrderStatus.DELIVERED),
+                orderRepository.countByStatus(OrderStatus.PAID),
+                orderRepository.countByStatus(OrderStatus.PLACED),
+                orderRepository.countByStatus(OrderStatus.RETURN_REQUESTED)
         );
     }
 
     // 3️⃣ New Customers
     public CustomerSummaryDto getNewCustomers() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
-        LocalDateTime startOfWeek = now.with(DayOfWeek.MONDAY).toLocalDate().atStartOfDay();
-        LocalDateTime startOfMonth = now.with(TemporalAdjusters.firstDayOfMonth()).toLocalDate().atStartOfDay();
+    	Instant now = Instant.now();
+
+    	Instant startOfDay = now.truncatedTo(ChronoUnit.DAYS);
+
+    	Instant startOfWeek = now
+    	        .atZone(ZoneId.systemDefault())
+    	        .with(DayOfWeek.MONDAY)
+    	        .truncatedTo(ChronoUnit.DAYS)
+    	        .toInstant();
+
+    	Instant startOfMonth = now
+    	        .atZone(ZoneId.systemDefault())
+    	        .withDayOfMonth(1)
+    	        .truncatedTo(ChronoUnit.DAYS)
+    	        .toInstant();
 
         return new CustomerSummaryDto(
                 userRepository.countByCreatedAtAfter(startOfDay),
@@ -110,20 +136,24 @@ public class AdminDashboardService {
 //        );
 //    }
 
-    // 6️⃣ Revenue Summary
     public RevenueSummaryDto getRevenueSummary() {
-        LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
-        LocalDateTime startOfMonth = LocalDateTime.now()
-                .with(TemporalAdjusters.firstDayOfMonth())
-                .toLocalDate()
-                .atStartOfDay();
+        Instant now = Instant.now();
+
+        Instant startOfDay = now.truncatedTo(ChronoUnit.DAYS);
+
+        Instant startOfMonth = now
+                .atZone(ZoneId.systemDefault())
+                .withDayOfMonth(1)
+                .truncatedTo(ChronoUnit.DAYS)
+                .toInstant();
 
         return new RevenueSummaryDto(
                 orderRepository.sumTotalAmountByCreatedAtAfter(startOfDay),
                 orderRepository.sumTotalAmountByCreatedAtAfter(startOfMonth),
                 orderRepository.sumTaxAmountByCreatedAtAfter(startOfMonth),
-                orderRepository.countByPaymentMethod("COD"),
-                orderRepository.countByPaymentMethod("PREPAID")
+                orderRepository.countByPaymentMethod(PaymentMethod.COD),
+                orderRepository.countByPaymentMethod(PaymentMethod.PREPAID)
         );
     }
+
 }

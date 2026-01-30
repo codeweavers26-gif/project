@@ -34,40 +34,40 @@ public class SecurityConfig {
 
 	@Value("${app.cors.allowedOrigins}")
 	private String[] allowedOrigins;
+
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-	    http
-	        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-	        .csrf(csrf -> csrf.disable())
-	        .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-	        .authorizeHttpRequests(auth -> auth
+		http.cors(Customizer.withDefaults())
 
-	            // Preflight requests
-	            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+				.csrf(csrf -> csrf.disable())
+				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.authorizeHttpRequests(auth -> auth
 
-	            // Swagger
-	            .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+						// Preflight requests
+						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-	            // Auth APIs (login/register/refresh)
-	            .requestMatchers("/api/auth/**").permitAll()
+						// Swagger
+						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
 
-	            // Admin APIs
-	            .requestMatchers("/api/admin/**").hasRole("ADMIN")
+						// Auth APIs (login/register/refresh)
+						.requestMatchers("/api/auth/**").permitAll()
 
-	            // Customer APIs
-	            .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
+						// Admin APIs
+						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-	            // Orders require any logged-in user
-	            .requestMatchers("/api/orders/**").authenticated()
+						// Customer APIs
+						.requestMatchers("/api/customer/**").hasRole("CUSTOMER")
 
-	            // Everything else
-	            .anyRequest().authenticated()
-	        )
-	        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-	        .httpBasic(Customizer.withDefaults());
+						// Orders require any logged-in user
+						.requestMatchers("/api/orders/**").authenticated()
 
-	    return http.build();
+						// Everything else
+						.anyRequest().authenticated())
+				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+				.httpBasic(Customizer.withDefaults());
+
+		return http.build();
 	}
 
 	@Bean
@@ -80,24 +80,20 @@ public class SecurityConfig {
 		return config.getAuthenticationManager();
 
 	}
-	
+
 	@Bean
-	public CorsConfigurationSource corsConfigurationSource() {
-	    CorsConfiguration configuration = new CorsConfiguration();
+	public CorsConfigurationSource corsConfigurationSource(
+			@Value("${app.cors.allowedOrigins}") List<String> allowedOrigins) {
 
-	    configuration.setAllowedOrigins(List.of(allowedOrigins));
-	    configuration.setAllowedMethods(
-	        List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
-	    );
-	    configuration.setAllowedHeaders(List.of("*"));
-	    configuration.setExposedHeaders(List.of("Authorization"));
-	    configuration.setAllowCredentials(true);
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOriginPatterns(allowedOrigins);
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+		configuration.setAllowedHeaders(List.of("*"));
+		configuration.setAllowCredentials(true);
 
-	    UrlBasedCorsConfigurationSource source =
-	            new UrlBasedCorsConfigurationSource();
-	    source.registerCorsConfiguration("/**", configuration);
-
-	    return source;
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
 	}
 
 }

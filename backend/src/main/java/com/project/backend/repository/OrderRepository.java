@@ -1,5 +1,6 @@
 package com.project.backend.repository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import org.springframework.data.domain.Page;
@@ -10,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderStatus;
+import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.User;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -24,7 +26,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
 	Page<Order> findByUserIdAndStatus(Long userId, OrderStatus status, Pageable pageable);
 
-	Page<Order> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
+	Page<Order> findByCreatedAtBetween(Instant start, Instant end, Pageable pageable);
+
 	Page<Order> findByUserEmailContainingIgnoreCase(
 	        String email,
 	        Pageable pageable);
@@ -41,15 +44,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
 	@Query("SELECT SUM(oi.quantity) FROM OrderItem oi JOIN oi.order o WHERE o.status = 'DELIVERED'")
 	Long getTotalItemsSold();
-	Long countByCreatedAtAfter(LocalDateTime time);
-	Long countByStatus(String status);
-	Long countByPaymentMethod(String method);
+	Long countByCreatedAtAfter(Instant time);
+	Long countByStatus(OrderStatus status);
+
+	Long countByPaymentMethod(PaymentMethod cod);
 
 	@Query("SELECT COALESCE(SUM(o.totalAmount),0) FROM Order o WHERE o.createdAt >= :time")
-	Double sumTotalAmountByCreatedAtAfter(LocalDateTime time);
+	Double sumTotalAmountByCreatedAtAfter(Instant time);
 
 	@Query("SELECT COALESCE(SUM(o.taxAmount),0) FROM Order o WHERE o.createdAt >= :time")
-	Double sumTaxAmountByCreatedAtAfter(LocalDateTime time);
+	Double sumTaxAmountByCreatedAtAfter(Instant time);
 
 
 }

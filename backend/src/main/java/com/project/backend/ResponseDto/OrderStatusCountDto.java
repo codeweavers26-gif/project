@@ -12,4 +12,8 @@ public class OrderStatusCountDto {
     private Long shipped;
     private Long cancelled;
     private Long delivered;
+    private Long paid;
+    private Long placed;
+    private Long returnRequested;
+    
 }
