@@ -48,7 +48,7 @@ public class OrderService {
 				.orElseThrow(() -> new NotFoundException("Location not found"));
 
 		Order order = orderRepository
-				.save(Order.builder().user(user).status(OrderStatus.CREATED).totalAmount(0.0).build());
+				.save(Order.builder().user(user).status(OrderStatus.PENDING).totalAmount(0.0).build());
 
 		double total = 0;
 

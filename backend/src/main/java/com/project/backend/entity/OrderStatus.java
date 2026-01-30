@@ -1,11 +1,11 @@
 package com.project.backend.entity;
 
 public enum OrderStatus {
-    CREATED,
     PAID,
     SHIPPED,
     DELIVERED,
     CANCELLED,
     PLACED,
-    RETURN_REQUESTED
+    RETURN_REQUESTED,
+    PENDING
 }

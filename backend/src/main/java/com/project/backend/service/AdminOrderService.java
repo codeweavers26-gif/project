@@ -1,6 +1,8 @@
 package com.project.backend.service;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderStatus;
+import com.project.backend.exception.NotFoundException;
 import com.project.backend.mapper.OrderMapper;
 import com.project.backend.repository.OrderRepository;
 import com.project.backend.repository.UserRepository;
@@ -94,7 +97,7 @@ public class AdminOrderService {
 
 		// Validate user exists
 		userRepository.findById(userId)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+				.orElseThrow(() -> new NotFoundException( "User not found"));
 
 		PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
@@ -108,14 +111,17 @@ public class AdminOrderService {
 	}
 
 	public PageResponseDto<OrderResponseDto> getOrdersByDate(String from, String to, int page, int size) {
+		 LocalDate fromDate = LocalDate.parse(from);
+		    LocalDate toDate = LocalDate.parse(to);
 
-		LocalDate fromDate = LocalDate.parse(from);
-		LocalDate toDate = LocalDate.parse(to);
+		    ZoneId zone = ZoneId.systemDefault();
 
-		PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+		    Instant startInstant = fromDate.atStartOfDay(zone).toInstant();
+		    Instant endInstant = toDate.plusDays(1).atStartOfDay(zone).toInstant();
 
-		Page<Order> orders = orderRepository.findByCreatedAtBetween(fromDate.atStartOfDay(),
-				toDate.plusDays(1).atStartOfDay(), pageable);
+		    PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+		    Page<Order> orders = orderRepository.findByCreatedAtBetween(startInstant, endInstant, pageable);
 
 		return PageResponseDto.<OrderResponseDto>builder()
 				.content(orders.getContent().stream().map(OrderMapper::toDto).toList()).page(orders.getNumber())

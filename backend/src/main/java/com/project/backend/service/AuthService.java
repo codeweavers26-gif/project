@@ -1,5 +1,7 @@
 package com.project.backend.service;
 
+import java.time.Instant;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,7 +42,7 @@ public class AuthService {
 		}
 
 		User user = User.builder().email(req.getEmail()).password(passwordEncoder.encode(req.getPassword()))
-				.name(req.getName()).role(Role.CUSTOMER) // customer always
+				.name(req.getName()).role(Role.CUSTOMER).createdAt(Instant.now()) // customer always
 				.build();
 
 		userRepository.save(user);
