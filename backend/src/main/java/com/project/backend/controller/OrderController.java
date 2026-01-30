@@ -19,6 +19,7 @@ import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.service.OrderService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +37,8 @@ public class OrderController {
 		return userRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
 	}
 
-	@Operation(summary = "Checkout (login required)")
+	@Operation(summary = "Checkout (login required)", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@PostMapping("/checkout")
 	public ResponseEntity<Order> checkout(Authentication auth, @Valid @RequestBody CheckoutRequestDto request) {
 
@@ -45,7 +47,8 @@ public class OrderController {
 		return ResponseEntity.ok(order);
 	}
 
-	@Operation(summary = "Get logged-in user's orders")
+	@Operation(summary = "Get logged-in user's orders", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping("/my-orders")
 	public ResponseEntity<PageResponseDto<OrderResponseDto>> myOrders(Authentication auth,
 			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
@@ -56,6 +59,8 @@ public class OrderController {
 
 	}
 
+	@Operation(summary = "cancel order", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@PostMapping("/{orderId}/cancel")
 	public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId, Authentication auth) {
 

@@ -16,6 +16,7 @@ import com.project.backend.service.UserAddressService;
 import com.project.backend.service.UserProfileService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -36,13 +37,15 @@ public class UserAccountController {
 
     // ---------------- PROFILE ----------------
 
-    @Operation(summary = "Get current user profile", description = "Returns the profile of the logged-in user")
+    @Operation(summary = "Get current user profile", description = "Returns the profile of the logged-in user", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @GetMapping("/profile")
     public ResponseEntity<UserProfile> getProfile(Authentication auth) {
         return ResponseEntity.ok(profileService.getProfile(getCurrentUser(auth)));
     }
 
-    @Operation(summary = "Update user profile", description = "Updates the logged-in user's profile details")
+    @Operation(summary = "Update user profile", description = "Updates the logged-in user's profile details", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @PostMapping("/profile")
     public ResponseEntity<UserProfile> updateProfile(
             Authentication auth,
@@ -52,13 +55,15 @@ public class UserAccountController {
 
     // ---------------- ADDRESSES ----------------
 
-    @Operation(summary = "Get all addresses of user", description = "Fetches all saved addresses of the logged-in user")
+    @Operation(summary = "Get all addresses of user", description = "Fetches all saved addresses of the logged-in user", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @GetMapping("/addresses")
     public ResponseEntity<List<UserAddress>> getAddresses(Authentication auth) {
         return ResponseEntity.ok(addressService.getAllAddresses(getCurrentUser(auth)));
     }
 
-    @Operation(summary = "Add a new address", description = "Adds a new address to the logged-in user's account")
+    @Operation(summary = "Add a new address", description = "Adds a new address to the logged-in user's account", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @PostMapping("/addresses")
     public ResponseEntity<UserAddress> addAddress(
             Authentication auth,
@@ -66,7 +71,8 @@ public class UserAccountController {
         return ResponseEntity.ok(addressService.addAddress(getCurrentUser(auth), dto));
     }
 
-    @Operation(summary = "Delete an address", description = "Deletes address by ID from logged-in user's address list")
+    @Operation(summary = "Delete an address", description = "Deletes address by ID from logged-in user's address list", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @DeleteMapping("/addresses/{id}")
     public ResponseEntity<Void> deleteAddress(@PathVariable Long id) {
         addressService.deleteAddress(id);

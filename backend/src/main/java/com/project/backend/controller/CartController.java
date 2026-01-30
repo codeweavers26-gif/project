@@ -21,6 +21,7 @@ import com.project.backend.requestDto.CartMergeDto;
 import com.project.backend.service.CartService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -39,7 +40,8 @@ public class CartController {
     }
 
     // ADD TO CART
-    @Operation(summary = "Add product to cart")
+    @Operation(summary = "Add product to cart", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @PostMapping("/add")
     public ResponseEntity<Void> addToCart(
             Authentication auth,
@@ -51,14 +53,16 @@ public class CartController {
     }
 
     // VIEW CART
-    @Operation(summary = "Get cart items")
+    @Operation(summary = "Get cart items", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @GetMapping
     public ResponseEntity<List<CartItemResponseDto>> getCart(Authentication auth) {
         return ResponseEntity.ok(cartService.getCart(getCurrentUser(auth)));
     }
 
     // UPDATE QUANTITY
-    @Operation(summary = "Update cart item quantity")
+    @Operation(summary = "Update cart item quantity", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @PutMapping("/{cartId}")
     public ResponseEntity<Void> updateQty(
             Authentication auth,
@@ -70,7 +74,8 @@ public class CartController {
     }
 
     // REMOVE ITEM
-    @Operation(summary = "Remove item from cart")
+    @Operation(summary = "Remove item from cart", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @DeleteMapping("/{cartId}")
     public ResponseEntity<Void> removeItem(
             Authentication auth,

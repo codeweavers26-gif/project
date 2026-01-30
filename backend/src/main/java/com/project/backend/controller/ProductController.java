@@ -12,6 +12,7 @@ import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.service.ProductService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -38,7 +39,8 @@ public class ProductController {
 
 
     // GET PRODUCT BY ID
-    @Operation(summary = "Get product details by ID")
+    @Operation(summary = "Get product details by ID", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponseDto> getProductById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getActiveProductById(id));
@@ -51,7 +53,8 @@ public class ProductController {
     /**
      * Get products available at a location
      */
-    @Operation(summary = "Get products by location")
+    @Operation(summary = "Get products by location", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @GetMapping(params = {"locationId"})
     public ResponseEntity<PageResponseDto<ProductResponseDto>> getProductsByLocation(
             @RequestParam Long locationId,
