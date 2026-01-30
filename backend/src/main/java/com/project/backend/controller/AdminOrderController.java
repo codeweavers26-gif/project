@@ -17,20 +17,22 @@ import com.project.backend.requestDto.UpdateOrderStatusDto;
 import com.project.backend.service.AdminOrderService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/admin/orders")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Admin - Orders")
 public class AdminOrderController {
 
 	private final AdminOrderService adminOrderService;
 
 	// 🔹 Get all orders (with optional status filter)
-	@Operation(summary = "Get all orders")
+	@Operation(summary = "Get all orders", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping
 	public ResponseEntity<PageResponseDto<OrderResponseDto>> getAllOrders(
 			@RequestParam(required = false) OrderStatus status, @RequestParam(defaultValue = "0") int page,
@@ -40,7 +42,8 @@ public class AdminOrderController {
 	}
 
 	// 🔹 Get order by ID
-	@Operation(summary = "Get order by ID")
+	@Operation(summary = "Get order by ID", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping("/{orderId}")
 	public ResponseEntity<OrderResponseDto> getOrderById(@PathVariable Long orderId) {
 
@@ -48,7 +51,8 @@ public class AdminOrderController {
 	}
 
 	// 🔹 Update order status
-	@Operation(summary = "Update order status")
+	@Operation(summary = "Update order status", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@PutMapping("/{orderId}/status")
 	public ResponseEntity<OrderResponseDto> updateOrderStatus(@PathVariable Long orderId,
 			@RequestBody UpdateOrderStatusDto dto) {
@@ -57,7 +61,8 @@ public class AdminOrderController {
 	}
 
 	// 🔹 Cancel order (admin power)
-	@Operation(summary = "Cancel order")
+	@Operation(summary = "Cancel order", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@PutMapping("/{orderId}/cancel")
 	public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
 
@@ -66,7 +71,8 @@ public class AdminOrderController {
 	}
 
 	// 🔹 Get orders by user
-	@Operation(summary = "Get orders by user")
+	@Operation(summary = "Get orders by user", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping("/user/{userId}")
 	public ResponseEntity<PageResponseDto<OrderResponseDto>> getOrdersByUser(@PathVariable Long userId,
 			@RequestParam(required = false) OrderStatus status, @RequestParam(defaultValue = "0") int page,
@@ -75,7 +81,8 @@ public class AdminOrderController {
 		return ResponseEntity.ok(adminOrderService.getOrdersByUser(userId, status, page, size));
 	}
 	
-	@Operation(summary = "Get orders by date range")
+	@Operation(summary = "Get orders by date range", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping("/by-date")
 	public ResponseEntity<PageResponseDto<OrderResponseDto>> getOrdersByDate(
 	        @RequestParam String from,
@@ -88,7 +95,8 @@ public class AdminOrderController {
 	    );
 	}
 	
-	@Operation(summary = "Search orders by orderId or user email")
+	@Operation(summary = "Search orders by orderId or user email", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping("/search")
 	public ResponseEntity<PageResponseDto<OrderResponseDto>> searchOrders(
 	        @RequestParam(required = false) Long orderId,
