@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.project.backend.ResponseDto.LocationResponseDto;
 import com.project.backend.service.LocationService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +24,8 @@ public class LocationController {
     private final LocationService locationService;
 
     @GetMapping
+    @Operation(summary = "locations", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     public ResponseEntity<List<LocationResponseDto>> getLocations() {
         return ResponseEntity.ok(locationService.getActiveLocations());
     }
