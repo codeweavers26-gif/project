@@ -1,31 +1,27 @@
 package com.project.backend.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Entity
-@Table(name = "attribute_option")
+@Table(name = "subcategory_attribute")
 @Data
 @Builder
-public class AttributeOption {
+public class SubCategoryAttribute {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String value; // XL, Red, Nike
-
-    private Boolean active = true;
-
-    private Integer sortOrder;
+    @ManyToOne
+    @JoinColumn(name = "subcategory_id", nullable = false)
+    private SubCategory subCategory;
 
     @ManyToOne
     @JoinColumn(name = "attribute_id", nullable = false)
     private AttributeConfig attribute;
+
+    private Boolean required = false;
+    private Boolean filterable = true;
 }

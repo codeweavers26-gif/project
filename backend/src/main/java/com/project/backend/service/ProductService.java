@@ -214,8 +214,8 @@ System.err.println("dcfv");
         Map<String, String> attributes = product.getAttributes() != null
                 ? product.getAttributes().stream()
                     .collect(Collectors.toMap(
-                            ProductAttribute::getName,
-                            ProductAttribute::getValue
+                            pa -> pa.getAttribute().getName(),
+                            pa -> pa.getOption().getValue()
                     ))
                 : Map.of();
 

@@ -5,31 +5,28 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 @Entity
-@Table(name = "categories")
+@Table(name = "sections")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Category {
+public class Section {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "section_id", nullable = false)
-    private Section section;
+    @Column(nullable = false, unique = true)
+    private String name; // MEN, WOMEN, KIDS
 
-    @Column(nullable = false)
-    private String name; // Clothing, Footwear
+    private String imageUrl;
 
     private Boolean isActive = true;
 }

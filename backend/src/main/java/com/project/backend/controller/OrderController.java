@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.project.backend.ResponseDto.CheckoutResponseDto;
 import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.User;
@@ -40,10 +41,11 @@ public class OrderController {
 	@Operation(summary = "Checkout (login required)", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
 	@PostMapping("/checkout")
-	public ResponseEntity<Order> checkout(Authentication auth, @Valid @RequestBody CheckoutRequestDto request) {
+	public ResponseEntity<CheckoutResponseDto> checkout(Authentication auth,
+			@Valid @RequestBody CheckoutRequestDto request) {
 
 		User user = getCurrentUser(auth);
-		Order order = orderService.checkout(user, request);
+		CheckoutResponseDto order = orderService.checkout(user, request);
 		return ResponseEntity.ok(order);
 	}
 
@@ -59,8 +61,7 @@ public class OrderController {
 
 	}
 
-	@Operation(summary = "cancel order", security = {
-			@SecurityRequirement(name = "Bearer Authentication") })
+	@Operation(summary = "cancel order", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@PostMapping("/{orderId}/cancel")
 	public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId, Authentication auth) {
 
