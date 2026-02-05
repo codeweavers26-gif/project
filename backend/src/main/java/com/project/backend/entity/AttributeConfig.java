@@ -1,34 +1,38 @@
 package com.project.backend.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Table(name = "attribute_config")
 @Data
+@Builder
 public class AttributeConfig {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    private String name; // color, size
+	@Column(nullable = false)
+	private String name; // Size, Color, Brand
 
-    private Boolean required;
+	private Boolean filterable = true; // show in filters
 
-    private String inputType; // TEXT or SELECT
-
-    private Boolean active;
-
-    @ManyToOne
-    @JoinColumn(name = "category")
-    private Category category;
+	private Boolean required = false; // mandatory for product
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "category_id", nullable = false)
+	private Category category;
 }
-
-

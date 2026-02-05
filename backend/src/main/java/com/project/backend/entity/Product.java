@@ -36,10 +36,10 @@ public class Product {
     private String brand;
 
     @Column(unique = true)
-    private String sku; // unique product code
+    private String sku;
 
     @Column(unique = true)
-    private String slug; // SEO-friendly URL
+    private String slug;
 
     @Column(name = "short_description", length = 500)
     private String shortDescription;
@@ -87,11 +87,11 @@ public class Product {
     @Column(name = "created_at", updatable = false)
     private Instant createdAt = Instant.now();
 
-    // 🔽 Relationships
-
+    // ✅ Product Images
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images;
 
+    // ✅ NEW Attribute Mapping (IMPORTANT FIX)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductAttribute> attributes;
 }

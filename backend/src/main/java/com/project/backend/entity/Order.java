@@ -1,6 +1,7 @@
 package com.project.backend.entity;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -83,8 +84,8 @@ public class Order {
 
     // 🛒 Order Items
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> items;
-
+    @Builder.Default
+    private List<OrderItem> items = new ArrayList<>();
     // ⏱ Auto timestamps
     @PrePersist
     protected void onCreate() {
@@ -96,4 +97,24 @@ public class Order {
     protected void onUpdate() {
         updatedAt = Instant.now();
     }
+    
+    
+    @Column(name = "delivery_address_line1")
+    private String deliveryAddressLine1;
+
+    @Column(name = "delivery_address_line2")
+    private String deliveryAddressLine2;
+
+    @Column(name = "delivery_city")
+    private String deliveryCity;
+
+    @Column(name = "delivery_state")
+    private String deliveryState;
+
+    @Column(name = "delivery_postal_code")
+    private String deliveryPostalCode;
+
+    @Column(name = "delivery_country")
+    private String deliveryCountry;
+
 }

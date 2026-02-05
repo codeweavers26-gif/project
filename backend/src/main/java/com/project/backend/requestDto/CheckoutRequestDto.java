@@ -8,7 +8,8 @@ import lombok.Data;
 
 @Data
 public class CheckoutRequestDto {
-	 private Long locationId;
+
+    private Long addressId;
     @NotEmpty(message = "Cart cannot be empty")
     @Valid
     private List<CartItemDto> items;
