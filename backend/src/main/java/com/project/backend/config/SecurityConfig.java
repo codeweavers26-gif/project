@@ -90,7 +90,13 @@ public class SecurityConfig {
 	        @Value("${app.cors.allowedOrigins}") String allowedOriginsString) {
 	    
 	    // Split the comma-separated string into a list
-	    List<String> allowedOrigins = Arrays.asList(allowedOriginsString.split(","));
+	    List<String> allowedOrigins = Arrays.asList("https://richfrontend.vercel.app",
+	            "https://www.richnretired.in",
+	            "https://www.richnretired.com",
+	            "http://localhost:3000",
+	            "http://localhost:3001",
+	            "https://project-fnwy.onrender.com",  // Your own Render URL
+	            "http://project-fnwy.onrender.com"  );
 	    
 	    CorsConfiguration configuration = new CorsConfiguration();
 	    configuration.setAllowedOriginPatterns(allowedOrigins);
