@@ -1,5 +1,6 @@
 package com.project.backend.config;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -86,17 +87,23 @@ public class SecurityConfig {
 
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource(
-			@Value("${app.cors.allowedOrigins}") List<String> allowedOrigins) {
+	        @Value("${app.cors.allowedOrigins}") String allowedOriginsString) {
+	    
+	    // Split the comma-separated string into a list
+	    List<String> allowedOrigins = Arrays.asList(allowedOriginsString.split(","));
+	    
+	    CorsConfiguration configuration = new CorsConfiguration();
+	    configuration.setAllowedOriginPatterns(allowedOrigins);
+	    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+	    configuration.setAllowedHeaders(Arrays.asList("*"));
+	    configuration.setAllowCredentials(true);
+	    configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
+	    
+	    // Cache preflight response for 1 hour
+	    configuration.setMaxAge(3600L);
 
-		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOriginPatterns(allowedOrigins);
-		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-		configuration.setAllowedHeaders(List.of("*"));
-		configuration.setAllowCredentials(true);
-
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration);
-		return source;
+	    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+	    source.registerCorsConfiguration("/**", configuration);
+	    return source;
 	}
-
 }
