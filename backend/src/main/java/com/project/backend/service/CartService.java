@@ -1,5 +1,6 @@
 package com.project.backend.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -7,10 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.project.backend.ResponseDto.CartItemResponseDto;
+import com.project.backend.ResponseDto.CartPricingResponseDto;
 import com.project.backend.entity.Cart;
 import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductImage;
 import com.project.backend.entity.User;
+import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.repository.CartRepository;
 import com.project.backend.repository.ProductRepository;
@@ -113,6 +116,97 @@ public class CartService {
         for (CartMergeDto item : items) {
             addToCart(user, item.getProductId(), item.getQuantity());
         }
+    }
+    
+    
+    public CartPricingResponseDto getCartPricing(User user, String couponCode) {
+
+        List<Cart> cartItems = cartRepository.findByUser(user);
+
+        if (cartItems.isEmpty()) {
+            return CartPricingResponseDto.builder()
+                    .items(List.of())
+                    .subtotal(0.0)
+                    .taxAmount(0.0)
+                    .shippingCharges(0.0)
+                    .discountAmount(0.0)
+                    .finalAmount(0.0)
+                    .couponApplied(false)
+                    .message("Your cart is empty")
+                    .build();
+        }
+
+
+        double subtotal = 0;
+        double tax = 0;
+
+        List<CartItemResponseDto> itemDtos = new ArrayList<>();
+
+        for (Cart cartItem : cartItems) {
+
+            Product product = cartItem.getProduct();
+            int qty = cartItem.getQuantity();
+
+            if (!product.getIsActive()) {
+                throw new BadRequestException(product.getName() + " is not available");
+            }
+
+            double itemTotal = product.getPrice() * qty;
+            double taxPercent = product.getTaxPercent() != null ? product.getTaxPercent() : 0;
+            double itemTax = (taxPercent / 100) * itemTotal;
+
+            subtotal += itemTotal;
+            tax += itemTax;
+
+            itemDtos.add(
+                CartItemResponseDto.builder()
+                    .cartId(cartItem.getId())
+                    .productId(product.getId())
+                    .productName(product.getName())
+//                    .image(product.getImages().isEmpty() ? null :
+//                           product.getImages().get(0).getImageUrl())
+                    .price(product.getPrice())
+                    .quantity(qty)
+                //    .total(itemTotal)
+                    .build()
+            );
+        }
+
+        // 🚚 Shipping (basic logic)
+        double shipping = subtotal > 999 ? 0 : 49;
+
+        // 🎟 Coupon Logic (simplified)
+        double discount = 0;
+        boolean couponApplied = false;
+        String message = null;
+
+//        if (couponCode != null && !couponCode.isBlank()) {
+//
+//            Coupon coupon = couponRepository.findByCodeAndActiveTrue(couponCode)
+//                    .orElseThrow(() -> new BadRequestException("Invalid coupon"));
+//
+//            if (subtotal < coupon.getMinOrderAmount()) {
+//                throw new BadRequestException("Minimum order amount not met for coupon");
+//            }
+//
+//            discount = (coupon.getDiscountPercent() / 100) * subtotal;
+//            couponApplied = true;
+//            message = "Coupon applied successfully";
+//        }
+
+        double finalAmount = subtotal + tax + shipping - discount;
+
+        return CartPricingResponseDto.builder()
+                .items(itemDtos)
+                .subtotal(subtotal)
+                .taxAmount(tax)
+                .shippingCharges(shipping)
+                .discountAmount(discount)
+                .finalAmount(finalAmount)
+                .appliedCoupon(couponApplied ? couponCode : null)
+                .couponApplied(couponApplied)
+                .message(message)
+                .build();
     }
 
 }

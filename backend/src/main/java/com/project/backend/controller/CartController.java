@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.project.backend.ResponseDto.CartItemResponseDto;
+import com.project.backend.ResponseDto.CartPricingResponseDto;
 import com.project.backend.entity.User;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.CartMergeDto;
@@ -93,6 +94,16 @@ public class CartController {
         User user = getCurrentUser(auth);
         cartService.mergeCart(user, items);
         return ResponseEntity.ok().build();
+    }
+    @Operation(summary = "Get cart with pricing", security = {
+            @SecurityRequirement(name = "Bearer Authentication") })
+    @GetMapping("/summary")
+    public ResponseEntity<CartPricingResponseDto> getCartSummary(
+            Authentication auth,
+            @RequestParam(required = false) String couponCode) {
+
+        User user = getCurrentUser(auth);
+        return ResponseEntity.ok(cartService.getCartPricing(user, couponCode));
     }
 
 }
