@@ -2,6 +2,7 @@ package com.project.backend.config;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -84,32 +85,49 @@ public class SecurityConfig {
 		return config.getAuthenticationManager();
 
 	}
-
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource(
 	        @Value("${app.cors.allowedOrigins}") String allowedOriginsString) {
 	    
-	    // Split the comma-separated string into a list
-	    List<String> allowedOrigins = Arrays.asList("https://richfrontend.vercel.app",
-	            "https://www.richnretired.in",
-	            "https://www.richnretired.com",
-	            "http://localhost:3000",
-	            "http://localhost:3001",
-	            "https://project-fnwy.onrender.com",  // Your own Render URL
-	            "http://project-fnwy.onrender.com"  );
+	    // Split by comma and trim
+	    List<String> allowedOrigins = Arrays.stream(allowedOriginsString.split(","))
+	            .map(String::trim)
+	            .collect(Collectors.toList());
 	    
 	    CorsConfiguration configuration = new CorsConfiguration();
-	    configuration.setAllowedOriginPatterns(allowedOrigins);
+	    
+	    // Allow all your domains AND Render's internal domains
+	    configuration.setAllowedOriginPatterns(Arrays.asList(
+	        "https://richfrontend.vercel.app",
+	        "https://www.richnretired.in",
+	        "https://www.richnretired.com",
+	        "http://localhost:3000",
+	        "http://localhost:3001",
+	        "https://project-fnwy.onrender.com",  // Your own Render URL
+	        "http://project-fnwy.onrender.com"   // HTTP version
+	    ));
+	    
+	    // OR use patterns for flexibility:
+	    configuration.setAllowedOriginPatterns(Arrays.asList(
+	        "*richfrontend*",
+	        "*richnretired*",
+	        "*localhost*",
+	        "*project-fnwy*",
+	        "*.onrender.com",
+	        "*.vercel.app"
+	    ));
+	    
 	    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 	    configuration.setAllowedHeaders(Arrays.asList("*"));
 	    configuration.setAllowCredentials(true);
 	    configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
 	    
-	    // Cache preflight response for 1 hour
+	    // Important for Render
 	    configuration.setMaxAge(3600L);
-
+	    
 	    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 	    source.registerCorsConfiguration("/**", configuration);
+	    
 	    return source;
 	}
 }
