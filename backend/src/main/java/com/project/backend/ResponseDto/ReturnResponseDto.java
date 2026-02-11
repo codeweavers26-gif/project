@@ -25,7 +25,7 @@ public class ReturnResponseDto {
 
 	private ReturnStatus status;
 
-	private String reason;
+	private ReturnReason reason;
 
 	private Double refundAmount;
 
