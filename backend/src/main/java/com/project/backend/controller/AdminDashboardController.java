@@ -4,15 +4,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.project.backend.ResponseDto.AdminDashboardResponse;
-import com.project.backend.ResponseDto.AlertSummaryDto;
 import com.project.backend.ResponseDto.CustomerSummaryDto;
 import com.project.backend.ResponseDto.OrderStatusCountDto;
 import com.project.backend.ResponseDto.OrdersSummaryDto;
+import com.project.backend.ResponseDto.ReturnByReasonDto;
+import com.project.backend.ResponseDto.ReturnTrendDto;
 import com.project.backend.ResponseDto.RevenueSummaryDto;
-import com.project.backend.ResponseDto.ShippingSummaryDto;
+import com.project.backend.ResponseDto.TopReturnedProductDto;
+import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.service.AdminDashboardService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -89,5 +92,32 @@ public class AdminDashboardController {
 	@GetMapping("/revenue-summary")
 	public RevenueSummaryDto getRevenueSummary() {
 		return dashboardService.getRevenueSummary();
+	}
+	@Operation(summary = "Get Admin Dashboard return by reason", description = "Get Admin Dashboard return  by reason.", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
+
+	@GetMapping("/return/by-reason")
+	public ResponseEntity<PageResponseDto<ReturnByReasonDto>> byReason(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+
+		return ResponseEntity.ok(dashboardService.getReturnsByReason(page, size));
+	}
+	@Operation(summary = "Get Admin Dashboard top product", description = "Get Admin Dashboard top product.", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
+
+	@GetMapping("/return/top-products")
+	public ResponseEntity<PageResponseDto<TopReturnedProductDto>> topProducts(
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+
+		return ResponseEntity.ok(dashboardService.getTopReturnedProducts(page, size));
+	}
+	@Operation(summary = "Get Admin Dashboard return trend", description = "Get Admin Dashboard return trenda.", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
+
+	@GetMapping("/return/trend")
+	public ResponseEntity<PageResponseDto<ReturnTrendDto>> trend(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+
+		return ResponseEntity.ok(dashboardService.getReturnTrend(page, size));
 	}
 }

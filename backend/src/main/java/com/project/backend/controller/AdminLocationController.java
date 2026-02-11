@@ -1,5 +1,6 @@
 package com.project.backend.controller;
 
+import com.project.backend.ResponseDto.LocationResponseDto;
 import com.project.backend.entity.Location;
 import com.project.backend.requestDto.LocationRequestDto;
 import com.project.backend.service.LocationService;
@@ -9,6 +10,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -56,5 +59,15 @@ public class AdminLocationController {
     public ResponseEntity<Void> disableLocation(@PathVariable Long id) {
         locationService.disableLocation(id);
         return ResponseEntity.noContent().build();
+    }
+    
+
+    @Operation(
+            summary = "Get all active serviceable locations",
+            description = "Returns list of locations where delivery is available"
+            , security = @SecurityRequirement(name = "Bearer Authentication"))
+    @GetMapping
+    public ResponseEntity<List<LocationResponseDto>> getActiveLocations() {
+        return ResponseEntity.ok(locationService.getActiveLocations());
     }
 }
