@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.project.backend.ResponseDto.CheckoutResponseDto;
 import com.project.backend.ResponseDto.OrderResponseDto;
-import com.project.backend.entity.Order;
+import com.project.backend.ResponseDto.ReorderResponseDto;
 import com.project.backend.entity.User;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.CheckoutRequestDto;
@@ -70,4 +70,39 @@ public class OrderController {
 		return ResponseEntity.ok().build();
 	}
 
+	@GetMapping("/{orderId}")
+	@Operation(summary = "Get order details", security = { @SecurityRequirement(name = "Bearer Authentication") })
+	public ResponseEntity<OrderResponseDto> getOrder(Authentication auth, @PathVariable Long orderId) {
+
+		User user = getCurrentUser(auth);
+		return ResponseEntity.ok(orderService.getOrderById(orderId, user));
+	}
+
+	@PostMapping("/{orderId}/reorder")
+	@Operation(summary = "Reorder previous order", security = { @SecurityRequirement(name = "Bearer Authentication") })
+	public ResponseEntity<Void> reorder(Authentication auth, @PathVariable Long orderId) {
+
+		orderService.reorder(getCurrentUser(auth), orderId);
+		return ResponseEntity.ok().build();
+	}
+
+//	@PostMapping("/items/{orderItemId}/return")
+//	@Operation(summary = "Request return for order item", security = {
+//			@SecurityRequirement(name = "Bearer Authentication") })
+//	public ResponseEntity<Void> requestReturn(Authentication auth, @PathVariable Long orderItemId,
+//			@RequestBody ReturnRequestDto dto) {
+//
+//		orderReturnService.requestReturn(getCurrentUser(auth), orderItemId, dto);
+//		return ResponseEntity.ok().build();
+//	}
+//
+//	@GetMapping("/returns")
+//	@Operation(summary = "Get my returns", security = { @SecurityRequirement(name = "Bearer Authentication") })
+//	public ResponseEntity<PageResponseDto<ReturnResponseDto>> myReturns(Authentication auth,
+//			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+//
+//		return ResponseEntity.ok(orderReturnService.getUserReturns(getCurrentUser(auth).getId(), page, size));
+//	}
+
+	
 }

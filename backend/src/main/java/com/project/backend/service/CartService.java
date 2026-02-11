@@ -208,5 +208,26 @@ public class CartService {
                 .message(message)
                 .build();
     }
+    
+    @Transactional
+    public void addOrUpdate(User user, Product product, int quantity) {
+
+        Cart cart = cartRepository.findByUserAndProduct(user, product)
+            .orElse(
+                Cart.builder()
+                    .user(user)
+                    .product(product)
+                    .quantity(0)
+                    .build()
+            );
+
+        cart.setQuantity(cart.getQuantity() + quantity);
+
+        if (cart.getQuantity() <= 0) {
+            cartRepository.delete(cart);
+        } else {
+            cartRepository.save(cart);
+        }
+    }
 
 }

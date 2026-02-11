@@ -47,6 +47,7 @@ public class OrderService {
 	private final CartRepository cartRepository;
 	private final LocationRepository locationRepository;
 	private final ProductInventoryRepository inventoryRepository;
+	private final CartService cartService;
 	private final UserAddressRepository userAddressRepository;
 
 	@Transactional
@@ -54,7 +55,7 @@ public class OrderService {
 
 	    UserAddress address = userAddressRepository.findById(request.getAddressId())
 	            .orElseThrow(() -> new NotFoundException("Address not found"));
-
+	    
 	    if (!address.getUser().getId().equals(user.getId())) {
 	        throw new BadRequestException("Address does not belong to user");
 	    }
@@ -124,7 +125,7 @@ public class OrderService {
 	    order.setStatus(OrderStatus.PLACED);
 
 	    Order savedOrder = orderRepository.save(order);
-
+	    cartRepository.deleteByUser(user);
 	    return mapToCheckoutResponse(savedOrder, subtotal);
 	}
 
@@ -168,6 +169,8 @@ public class OrderService {
 		}
 
 		order.setStatus(OrderStatus.CANCELLED);
+		order.setPaymentStatus(PaymentStatus.REFUND_PENDING);
+
 		orderRepository.save(order);
 	}
 
@@ -191,5 +194,33 @@ public class OrderService {
 						.toList())
 				.build();
 	}
+	
+	public OrderResponseDto getOrderById(Long orderId, User user) {
+
+	    Order order = orderRepository.findById(orderId)
+	        .orElseThrow(() -> new NotFoundException("Order not found"));
+
+	    if (!order.getUser().getId().equals(user.getId())) {
+	        throw new UnauthorizedException("Not your order");
+	    }
+
+	    return OrderMapper.toDto(order);
+	}
+	@Transactional
+	public void reorder(User user, Long orderId) {
+
+	    Order order = orderRepository.findById(orderId)
+	        .orElseThrow(() -> new NotFoundException("Order not found"));
+
+	    if (!order.getUser().getId().equals(user.getId())) {
+	        throw new UnauthorizedException("Not your order");
+	    }
+
+	    for (OrderItem item : order.getItems()) {
+	    	cartService.addOrUpdate(user, item.getProduct(), item.getQuantity());
+
+	    }
+	}
+
 
 }
