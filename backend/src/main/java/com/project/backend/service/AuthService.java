@@ -36,15 +36,20 @@ public class AuthService {
 
 	@Transactional
 	public AuthResponse register(RegisterRequest req) {
-
+		//Put in try-catch block
+		// Validate:
+		// valid email
+		// valid password
+		// vaid name
 		if (userRepository.findByEmail(req.getEmail()).isPresent()) {
 			throw new RuntimeException("Email already taken");
 		}
-
+        
+		//validate for correct Email by sending a OTP or login Link
 		User user = User.builder().email(req.getEmail()).password(passwordEncoder.encode(req.getPassword()))
 				.name(req.getName()).role(Role.CUSTOMER).createdAt(Instant.now()) // customer always
 				.build();
-
+        
 		userRepository.save(user);
 
 		// 🔥 PASS USER OBJECT
@@ -56,13 +61,13 @@ public class AuthService {
 	}
 
 	public AuthResponse login(AuthRequest req, Role expectedRole) {
-
-		authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword()));
-
+        //try-catch block
+		//validate the correct email format and password in request
+		authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())); //
+        //Hardcoded message, can we use USER_ALREADY_EXIST from Constants
 		User user = userRepository.findByEmail(req.getEmail())
 				.orElseThrow(() -> new NotFoundException("User not found"));
-
-		// 🔥 Portal restriction happens HERE
+        //Hardcoded message
 		if (user.getRole() != expectedRole) {
 			throw new UnauthorizedException("Access denied for this portal");
 		}
@@ -74,7 +79,7 @@ public class AuthService {
 	}
 
 	public AuthResponse refreshAccessToken(String refreshTokenStr) {
-
+        // can we use try-catch block
 		RefreshToken rt = refreshTokenRepository.findByToken(refreshTokenStr)
 				.orElseThrow(() -> new RuntimeException("Invalid refresh token"));
 
@@ -83,8 +88,8 @@ public class AuthService {
 		}
 
 		User user = rt.getUser();
-
-		// ✅ PASS FULL USER
+        
+		//Rotate the refresh Token as well
 		String accessToken = jwtUtils.generateAccessToken(user);
 
 		return new AuthResponse(accessToken, rt.getToken());
@@ -92,7 +97,8 @@ public class AuthService {
 
 	@Transactional
 	public void logout(String email) {
-
+        //try-catch
+		//Access-token should also be deleted
 		userRepository.findByEmail(email).ifPresent(user -> {
 			refreshTokenRepository.deleteByUser(user);
 		});
