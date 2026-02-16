@@ -2,6 +2,7 @@ package com.project.backend.controller;
 
 import java.util.List;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -13,7 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.project.backend.ResponseDto.ProductResponseDto;
 import com.project.backend.requestDto.ProductRequestDto;
@@ -35,13 +38,18 @@ public class AdminProductController {
     private final ProductService productService;
 
     @Operation(summary = "Add product", security = {
-			@SecurityRequirement(name = "Bearer Authentication") })
-    @PostMapping
-    public ResponseEntity<ProductResponseDto> addProduct(
-    		@Valid  @RequestBody ProductRequestDto dto) {
-        return ResponseEntity.ok(productService.create(dto));
-    }
-
+    	    @SecurityRequirement(name = "Bearer Authentication") })
+    	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    	public ResponseEntity<ProductResponseDto> addProduct(
+    	        @RequestPart(value = "product", required = true) @Valid ProductRequestDto dto,  // Added value attribute
+    	        @RequestPart(value = "images", required = false) List<MultipartFile> imageFiles) {
+    	    
+    	    // Log to debug
+    	    System.out.println("Received product: " + dto);
+    	    System.out.println("Images count: " + (imageFiles != null ? imageFiles.size() : 0));
+    	    
+    	    return ResponseEntity.ok(productService.create(dto, imageFiles));
+    	}
     @Operation(summary = "Update product", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
     @PutMapping("/{id}")
@@ -51,7 +59,8 @@ public class AdminProductController {
         return ResponseEntity.ok(productService.update(id, dto));
     }
 
-    @Operation(summary = "Deactivate product")
+    @Operation(summary = "Deactivate product", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.deactivate(id);

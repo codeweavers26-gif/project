@@ -36,4 +36,7 @@ public class ProductImage {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private Product product;
+    
+    @Column(name = "cloudinary_public_id")
+    private String cloudinaryPublicId; 
 }

@@ -1,5 +1,6 @@
 package com.project.backend.service;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -10,10 +11,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.project.backend.ResponseDto.ProductResponseDto;
 import com.project.backend.entity.Product;
-import com.project.backend.entity.ProductAttribute;
 import com.project.backend.entity.ProductImage;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.repository.AttributeConfigRepository;
@@ -36,15 +37,17 @@ public class ProductService {
     private final ProductAttributeRepository productAttributeRepository ;
     private final ProductImageRepository productImageRepository;
     private final AttributeConfigRepository attributeConfigRepository;
+    private final CloudinaryService cloudinaryService;
+    
 
     // CREATE PRODUCT
     @Transactional
     @CacheEvict(value = {"productsByLocation", "productDetails"}, allEntries = true)
-    public ProductResponseDto create(ProductRequestDto dto) {
+    public ProductResponseDto create(ProductRequestDto dto, List<MultipartFile> imageFiles) {
 
-        if (dto.getImages() != null && dto.getImages().size() > 6) {
-            throw new RuntimeException("Maximum 6 images allowed per product");
-        }
+    	 if (imageFiles != null && imageFiles.size() > 6) {
+    	        throw new RuntimeException("Maximum 6 images allowed per product");
+    	    }
         
       
 //        List<AttributeConfig> configs =
@@ -84,30 +87,28 @@ public class ProductService {
 
         productRepository.save(product);
 
-        // 🖼️ Save Images
-        if (dto.getImages() != null) {
-            for (int i = 0; i < dto.getImages().size(); i++) {
-                ProductImage image = ProductImage.builder()
-                        .product(product)
-                        .imageUrl(dto.getImages().get(i))
-                        .position(i + 1)
-                        .build();
-                productImageRepository.save(image);
+        if (imageFiles != null && !imageFiles.isEmpty()) {
+            for (int i = 0; i < imageFiles.size(); i++) {
+                MultipartFile imageFile = imageFiles.get(i);
+                try {
+                    // Upload to Cloudinary
+                    Map uploadResult = cloudinaryService.uploadImage(imageFile, "products/" + product.getId());
+                    
+                    // Create image entity with Cloudinary URL
+                    ProductImage image = ProductImage.builder()
+                            .product(product)
+                            .imageUrl((String) uploadResult.get("secure_url")) // Cloudinary URL
+                            .cloudinaryPublicId((String) uploadResult.get("public_id")) // Save public ID for deletion
+                            .position(i + 1)
+                            .build();
+                    
+                    productImageRepository.save(image);
+                    
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to upload image: " + imageFile.getOriginalFilename(), e);
+                }
             }
         }
-
-        // 🏷️ Save Attributes
-//        if (dto.getAttributes() != null) {
-//            dto.getAttributes().forEach((key, value) -> {
-//                ProductAttribute attr = ProductAttribute.builder()
-//                        .product(product)
-//                        .name(key)
-//                        .value(value)
-//                        .build();
-//                productAttributeRepository.save(attr);
-//            });
-     //   }
-
         return mapToResponse(product);
     }
 
