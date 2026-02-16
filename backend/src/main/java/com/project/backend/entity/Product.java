@@ -87,11 +87,15 @@ public class Product {
     @Column(name = "created_at", updatable = false)
     private Instant createdAt = Instant.now();
 
-    // ✅ Product Images
+    
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images;
 
-    // ✅ NEW Attribute Mapping (IMPORTANT FIX)
+    private String imagePublicId;      // Cloudinary public ID (for deletion)
+    private String imageUrl;           // Main image URL
+    private String thumbnailUrl;       // Thumbnail URL
+    private String mediumImageUrl;      // Medium size URL
+    
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductAttribute> attributes;
 }
