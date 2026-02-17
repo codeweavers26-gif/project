@@ -240,6 +240,11 @@ System.err.println("dcfv");
                 .images(imageUrls)
                 .attributes(attributes)
                 .isActive(product.getIsActive())
+                // ✅ FIXED: Use product.getXxx() not dto.getXxx()
+                .weight(product.getWeight())
+                .length(product.getLength())
+                .width(product.getWidth())
+                .height(product.getHeight())
                 .build();
     }
 
@@ -270,7 +275,7 @@ System.err.println("dcfv");
     }
 
     // CUSTOMER VIEW - PRODUCT BY ID
-    @Cacheable(value = "productDetails", key = "#productId")
+    @Cacheable(value = "productDetails", key = "#id")
     public ProductResponseDto getActiveProductById(Long id) {
 
         Product product = productRepository.findById(id)

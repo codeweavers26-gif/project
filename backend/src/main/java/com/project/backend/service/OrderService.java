@@ -1,5 +1,9 @@
 package com.project.backend.service;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -31,8 +35,10 @@ import com.project.backend.repository.OrderRepository;
 import com.project.backend.repository.ProductInventoryRepository;
 import com.project.backend.repository.ProductRepository;
 import com.project.backend.repository.UserAddressRepository;
+import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.CartItemDto;
 import com.project.backend.requestDto.CheckoutRequestDto;
+import com.project.backend.requestDto.OrderFilter;
 import com.project.backend.requestDto.PageResponseDto;
 
 import lombok.RequiredArgsConstructor;
@@ -49,6 +55,7 @@ public class OrderService {
 	private final ProductInventoryRepository inventoryRepository;
 	private final CartService cartService;
 	private final UserAddressRepository userAddressRepository;
+	private final UserRepository userRepository;
 
 	@Transactional
 	public CheckoutResponseDto checkout(User user, CheckoutRequestDto request) {
@@ -221,6 +228,74 @@ public class OrderService {
 
 	    }
 	}
+	  public PageResponseDto<OrderResponseDto> getUserOrdersWithFilters(
+	            OrderFilter filter, int page, int size) {
+	        
+	        // Validate user exists
+	        if (filter.getUserId() != null) {
+	            userRepository.findById(filter.getUserId())
+	                .orElseThrow(() -> new NotFoundException("User not found"));
+	        }
+	        
+	        // Parse dates
+	        Instant from = parseDate(filter.getFromDate(), false);
+	        Instant to = parseDate(filter.getToDate(), true);
+	        
+	        // Parse enums
+	        OrderStatus orderStatus = filter.getStatus() != null ? 
+	            OrderStatus.valueOf(filter.getStatus().toUpperCase()) : null;
+	        
+	        PaymentStatus paymentStatus = filter.getPaymentStatus() != null ? 
+	            PaymentStatus.valueOf(filter.getPaymentStatus().toUpperCase()) : null;
+	        
+	        PaymentMethod paymentMethod = filter.getPaymentMethod() != null ? 
+	            PaymentMethod.valueOf(filter.getPaymentMethod().toUpperCase()) : null;
+	        
+	        // Create sort
+	        Sort sort = Sort.by(
+	            Sort.Direction.fromString(filter.getSortDirection()), 
+	            filter.getSortBy()
+	        );
+	        PageRequest pageable = PageRequest.of(page, size, sort);
+	        
+	        // Get filtered orders
+	        Page<Order> orders = orderRepository.findOrdersByFilters(
+	            filter.getUserId(),
+	            orderStatus,
+	            paymentStatus,
+	            paymentMethod,
+	            filter.getMinAmount(),
+	            filter.getMaxAmount(),
+	            from,
+	            to,
+	            filter.getSearch(),
+	            pageable
+	        );
+	        
+	        return PageResponseDto.<OrderResponseDto>builder()
+	                .content(orders.getContent().stream()
+	                        .map(OrderMapper::toDto)
+	                        .toList())
+	                .page(orders.getNumber())
+	                .size(orders.getSize())
+	                .totalElements(orders.getTotalElements())
+	                .totalPages(orders.getTotalPages())
+	                .last(orders.isLast())
+	                .build();
+	    }
+	    
+	    private Instant parseDate(String dateStr, boolean endOfDay) {
+	        if (dateStr == null) return null;
+	        try {
+	            LocalDate date = LocalDate.parse(dateStr);
+	            if (endOfDay) {
+	                return date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+	            }
+	            return date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+	        } catch (Exception e) {
+	            throw new BadRequestException("Invalid date format. Use yyyy-MM-dd");
+	        }
+	    }
 
 
 }
