@@ -55,22 +55,23 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 	@Query("SELECT COALESCE(SUM(o.taxAmount),0) FROM Order o WHERE o.createdAt >= :time")
 	Double sumTaxAmountByCreatedAtAfter(Instant time);
 	
-	@Query("""
-		    SELECT o FROM Order o
-		    WHERE (:status IS NULL OR o.status = :status)
-		      AND (:userId IS NULL OR o.user.id = :userId)
-		      AND (:orderId IS NULL OR o.id = :orderId)
-		      AND (:email IS NULL OR LOWER(o.user.email) LIKE LOWER(CONCAT('%', :email, '%')))
-		      AND (:fromDate IS NULL OR o.createdAt >= :fromDate)
-		      AND (:toDate IS NULL OR o.createdAt <= :toDate)
-		""")
+	@Query("SELECT DISTINCT o FROM Order o " +
+		       "LEFT JOIN FETCH o.user u " + 
+		       "LEFT JOIN FETCH o.items i " +
+		       "LEFT JOIN FETCH i.product p " +
+		       "WHERE (:status IS NULL OR o.status = :status) " +
+		       "AND (:userId IS NULL OR o.user.id = :userId) " +
+		       "AND (:orderId IS NULL OR o.id = :orderId) " +
+		       "AND (:email IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :email, '%'))) " +
+		       "AND (:fromDate IS NULL OR o.createdAt >= :fromDate) " +
+		       "AND (:toDate IS NULL OR o.createdAt <= :toDate)")
 		Page<Order> searchOrders(
-		        OrderStatus status,
-		        Long userId,
-		        Long orderId,
-		        String email,
-		        Instant fromDate,
-		        Instant toDate,
+		        @Param("status") OrderStatus status,
+		        @Param("userId") Long userId,
+		        @Param("orderId") Long orderId,
+		        @Param("email") String email,
+		        @Param("fromDate") Instant fromDate,
+		        @Param("toDate") Instant toDate,
 		        Pageable pageable);
 
 

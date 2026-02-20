@@ -1,14 +1,21 @@
 package com.project.backend.controller;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.project.backend.ResponseDto.ProductResponseDto;
+import com.project.backend.requestDto.BreadcrumbDto;
 import com.project.backend.requestDto.PageResponseDto;
+import com.project.backend.requestDto.ProductFilterDto;
+import com.project.backend.service.ProductFilterService;
 import com.project.backend.service.ProductService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,5 +71,31 @@ public class ProductController {
         return ResponseEntity.ok(
                 productService.getProductsByLocation(locationId, page, size)
         );
+    }
+    
+    private final ProductFilterService filterService;
+    @GetMapping("/filter")
+    @Operation(summary = "Filter products by hierarchy")
+    public ResponseEntity<PageResponseDto<ProductResponseDto>> filterProducts(
+            @ModelAttribute ProductFilterDto filter) {
+        return ResponseEntity.ok(filterService.filterProducts(filter));
+    }
+
+    @GetMapping("/filter/options")
+    @Operation(summary = "Get filter options for current category")
+    public ResponseEntity<Map<String, Object>> getFilterOptions(
+            @RequestParam(required = false) Long sectionId,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long subCategoryId) {
+        return ResponseEntity.ok(filterService.getFilterOptions(sectionId, categoryId, subCategoryId));
+    }
+
+    @GetMapping("/breadcrumb")
+    @Operation(summary = "Get breadcrumb navigation")
+    public ResponseEntity<List<BreadcrumbDto>> getBreadcrumb(
+            @RequestParam(required = false) Long sectionId,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long subCategoryId) {
+        return ResponseEntity.ok(filterService.getBreadcrumb(sectionId, categoryId, subCategoryId));
     }
 }

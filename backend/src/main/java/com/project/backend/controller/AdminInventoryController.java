@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.project.backend.ResponseDto.InventoryDashboardDto;
 import com.project.backend.ResponseDto.InventoryResponseDto;
 import com.project.backend.requestDto.InventoryAdjustRequestDto;
 import com.project.backend.requestDto.InventoryRequestDto;
@@ -105,5 +106,40 @@ public class AdminInventoryController {
 
 		inventoryService.bulkUpsert(dtos);
 		return ResponseEntity.ok().build();
+	}
+	
+	/*
+	 * ------------------------------------------------- DASHBOARD STATS
+	 * -------------------------------------------------
+	 */
+	@GetMapping("/dashboard")
+	@Operation(summary = "Get inventory dashboard statistics", 
+	           security = @SecurityRequirement(name = "Bearer Authentication"))
+	public ResponseEntity<InventoryDashboardDto> getInventoryDashboard() {
+	    return ResponseEntity.ok(inventoryService.getInventoryDashboardStats());
+	}
+
+	/*
+	 * ------------------------------------------------- INVENTORY BY PRODUCT
+	 * -------------------------------------------------
+	 */
+	@GetMapping("/product/{productId}")
+	@Operation(summary = "Get inventory for a specific product across all locations", 
+	           security = @SecurityRequirement(name = "Bearer Authentication"))
+	public ResponseEntity<List<InventoryResponseDto>> getInventoryByProduct(
+	        @PathVariable Long productId) {
+	    return ResponseEntity.ok(inventoryService.getInventoryByProduct(productId));
+	}
+
+	/*
+	 * ------------------------------------------------- INVENTORY BY LOCATION
+	 * -------------------------------------------------
+	 */
+	@GetMapping("/location/{locationId}")
+	@Operation(summary = "Get inventory for a specific location", 
+	           security = @SecurityRequirement(name = "Bearer Authentication"))
+	public ResponseEntity<List<InventoryResponseDto>> getInventoryByLocation(
+	        @PathVariable Long locationId) {
+	    return ResponseEntity.ok(inventoryService.getInventoryByLocation(locationId));
 	}
 }

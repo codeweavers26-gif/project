@@ -1,5 +1,4 @@
 package com.project.backend.service;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -18,8 +17,8 @@ import com.project.backend.entity.Location;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.OrderStatus;
-import com.project.backend.entity.PaymentMethod;
-import com.project.backend.entity.PaymentStatus;
+import com.project.backend.entity.PaymentMethod;  // Already have
+import com.project.backend.entity.PaymentStatus;  // Already have
 import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductInventory;
 import com.project.backend.entity.User;
@@ -42,9 +41,11 @@ import com.project.backend.requestDto.OrderFilter;
 import com.project.backend.requestDto.PageResponseDto;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
 	private final OrderRepository orderRepository;
@@ -71,6 +72,7 @@ public class OrderService {
 	            .findFirstByPincodeAndIsActiveTrue(address.getPostalCode())
 	            .orElseThrow(() -> new BadRequestException("Delivery not available at this postal code"));
 
+	    // 🔴 CHANGE 1: Use payment method from request instead of hardcoding COD
 	    Order order = Order.builder()
 	            .user(user)
 	            .location(location)
@@ -80,7 +82,7 @@ public class OrderService {
 	            .deliveryState(address.getState())
 	            .deliveryPostalCode(address.getPostalCode())
 	            .deliveryCountry(address.getCountry())
-	            .paymentMethod(PaymentMethod.COD)
+	            .paymentMethod(request.getPaymentMethod())  // ✅ From request
 	            .paymentStatus(PaymentStatus.PENDING)
 	            .status(OrderStatus.PENDING)
 	            .totalAmount(0.0)
@@ -89,7 +91,7 @@ public class OrderService {
 	            .discountAmount(0.0)
 	            .build();
 
-	    order = orderRepository.save(order); // Save first to get ID
+	    order = orderRepository.save(order);
 
 	    double subtotal = 0;
 	    double tax = 0;
@@ -107,8 +109,11 @@ public class OrderService {
 	            throw new BadRequestException(product.getName() + " out of stock");
 	        }
 
-	        inventory.setStock(inventory.getStock() - item.getQuantity());
-	        inventoryRepository.save(inventory);
+	        // 🔴 CHANGE 2: Only deduct inventory for COD orders
+	        if (request.getPaymentMethod() == PaymentMethod.COD) {
+	            inventory.setStock(inventory.getStock() - item.getQuantity());
+	            inventoryRepository.save(inventory);
+	        }
 
 	        OrderItem orderItem = OrderItem.builder()
 	                .order(order)
@@ -117,7 +122,7 @@ public class OrderService {
 	                .quantity(item.getQuantity())
 	                .build();
 
-	        order.getItems().add(orderItem);     // ⭐ FIX: maintain relationship
+	        order.getItems().add(orderItem);
 	        orderItemRepository.save(orderItem);
 
 	        subtotal += product.getPrice() * item.getQuantity();
@@ -129,11 +134,95 @@ public class OrderService {
 
 	    order.setTaxAmount(tax);
 	    order.setTotalAmount(finalAmount);
-	    order.setStatus(OrderStatus.PLACED);
+	    
+	    // 🔴 CHANGE 3: Different handling based on payment method
+	    CheckoutResponseDto.CheckoutResponseDtoBuilder responseBuilder = CheckoutResponseDto.builder()
+	            .orderId(order.getId())
+	            .status(order.getStatus().name())
+	            .paymentMethod(order.getPaymentMethod().name())
+	            .paymentStatus(order.getPaymentStatus().name())
+	            .subtotal(subtotal)
+	            .taxAmount(order.getTaxAmount())
+	            .shippingCharges(order.getShippingCharges())
+	            .discountAmount(order.getDiscountAmount())
+	            .totalAmount(order.getTotalAmount())
+	            .createdAt(order.getCreatedAt())
+	            .deliveryAddress(DeliveryAddressDto.builder()
+	                    .addressLine1(order.getDeliveryAddressLine1())
+	                    .addressLine2(order.getDeliveryAddressLine2())
+	                    .city(order.getDeliveryCity())
+	                    .state(order.getDeliveryState())
+	                    .postalCode(order.getDeliveryPostalCode())
+	                    .country(order.getDeliveryCountry())
+	                    .build())
+	            .items(order.getItems().stream()
+	                    .map(item -> OrderItemDto.builder()
+	                            .productId(item.getProduct().getId())
+	                            .productName(item.getProduct().getName())
+	                            .price(item.getPrice())
+	                            .quantity(item.getQuantity())
+	                            .total(item.getPrice() * item.getQuantity())
+	                            .build())
+	                    .toList());
 
-	    Order savedOrder = orderRepository.save(order);
-	    cartRepository.deleteByUser(user);
-	    return mapToCheckoutResponse(savedOrder, subtotal);
+	    if (request.getPaymentMethod() == PaymentMethod.COD) {
+	        // COD: Place order immediately
+	        order.setStatus(OrderStatus.PLACED);
+	        orderRepository.save(order);
+	        cartRepository.deleteByUser(user);
+	        
+	        responseBuilder
+	                .requiresPayment(false)
+	                .paymentMessage("Order placed successfully with Cash on Delivery");
+	        
+	    } else {
+	        // PREPAID: Keep as PENDING, don't delete cart
+	        order.setStatus(OrderStatus.PENDING);
+	        orderRepository.save(order);
+	        
+	        responseBuilder
+	                .requiresPayment(true)
+	                .paymentMessage("Please complete payment to place your order");
+	    }
+
+	    return responseBuilder.build();
+	}
+	
+	@Transactional
+	public void updateOrderAfterSuccessfulPayment(Long orderId, String razorpayPaymentId) {
+	    Order order = orderRepository.findById(orderId)
+	            .orElseThrow(() -> new NotFoundException("Order not found"));
+	    
+	    // Update order status
+	    order.setPaymentStatus(PaymentStatus.SUCCESS);
+	    order.setStatus(OrderStatus.PLACED);
+	    orderRepository.save(order);
+	    
+	    // Deduct inventory (was reserved, now actually deduct)
+	    for (OrderItem item : order.getItems()) {
+	        ProductInventory inventory = inventoryRepository
+	                .findByProductAndLocation(item.getProduct(), order.getLocation())
+	                .orElseThrow(() -> new RuntimeException("Inventory not found"));
+	        
+	        inventory.setStock(inventory.getStock() - item.getQuantity());
+	        inventoryRepository.save(inventory);
+	    }
+	    
+	    // Clear user's cart
+	    cartRepository.deleteByUser(order.getUser());
+	    
+	    log.info("Order {} updated after successful payment: {}", orderId, razorpayPaymentId);
+	}
+	
+	@Transactional
+	public void updateOrderAfterFailedPayment(Long orderId, String failureReason) {
+	    Order order = orderRepository.findById(orderId)
+	            .orElseThrow(() -> new NotFoundException("Order not found"));
+	    
+	    order.setPaymentStatus(PaymentStatus.FAILED);
+	    orderRepository.save(order);
+	    
+	    log.info("Order {} payment failed: {}", orderId, failureReason);
 	}
 
 
@@ -153,34 +242,38 @@ public class OrderService {
 	@Transactional
 	public void cancelOrder(Long orderId, User user) {
 
-		Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));
+	    Order order = orderRepository.findById(orderId)
+	            .orElseThrow(() -> new NotFoundException("Order not found"));
 
-		if (!order.getUser().getId().equals(user.getId())) {
-			throw new UnauthorizedException("Not your order");
-		}
+	    if (!order.getUser().getId().equals(user.getId())) {
+	        throw new UnauthorizedException("Not your order");
+	    }
 
-		if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED) {
-			throw new BadRequestException("Order cannot be cancelled now");
-		}
+	    if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED) {
+	        throw new BadRequestException("Order cannot be cancelled now");
+	    }
 
-		// Restore inventory
-		for (OrderItem item : order.getItems()) {
+	    // 🔴 CHANGE: Only restore inventory if it was deducted
+	    if (order.getPaymentMethod() == PaymentMethod.COD || 
+	        order.getPaymentStatus() == PaymentStatus.SUCCESS) {
+	        // Restore inventory
+	        for (OrderItem item : order.getItems()) {
+	            ProductInventory inventory = inventoryRepository
+	                    .findByProductAndLocation(item.getProduct(), order.getLocation())
+	                    .orElseThrow(() -> new RuntimeException("Inventory not found"));
 
-			ProductInventory inventory = inventoryRepository
-					.findByProductAndLocation(item.getProduct(), order.getLocation())
-					.orElseThrow(() -> new RuntimeException("Inventory not found"));
+	            inventory.setStock(inventory.getStock() + item.getQuantity());
+	            inventoryRepository.save(inventory);
+	        }
+	    }
 
-			inventory.setStock(inventory.getStock() + item.getQuantity());
+	    order.setStatus(OrderStatus.CANCELLED);
+	    order.setPaymentStatus(order.getPaymentMethod() == PaymentMethod.PREPAID && 
+	                          order.getPaymentStatus() == PaymentStatus.SUCCESS ? 
+	                          PaymentStatus.REFUND_PENDING : PaymentStatus.CANCELLED);
 
-			inventoryRepository.save(inventory);
-		}
-
-		order.setStatus(OrderStatus.CANCELLED);
-		order.setPaymentStatus(PaymentStatus.REFUND_PENDING);
-
-		orderRepository.save(order);
+	    orderRepository.save(order);
 	}
-
 	private CheckoutResponseDto mapToCheckoutResponse(Order order, double subtotal) {
 
 		return CheckoutResponseDto.builder().orderId(order.getId()).status(order.getStatus().name())

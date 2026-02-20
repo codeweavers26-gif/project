@@ -3,6 +3,7 @@ package com.project.backend.service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,22 +38,31 @@ public class AdminOrderService {
 	}
 
 	public PageResponseDto<OrderResponseDto> searchOrders(OrderStatus status, Long userId, Long orderId, String email,
-			String from, String to, int page, int size) {
+	        String from, String to, int page, int size) {
 
-		PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+	    PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-		Instant fromDate = from != null ? LocalDate.parse(from).atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
-		Instant toDate = to != null ? LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-				: null;
+	    Instant fromDate = from != null ? LocalDate.parse(from).atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
+	    Instant toDate = to != null ? LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+	            : null;
 
-		Page<Order> orders = orderRepository.searchOrders(status, userId, orderId, email, fromDate, toDate, pageable);
+	    Page<Order> orders = orderRepository.searchOrders(status, userId, orderId, email, fromDate, toDate, pageable);
 
-		return PageResponseDto.<OrderResponseDto>builder()
-				.content(orders.getContent().stream().map(OrderMapper::toDto).toList()).page(orders.getNumber())
-				.size(orders.getSize()).totalElements(orders.getTotalElements()).totalPages(orders.getTotalPages())
-				.last(orders.isLast()).build();
+	    return PageResponseDto.<OrderResponseDto>builder()
+	            .content(orders.getContent().stream()
+	                    .map(order -> {
+	                        OrderResponseDto dto = OrderMapper.toDto(order);
+	                        
+	                        return dto;
+	                    })
+	                    .collect(Collectors.toList()))
+	            .page(orders.getNumber())
+	            .size(orders.getSize())
+	            .totalElements(orders.getTotalElements())
+	            .totalPages(orders.getTotalPages())
+	            .last(orders.isLast())
+	            .build();
 	}
-
 	@Transactional
 	public OrderResponseDto updateStatus(Long orderId, OrderStatus newStatus) {
 
