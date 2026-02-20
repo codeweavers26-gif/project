@@ -11,13 +11,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.project.backend.ResponseDto.CheckoutResponseDto;
+import com.project.backend.ResponseDto.CreateOrderResponse;
 import com.project.backend.ResponseDto.OrderResponseDto;
-import com.project.backend.ResponseDto.ReorderResponseDto;
 import com.project.backend.entity.User;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.CheckoutRequestDto;
+import com.project.backend.requestDto.CreateOrderRequest;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.service.OrderService;
+import com.project.backend.service.RazorpayService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -33,6 +35,7 @@ public class OrderController {
 
 	private final OrderService orderService;
 	private final UserRepository userRepository;
+	private final RazorpayService razorpayService;
 
 	private User getCurrentUser(Authentication auth) {
 		return userRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
@@ -84,6 +87,19 @@ public class OrderController {
 
 		orderService.reorder(getCurrentUser(auth), orderId);
 		return ResponseEntity.ok().build();
+	}
+	
+	@PostMapping("/{orderId}/payment/initiate")
+	@Operation(summary = "Initiate payment for prepaid order", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
+	public ResponseEntity<CreateOrderResponse> initiatePayment(Authentication auth,
+	        @PathVariable Long orderId,
+	        @RequestBody CreateOrderRequest paymentRequest) {
+		User user = getCurrentUser(auth);
+	    // Set the orderId from path
+	    paymentRequest.setOrderId(orderId);
+	    
+	    return ResponseEntity.ok(razorpayService.createOrder(paymentRequest, user));
 	}
 
 //	@PostMapping("/items/{orderItemId}/return")

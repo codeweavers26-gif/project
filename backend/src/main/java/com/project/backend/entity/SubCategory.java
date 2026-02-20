@@ -23,4 +23,20 @@ public class SubCategory {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+    
+    public String getFullPath() {
+        return category.getSection().getName() + " > " + 
+               category.getName() + " > " + 
+               this.name;
+    }
+    
+    // ✅ Helper to get section ID
+    public Long getSectionId() {
+        return category.getSection().getId();
+    }
+    
+    // ✅ Helper to get category ID
+    public Long getCategoryId() {
+        return category.getId();
+    }
 }

@@ -32,4 +32,19 @@ public interface ProductInventoryRepository extends JpaRepository<ProductInvento
     Page<ProductInventory> findByStockLessThan(int threshold, Pageable pageable);
 
     List<ProductInventory> findByStock(int stock);
+    @Query("SELECT pi FROM ProductInventory pi WHERE pi.stock < :threshold ORDER BY pi.stock ASC")
+    List<ProductInventory> findLowStockItems(@Param("threshold") int threshold);
+
+    @Query("SELECT COUNT(pi) FROM ProductInventory pi WHERE pi.stock = 0")
+    Long countOutOfStock();
+
+    @Query("SELECT AVG(pi.stock) FROM ProductInventory pi")
+    Double getAverageStock();
+
+    @Query("SELECT SUM(pi.stock * p.price) FROM ProductInventory pi JOIN pi.product p")
+    Double getTotalInventoryValue();
+
+    @Query("SELECT p.name, pi.stock FROM ProductInventory pi JOIN pi.product p WHERE pi.stock < :threshold")
+    List<Object[]> getLowStockReport(@Param("threshold") int threshold);
+
 }
