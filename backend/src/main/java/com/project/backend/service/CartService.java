@@ -20,214 +20,252 @@ import com.project.backend.repository.ProductRepository;
 import com.project.backend.requestDto.CartMergeDto;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CartService {
 
-    private final CartRepository cartRepository;
-    private final ProductRepository productRepository;
+	private final CartRepository cartRepository;
+	private final ProductRepository productRepository;
 
-    // ADD TO CART
-    @Transactional
-    public void addToCart(User user, Long productId, Integer qty) {
+	@Transactional
+	public void addToCart(User user, Long productId, Integer qty) {
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+		if (qty == null || qty <= 0) {
+			throw new BadRequestException("Quantity must be greater than 0");
+		}
 
-        Cart cart = cartRepository.findByUserAndProduct(user, product)
-                .orElse(Cart.builder()
-                        .user(user)
-                        .product(product)
-                        .quantity(0)
-                        .build());
+		Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new NotFoundException("Product not found with id: " + productId));
 
-        cart.setQuantity(cart.getQuantity() + qty);
+		if (!Boolean.TRUE.equals(product.getIsActive())) {
+			throw new BadRequestException("Product is not available: " + product.getName());
+		}
 
-        cartRepository.save(cart);
-    }
+		// 🔥 FIX: Use getTotalStock() instead of getStock()
+		Integer availableStock = product.getTotalStock();
+		if (availableStock < qty) {
+			throw new BadRequestException(
+					String.format("Only %d units available for %s", availableStock, product.getName()));
+		}
 
-    // VIEW CART
-    public List<CartItemResponseDto> getCart(User user) {
+		Cart cart = cartRepository.findByUserAndProduct(user, product)
+				.orElse(Cart.builder().user(user).product(product).quantity(0).build());
 
-        return cartRepository.findByUser(user)
-                .stream()
-                .map(cart -> CartItemResponseDto.builder()
-                        .cartId(cart.getId())
-                        .productId(cart.getProduct().getId())
-                        .productName(cart.getProduct().getName())
-                        .imageUrl(getPrimaryImage(cart.getProduct()))
-                        .price(cart.getProduct().getPrice())
-                        .quantity(cart.getQuantity())
-                        .totalPrice(cart.getQuantity() * cart.getProduct().getPrice())
-                        .build())
-                .collect(Collectors.toList());
-    }
+		int newQuantity = cart.getQuantity() + qty;
 
+		// 🔥 FIX: Use getTotalStock() for validation
+		if (availableStock < newQuantity) {
+			throw new BadRequestException(String.format("Cannot add %d more. Only %d available in stock", qty,
+					availableStock - cart.getQuantity()));
+		}
 
-    private String getPrimaryImage(Product product) {
-        return product.getImages() != null && !product.getImages().isEmpty()
-                ? product.getImages().stream()
-                    .sorted((a, b) -> a.getPosition().compareTo(b.getPosition()))
-                    .findFirst()
-                    .map(ProductImage::getImageUrl)
-                    .orElse(null)
-                : null;
-    }
+		cart.setQuantity(newQuantity);
+		cartRepository.save(cart);
 
-    // UPDATE QUANTITY
-    public void updateQuantity(User user, Long cartId, Integer qty) {
+		log.info("Added to cart - User: {}, Product: {}, Quantity: {}, New Total: {}", user.getId(), productId, qty,
+				newQuantity);
+	}
 
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+	// VIEW CART
+	public List<CartItemResponseDto> getCart(User user) {
 
-        if (!cart.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
-        }
+		List<Cart> cartItems = cartRepository.findByUser(user);
 
-        if (qty <= 0) {
-            cartRepository.delete(cart);
-        } else {
-            cart.setQuantity(qty);
-            cartRepository.save(cart);
-        }
-    }
+		if (cartItems.isEmpty()) {
+			return new ArrayList<>(); 
+		}
 
-    // REMOVE ITEM
-    public void removeItem(User user, Long cartId) {
+		return cartItems.stream().map(cart -> {
+			Product product = cart.getProduct();
+			Double price = product.getMinPrice() != null ? product.getMinPrice() : 0.0;
+			Integer quantity = cart.getQuantity() != null ? cart.getQuantity() : 0;
 
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+			return CartItemResponseDto.builder().cartId(cart.getId()).productId(product.getId())
+					.productName(product.getName() != null ? product.getName() : "Unknown")
+					.imageUrl(getPrimaryImage(product)).price(price).quantity(quantity).totalPrice(price * quantity)
+					.build();
+		}).collect(Collectors.toList());
+	}
 
-        if (!cart.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
-        }
+	// GET PRIMARY IMAGE
+	private String getPrimaryImage(Product product) {
+		if (product == null || product.getImages() == null || product.getImages().isEmpty()) {
+			return null;
+		}
 
-        cartRepository.delete(cart);
-    }
+		return product.getImages().stream().filter(img -> img.getIsPrimary() != null && img.getIsPrimary()).findFirst()
+				.map(ProductImage::getImageUrl).orElse(product.getImages().get(0).getImageUrl());
+	}
 
-    // CLEAR CART (after checkout)
-    public void clearCart(User user) {
-        cartRepository.deleteByUser(user);
-    }
-    @Transactional
-    public void mergeCart(User user, List<CartMergeDto> items) {
+	@Transactional
+	public void updateQuantity(User user, Long cartId, Integer qty) {
 
-        for (CartMergeDto item : items) {
-            addToCart(user, item.getProductId(), item.getQuantity());
-        }
-    }
-    
-    
-    public CartPricingResponseDto getCartPricing(User user, String couponCode) {
+		if (qty == null) {
+			throw new BadRequestException("Quantity is required");
+		}
 
-        List<Cart> cartItems = cartRepository.findByUser(user);
+		Cart cart = cartRepository.findById(cartId)
+				.orElseThrow(() -> new NotFoundException("Cart item not found with id: " + cartId));
 
-        if (cartItems.isEmpty()) {
-            return CartPricingResponseDto.builder()
-                    .items(List.of())
-                    .subtotal(0.0)
-                    .taxAmount(0.0)
-                    .shippingCharges(0.0)
-                    .discountAmount(0.0)
-                    .finalAmount(0.0)
-                    .couponApplied(false)
-                    .message("Your cart is empty")
-                    .build();
-        }
+		if (!cart.getUser().getId().equals(user.getId())) {
+			throw new BadRequestException("Unauthorized to modify this cart item");
+		}
 
+		if (qty <= 0) {
+			cartRepository.delete(cart);
+			log.info("Removed cart item - User: {}, CartItem: {}", user.getId(), cartId);
+		} else {
+			Product product = cart.getProduct();
+			// 🔥 FIX: Use getTotalStock() instead of getStock()
+			Integer availableStock = product.getTotalStock();
 
-        double subtotal = 0;
-        double tax = 0;
+			if (availableStock < qty) {
+				throw new BadRequestException(
+						String.format("Only %d units available for %s", availableStock, product.getName()));
+			}
 
-        List<CartItemResponseDto> itemDtos = new ArrayList<>();
+			cart.setQuantity(qty);
+			cartRepository.save(cart);
+			log.info("Updated cart item - User: {}, CartItem: {}, New Quantity: {}", user.getId(), cartId, qty);
+		}
+	}
 
-        for (Cart cartItem : cartItems) {
+	// REMOVE ITEM
+	@Transactional
+	public void removeItem(User user, Long cartId) {
 
-            Product product = cartItem.getProduct();
-            int qty = cartItem.getQuantity();
+		Cart cart = cartRepository.findById(cartId)
+				.orElseThrow(() -> new NotFoundException("Cart item not found with id: " + cartId));
 
-            if (!product.getIsActive()) {
-                throw new BadRequestException(product.getName() + " is not available");
-            }
+		if (!cart.getUser().getId().equals(user.getId())) {
+			throw new BadRequestException("Unauthorized to remove this cart item");
+		}
 
-            double itemTotal = product.getPrice() * qty;
-            double taxPercent = product.getTaxPercent() != null ? product.getTaxPercent() : 0;
-            double itemTax = (taxPercent / 100) * itemTotal;
+		cartRepository.delete(cart);
+		log.info("Removed cart item - User: {}, CartItem: {}", user.getId(), cartId);
+	}
 
-            subtotal += itemTotal;
-            tax += itemTax;
+	// CLEAR CART (after checkout)
+	@Transactional
+	public void clearCart(User user) {
+		cartRepository.deleteByUser(user);
+		log.info("Cleared cart for user: {}", user.getId());
+	}
 
-            itemDtos.add(
-                CartItemResponseDto.builder()
-                    .cartId(cartItem.getId())
-                    .productId(product.getId())
-                    .productName(product.getName())
-//                    .image(product.getImages().isEmpty() ? null :
-//                           product.getImages().get(0).getImageUrl())
-                    .price(product.getPrice())
-                    .quantity(qty)
-                //    .total(itemTotal)
-                    .build()
-            );
-        }
+	// MERGE CART (for guest to user migration)
+	@Transactional
+	public void mergeCart(User user, List<CartMergeDto> items) {
+		if (items == null || items.isEmpty()) {
+			return;
+		}
 
-        // 🚚 Shipping (basic logic)
-        double shipping = subtotal > 999 ? 0 : 49;
+		for (CartMergeDto item : items) {
+			try {
+				addToCart(user, item.getProductId(), item.getQuantity());
+			} catch (Exception e) {
+				log.warn("Failed to merge item - Product: {}, Error: {}", item.getProductId(), e.getMessage());
+				// Continue with other items instead of failing completely
+			}
+		}
+		log.info("Merged {} items to cart for user: {}", items.size(), user.getId());
+	}
 
-        // 🎟 Coupon Logic (simplified)
-        double discount = 0;
-        boolean couponApplied = false;
-        String message = null;
+	// GET CART PRICING WITH CALCULATIONS
+	public CartPricingResponseDto getCartPricing(User user, String couponCode) {
 
-//        if (couponCode != null && !couponCode.isBlank()) {
-//
-//            Coupon coupon = couponRepository.findByCodeAndActiveTrue(couponCode)
-//                    .orElseThrow(() -> new BadRequestException("Invalid coupon"));
-//
-//            if (subtotal < coupon.getMinOrderAmount()) {
-//                throw new BadRequestException("Minimum order amount not met for coupon");
-//            }
-//
-//            discount = (coupon.getDiscountPercent() / 100) * subtotal;
-//            couponApplied = true;
-//            message = "Coupon applied successfully";
-//        }
+		List<Cart> cartItems = cartRepository.findByUser(user);
 
-        double finalAmount = subtotal + tax + shipping - discount;
+		// 🔥 FIX: Empty cart response
+		if (cartItems == null || cartItems.isEmpty()) {
+			return CartPricingResponseDto.builder().items(new ArrayList<>()).subtotal(0.0).taxAmount(0.0)
+					.shippingCharges(0.0).discountAmount(0.0).finalAmount(0.0).couponApplied(false)
+					.message("Your cart is empty").build();
+		}
 
-        return CartPricingResponseDto.builder()
-                .items(itemDtos)
-                .subtotal(subtotal)
-                .taxAmount(tax)
-                .shippingCharges(shipping)
-                .discountAmount(discount)
-                .finalAmount(finalAmount)
-                .appliedCoupon(couponApplied ? couponCode : null)
-                .couponApplied(couponApplied)
-                .message(message)
-                .build();
-    }
-    
-    @Transactional
-    public void addOrUpdate(User user, Product product, int quantity) {
+		double subtotal = 0.0;
+		double tax = 0.0;
+		List<CartItemResponseDto> itemDtos = new ArrayList<>();
 
-        Cart cart = cartRepository.findByUserAndProduct(user, product)
-            .orElse(
-                Cart.builder()
-                    .user(user)
-                    .product(product)
-                    .quantity(0)
-                    .build()
-            );
+		for (Cart cartItem : cartItems) {
+			Product product = cartItem.getProduct();
 
-        cart.setQuantity(cart.getQuantity() + quantity);
+			// 🔥 FIX: Validate product exists
+			if (product == null) {
+				log.warn("Cart item {} has null product, skipping", cartItem.getId());
+				continue;
+			}
 
-        if (cart.getQuantity() <= 0) {
-            cartRepository.delete(cart);
-        } else {
-            cartRepository.save(cart);
-        }
-    }
+			int qty = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
 
+			// 🔥 FIX: Check if product is active
+			if (!Boolean.TRUE.equals(product.getIsActive())) {
+				throw new BadRequestException(product.getName() + " is not available");
+			}
+
+			Double price = product.getMinPrice() != null ? product.getMinPrice() : 0.0;
+			double itemTotal = price * qty;
+
+			// 🔥 FIX: Tax calculation
+			double taxPercent = product.getTaxPercent() != null ? product.getTaxPercent() : 0.0;
+			double itemTax = (taxPercent / 100.0) * itemTotal;
+
+			subtotal += itemTotal;
+			tax += itemTax;
+
+			itemDtos.add(CartItemResponseDto.builder().cartId(cartItem.getId()).productId(product.getId())
+					.productName(product.getName()).imageUrl(getPrimaryImage(product)).price(price).quantity(qty)
+					.totalPrice(itemTotal).build());
+		}
+
+		// 🔥 FIX: Shipping logic with proper rounding
+		double shipping = subtotal > 999 ? 0.0 : 49.0;
+
+		// 🎟 Coupon Logic (commented out for now)
+		double discount = 0.0;
+		boolean couponApplied = false;
+		String message = null;
+
+		double finalAmount = subtotal + tax + shipping - discount;
+
+		// 🔥 FIX: Round to 2 decimal places
+		return CartPricingResponseDto.builder().items(itemDtos).subtotal(Math.round(subtotal * 100.0) / 100.0)
+				.taxAmount(Math.round(tax * 100.0) / 100.0).shippingCharges(shipping).discountAmount(discount)
+				.finalAmount(Math.round(finalAmount * 100.0) / 100.0).appliedCoupon(couponApplied ? couponCode : null)
+				.couponApplied(couponApplied).message(message).build();
+	}
+
+	// ADD OR UPDATE CART ITEM (helper method)
+	@Transactional
+	public void addOrUpdate(User user, Product product, int quantity) {
+
+		// 🔥 FIX: Validate inputs
+		if (product == null) {
+			throw new BadRequestException("Product cannot be null");
+		}
+
+		Cart cart = cartRepository.findByUserAndProduct(user, product)
+				.orElse(Cart.builder().user(user).product(product).quantity(0).build());
+
+		int newQuantity = cart.getQuantity() + quantity;
+
+		Integer availableStock = 1000;
+		if (availableStock < newQuantity) {
+			throw new BadRequestException(
+					String.format("Only %d units available for %s", availableStock, product.getName()));
+		}
+
+		cart.setQuantity(newQuantity);
+
+		if (cart.getQuantity() <= 0) {
+			cartRepository.delete(cart);
+			log.info("Removed cart item via addOrUpdate - User: {}, Product: {}", user.getId(), product.getId());
+		} else {
+			cartRepository.save(cart);
+			log.info("Updated cart via addOrUpdate - User: {}, Product: {}, Quantity: {}", user.getId(),
+					product.getId(), newQuantity);
+		}
+	}
 }

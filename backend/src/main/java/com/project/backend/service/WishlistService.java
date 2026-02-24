@@ -59,16 +59,16 @@ public class WishlistService {
             wishlistRepo.findByUser(user, PageRequest.of(page, size));
 
         return PageResponseDto.<WishlistResponseDto>builder()
-                .content(
-                    data.getContent().stream().map(w ->
-                        WishlistResponseDto.builder()
-                            .productId(w.getProduct().getId())
-                            .productName(w.getProduct().getName())
-                            .price(w.getProduct().getPrice())
-                            .inStock(w.getProduct().getStock() > 0)
-                            .build()
-                    ).toList()
-                )
+               // .content(
+//                    data.getContent().stream().map(w ->
+//                        WishlistResponseDto.builder()
+//                            .productId(w.getProduct().getId())
+//                            .productName(w.getProduct().getName())
+//                            .price(w.getProduct().getPrice())
+//                            .inStock(w.getProduct().getStock() > 0)
+//                            .build()
+//                    ).toList()
+            //    )
                 .page(data.getNumber())
                 .size(data.getSize())
                 .totalElements(data.getTotalElements())

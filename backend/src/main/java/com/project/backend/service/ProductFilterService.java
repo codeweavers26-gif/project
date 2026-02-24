@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -15,251 +16,337 @@ import org.springframework.stereotype.Service;
 import com.project.backend.ResponseDto.ProductResponseDto;
 import com.project.backend.entity.Category;
 import com.project.backend.entity.Product;
+import com.project.backend.entity.ProductVariant;
 import com.project.backend.entity.Section;
-import com.project.backend.entity.SubCategory;
 import com.project.backend.repository.CategoryRepository;
-import com.project.backend.repository.ProductAttributeRepository; // Add this
 import com.project.backend.repository.ProductRepository;
+import com.project.backend.repository.ProductVariantRepository;
 import com.project.backend.repository.SectionRepository;
-import com.project.backend.repository.SubCategoryRepository;
-import com.project.backend.requestDto.AttributeFilterDto;
 import com.project.backend.requestDto.BreadcrumbDto;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.requestDto.ProductFilterDto;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductFilterService {
 
-    private final ProductRepository productRepo;
-    private final SectionRepository sectionRepo;
-    private final CategoryRepository categoryRepo;
-    private final SubCategoryRepository subCategoryRepo;
-    private final ProductAttributeRepository attributeRepo; // Add this dependency
+	private final ProductRepository productRepo;
+	private final CategoryRepository categoryRepo;
+	private final ProductVariantRepository variantRepo;
+	private final SectionRepository sectionRepository;
+	private final ProductService productService;
 
-    /**
-     * Filter products with pagination
-     */
-    public PageResponseDto<ProductResponseDto> filterProducts(ProductFilterDto filter) {
-        
-        Pageable pageable = createPageable(filter);
-        
-        // Handle multiple brands - convert list to comma-separated or use IN clause
-        String brand = (filter.getBrands() != null && !filter.getBrands().isEmpty()) 
-                ? filter.getBrands().get(0) // Simplified - for multiple brands, you need custom query
-                : null;
-        
-        Page<Product> products = productRepo.filterProducts(
-                filter.getSectionId(),
-                filter.getCategoryId(),
-                filter.getSubCategoryId(),
-                filter.getMinPrice(),
-                filter.getMaxPrice(),
-                brand, // Single brand for now
-                filter.getInStockOnly(),
-                filter.getMinRating(),
-                filter.getCodAvailable(),
-                pageable
-        );
-        
-        return mapToPageResponse(products);
-    }
-    
-    /**
-     * Get filter options for current hierarchy level
-     */
-    public Map<String, Object> getFilterOptions(Long sectionId, Long categoryId, Long subCategoryId) {
-        
-        Map<String, Object> options = new HashMap<>();
-        
-        // Get current level info
-        String currentLevel = getCurrentLevelName(sectionId, categoryId, subCategoryId);
-        options.put("currentLevel", currentLevel);
-        
-        // Get breadcrumb
-        options.put("breadcrumb", getBreadcrumb(sectionId, categoryId, subCategoryId));
-        
-        // Get available brands
-        List<String> brands = productRepo.findDistinctBrandsByHierarchy(
-                sectionId, categoryId, subCategoryId);
-        options.put("brands", brands != null ? brands : new ArrayList<>());
-        
-        // Get price range
-        Double minPrice = productRepo.findMinPriceByHierarchy(
-                sectionId, categoryId, subCategoryId);
-        Double maxPrice = productRepo.findMaxPriceByHierarchy(
-                sectionId, categoryId, subCategoryId);
-        
-        Map<String, Double> priceRange = new HashMap<>();
-        priceRange.put("min", minPrice != null ? minPrice : 0);
-        priceRange.put("max", maxPrice != null ? maxPrice : 100000);
-        options.put("priceRange", priceRange);
-        
-        // Get attribute options (sizes, colors, etc.)
-        List<AttributeFilterDto> attributes = getAttributeOptions(sectionId, categoryId, subCategoryId);
-        options.put("attributes", attributes);
-        
-        // Add counts
-        Long totalProducts = productRepo.countByHierarchy(sectionId, categoryId, subCategoryId);
-        options.put("totalProducts", totalProducts);
-        
-        return options;
-    }
-    
-    /**
-     * Get attribute options from ProductAttribute table
-     */
-    private List<AttributeFilterDto> getAttributeOptions(Long sectionId, Long categoryId, Long subCategoryId) {
-        
-        // You need to implement this based on your attribute structure
-        // This is a placeholder - implement according to your attribute system
-        List<AttributeFilterDto> attributes = new ArrayList<>();
-        
-        // Example for sizes
-        List<String> sizes = productRepo.findDistinctSizesByHierarchy(
-                sectionId, categoryId, subCategoryId);
-        if (sizes != null && !sizes.isEmpty()) {
-            attributes.add(AttributeFilterDto.builder()
-                    .name("size")
-                    .displayName("Size")
-                    .options(sizes)
-                    .build());
-        }
-        
-        // Example for colors
-        List<String> colors = productRepo.findDistinctColorsByHierarchy(
-                sectionId, categoryId, subCategoryId);
-        if (colors != null && !colors.isEmpty()) {
-            attributes.add(AttributeFilterDto.builder()
-                    .name("color")
-                    .displayName("Color")
-                    .options(colors)
-                    .build());
-        }
-        
-        return attributes;
-    }
-    
-    /**
-     * Get current level name
-     */
-    private String getCurrentLevelName(Long sectionId, Long categoryId, Long subCategoryId) {
-        if (subCategoryId != null) {
-            return subCategoryRepo.findById(subCategoryId)
-                    .map(SubCategory::getName)
-                    .orElse("");
-        } else if (categoryId != null) {
-            return categoryRepo.findById(categoryId)
-                    .map(Category::getName)
-                    .orElse("");
-        } else if (sectionId != null) {
-            return sectionRepo.findById(sectionId)
-                    .map(Section::getName)
-                    .orElse("");
-        }
-        return "All Products";
-    }
-    
-    /**
-     * Get breadcrumb navigation
-     */
-    public List<BreadcrumbDto> getBreadcrumb(Long sectionId, Long categoryId, Long subCategoryId) {
-        
-        List<BreadcrumbDto> breadcrumb = new ArrayList<>();
-        
-        if (sectionId != null) {
-            sectionRepo.findById(sectionId).ifPresent(section -> 
-                breadcrumb.add(new BreadcrumbDto("section", section.getName(), "/section/" + sectionId)));
-        }
-        
-        if (categoryId != null) {
-            categoryRepo.findById(categoryId).ifPresent(category -> 
-                breadcrumb.add(new BreadcrumbDto("category", category.getName(), "/category/" + categoryId)));
-        }
-        
-        if (subCategoryId != null) {
-            subCategoryRepo.findById(subCategoryId).ifPresent(subCategory -> 
-                breadcrumb.add(new BreadcrumbDto("subcategory", subCategory.getName(), "/subcategory/" + subCategoryId)));
-        }
-        
-        return breadcrumb;
-    }
-    
-    /**
-     * Create Pageable based on sort options
-     */
-    private Pageable createPageable(ProductFilterDto filter) {
-        Sort sort = Sort.by("createdAt").descending(); // default newest first
-        
-        if (filter.getSortBy() != null) {
-            switch (filter.getSortBy()) {
-                case "price_asc":
-                    sort = Sort.by("price").ascending();
-                    break;
-                case "price_desc":
-                    sort = Sort.by("price").descending();
-                    break;
-                case "rating_desc":
-                    sort = Sort.by("averageRating").descending();
-                    break;
-                case "popularity":
-                    sort = Sort.by("totalReviews").descending();
-                    break;
-                case "name_asc":
-                    sort = Sort.by("name").ascending();
-                    break;
-            }
-        }
-        
-        return PageRequest.of(filter.getPage(), filter.getSize(), sort);
-    }
-    
-    /**
-     * Map Page<Product> to PageResponseDto<ProductResponseDto>
-     */
-    private PageResponseDto<ProductResponseDto> mapToPageResponse(Page<Product> page) {
-        
-        List<ProductResponseDto> content = page.getContent().stream()
-                .map(this::mapToProductDto)
-                .collect(Collectors.toList());
-        
-        return PageResponseDto.<ProductResponseDto>builder()
-                .content(content)
-                .page(page.getNumber())
-                .size(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .last(page.isLast())
-                .build();
-    }
-    
-    /**
-     * Map Product to ProductResponseDto
-     */
-    private ProductResponseDto mapToProductDto(Product product) {
-        // Implement based on your ProductResponseDto structure
-        return ProductResponseDto.builder()
-                .id(product.getId())
-                .name(product.getName())
-                .brand(product.getBrand())
-                .slug(product.getSlug())
-                .shortDescription(product.getShortDescription())
-                .description(product.getDescription())
-                .mrp(product.getMrp())
-                .price(product.getPrice())
-                .discountPercent(product.getDiscountPercent())
-                .taxPercent(product.getTaxPercent())
-                .stock(product.getStock())
-                .averageRating(product.getAverageRating())
-                .totalReviews(product.getTotalReviews())
-                .codAvailable(product.getCodAvailable())
-                .returnable(product.getReturnable())
-                .deliveryDays(product.getDeliveryDays())
-             //   .imageUrl(product.getImageUrl())
-             //   .thumbnailUrl(product.getThumbnailUrl())
-                .isActive(product.getIsActive())
-                .build();
-    }
+	/**
+	 * Filter products with pagination
+	 */
+	public PageResponseDto<ProductResponseDto> filterProducts(ProductFilterDto filter) {
+
+		// Determine which category ID to use
+		Long categoryId = determineCategoryId(filter);
+
+		// Create pageable
+		Pageable pageable = createPageable(filter);
+
+		// Get filtered products using native query
+		Page<Object[]> productPage = productRepo.findActiveProductsWithFiltersNative(categoryId, filter.getMinPrice(),
+				filter.getMaxPrice(), filter.getSize(), filter.getColor(),
+				filter.getBrands() != null && !filter.getBrands().isEmpty() ? filter.getBrands().get(0) : null,
+
+				pageable);
+
+		// Convert to DTOs - FIXED: Use explicit lambda instead of method reference
+		List<ProductResponseDto> content = productPage.getContent().stream().map(row -> mapToProductDto(row))
+				.filter(dto -> dto != null).collect(Collectors.toList());
+
+		// Use the Page object's metadata directly
+		return PageResponseDto.<ProductResponseDto>builder().content(content).page(productPage.getNumber())
+				.size(productPage.getSize()).totalElements(productPage.getTotalElements())
+				.totalPages(productPage.getTotalPages()).last(productPage.isLast()).build();
+	}
+
+	/**
+	 * Get filter options for current hierarchy level
+	 */
+	public Map<String, Object> getFilterOptions(Long sectionId, Long categoryId, Long subCategoryId) {
+
+		Map<String, Object> options = new HashMap<>();
+
+		// Determine target category ID for filtering data
+		Long targetId = determineCategoryId(sectionId, categoryId, subCategoryId);
+
+		// Get current level info - this should be the category name if categoryId
+		// exists
+		String currentLevel = getCurrentLevelName(sectionId, categoryId, subCategoryId);
+		options.put("currentLevel", currentLevel);
+
+		// Get breadcrumb - FIX THIS METHOD
+		options.put("breadcrumb", getBreadcrumb(sectionId, categoryId, subCategoryId));
+
+		// Get available brands
+		List<String> brands = findDistinctBrands(targetId);
+		options.put("brands", brands != null ? brands : new ArrayList<>());
+
+		// Get price range from variants
+		Map<String, Double> priceRange = getPriceRange(targetId);
+		options.put("priceRange", priceRange);
+
+		// Get size options
+		List<String> sizes = findDistinctSizes(targetId);
+		options.put("sizes", sizes != null ? sizes : new ArrayList<>());
+
+		// Get color options
+		List<String> colors = findDistinctColors(targetId);
+		options.put("colors", colors != null ? colors : new ArrayList<>());
+
+		// Get total products count
+		Long totalProducts = countProducts(targetId);
+		options.put("totalProducts", totalProducts);
+
+		return options;
+	}
+
+	/**
+	 * Get breadcrumb navigation
+	 */
+	public List<BreadcrumbDto> getBreadcrumb(Long sectionId, Long categoryId, Long subCategoryId) {
+		List<BreadcrumbDto> breadcrumb = new ArrayList<>();
+
+		try {
+			// Add Section to breadcrumb if sectionId exists
+			if (sectionId != null) {
+				Section section = sectionRepository.findById(sectionId).orElse(null);
+
+				if (section != null) {
+					breadcrumb.add(BreadcrumbDto.builder().id(section.getId()).name(section.getName()) // This will be
+																										// "Men",
+																										// "Women", etc.
+							.type("SECTION").url("/products?sectionId=" + section.getId()).build());
+				}
+			}
+
+			// Add Category to breadcrumb if categoryId exists
+			if (categoryId != null) {
+				Category category = categoryRepo.findById(categoryId).orElse(null);
+
+				if (category != null) {
+					breadcrumb.add(BreadcrumbDto.builder().id(category.getId()).name(category.getName()) // This will be
+																											// "Clothing",
+																											// "Footwear",
+																											// etc.
+							.type("CATEGORY").url("/products?categoryId=" + category.getId()).build());
+				}
+			}
+
+			// Add SubCategory to breadcrumb if subCategoryId exists
+			if (subCategoryId != null) {
+				Category subCategory = categoryRepo.findById(subCategoryId).orElse(null);
+
+				if (subCategory != null) {
+					breadcrumb.add(BreadcrumbDto.builder().id(subCategory.getId()).name(subCategory.getName())
+							.type("SUBCATEGORY").url("/products?subCategoryId=" + subCategory.getId()).build());
+				}
+			}
+
+		} catch (Exception e) {
+			log.error("Error building breadcrumb: {}", e.getMessage());
+		}
+
+		return breadcrumb;
+	}
+
+	// ============= PRIVATE HELPER METHODS =============
+
+	private Long determineCategoryId(ProductFilterDto filter) {
+		if (filter.getSubCategoryId() != null)
+			return filter.getSubCategoryId();
+		if (filter.getCategoryId() != null)
+			return filter.getCategoryId();
+		if (filter.getSectionId() != null)
+			return filter.getSectionId();
+		return null;
+	}
+
+	private Long determineCategoryId(Long sectionId, Long categoryId, Long subCategoryId) {
+		// Priority: subCategory > category > section
+		if (subCategoryId != null) {
+			return subCategoryId;
+		}
+		if (categoryId != null) {
+			return categoryId;
+		}
+		if (sectionId != null) {
+			// Return the first category under this section or null
+			return categoryRepo.findFirstBySectionId(sectionId).map(Category::getId).orElse(null);
+		}
+		return null;
+	}
+
+	private Pageable createPageable(ProductFilterDto filter) {
+		int page = filter.getPage() != null ? filter.getPage() : 0;
+		int size = filter.getLimit() != null ? filter.getLimit() : 20;
+
+		String sortBy = filter.getSortBy();
+
+		if (sortBy == null || sortBy.isEmpty()) {
+			// Default sort - use correct column name
+			return PageRequest.of(page, size, Sort.by("created_at").descending());
+		}
+
+		// Map sort fields to database column names
+		switch (sortBy) {
+		case "price_asc":
+			return PageRequest.of(page, size, Sort.by("price").ascending());
+		case "price_desc":
+			return PageRequest.of(page, size, Sort.by("price").descending());
+		case "name_asc":
+			return PageRequest.of(page, size, Sort.by("name").ascending());
+		case "name_desc":
+			return PageRequest.of(page, size, Sort.by("name").descending());
+		case "created_at":
+			return PageRequest.of(page, size, Sort.by("created_at").descending());
+		default:
+			return PageRequest.of(page, size, Sort.by("created_at").descending());
+		}
+	}
+
+	private boolean matchesBrand(Product product, List<String> brands) {
+		if (brands == null || brands.isEmpty())
+			return true;
+		if (product.getBrand() == null)
+			return false;
+		return brands.contains(product.getBrand());
+	}
+
+	private boolean matchesRating(Product product, Double minRating) {
+		if (minRating == null)
+			return true;
+		return true;
+	}
+
+	private boolean matchesCod(Product product, Boolean codAvailable) {
+		if (codAvailable == null)
+			return true;
+		return true;
+	}
+
+	private String getCurrentLevelName(Long sectionId, Long categoryId, Long subCategoryId) {
+		if (subCategoryId != null) {
+			return categoryRepo.findById(subCategoryId).map(Category::getName).orElse("");
+		} else if (categoryId != null) {
+			return categoryRepo.findById(categoryId).map(Category::getName).orElse("");
+		} else if (sectionId != null) {
+			return categoryRepo.findById(sectionId).map(Category::getName).orElse("");
+		}
+		return "All Products";
+	}
+
+	private List<String> findDistinctBrands(Long categoryId) {
+		if (categoryId == null) {
+			return productRepo.findAll().stream().map(Product::getBrand).filter(Objects::nonNull).distinct()
+					.collect(Collectors.toList());
+		}
+
+		// FIXED: Use the repository method we'll add
+		return productRepo.findDistinctBrandsByCategoryId(categoryId);
+	}
+
+	private List<String> findDistinctSizes(Long categoryId) {
+		if (categoryId == null) {
+			return variantRepo.findAll().stream().map(ProductVariant::getSize).filter(Objects::nonNull).distinct()
+					.collect(Collectors.toList());
+		}
+
+		return variantRepo.findDistinctSizesByCategoryId(categoryId);
+	}
+
+	private List<String> findDistinctColors(Long categoryId) {
+		if (categoryId == null) {
+			return variantRepo.findAll().stream().map(ProductVariant::getColor).filter(Objects::nonNull).distinct()
+					.collect(Collectors.toList());
+		}
+
+		return variantRepo.findDistinctColorsByCategoryId(categoryId);
+	}
+
+	private Map<String, Double> getPriceRange(Long categoryId) {
+		Map<String, Double> range = new HashMap<>();
+
+		List<Object[]> priceRange;
+		if (categoryId == null) {
+			priceRange = variantRepo.findGlobalPriceRange();
+		} else {
+			priceRange = variantRepo.findPriceRangeByCategoryId(categoryId);
+		}
+
+		if (priceRange != null && !priceRange.isEmpty() && priceRange.get(0).length >= 2) {
+			range.put("min", priceRange.get(0)[0] != null ? ((Number) priceRange.get(0)[0]).doubleValue() : 0.0);
+			range.put("max", priceRange.get(0)[1] != null ? ((Number) priceRange.get(0)[1]).doubleValue() : 100000.0);
+		} else {
+			range.put("min", 0.0);
+			range.put("max", 100000.0);
+		}
+
+		return range;
+	}
+
+	private Long countProducts(Long categoryId) {
+		if (categoryId == null) {
+			return productRepo.count();
+		}
+		return productRepo.countByCategoryId(categoryId);
+	}
+
+	private BreadcrumbDto createBreadcrumb(Category category, String type) {
+		return BreadcrumbDto.builder().id(category.getId()).name(category.getName()).slug(category.getSlug()).type(type)
+				.url("/products?categoryId=" + category.getId()).build();
+	}
+
+	/**
+	 * Map Object[] from native query to ProductResponseDto
+	 */
+	private ProductResponseDto mapToProductDto(Object[] row) {
+		if (row == null || row.length < 8)
+			return null;
+
+		try {
+			Long productId = ((Number) row[0]).longValue();
+			String name = (String) row[1];
+			String slug = (String) row[2];
+			String brand = (String) row[3];
+			String shortDescription = (String) row[4];
+			Double price = (Double) row[5];
+			Integer stock = ((Number) row[6]).intValue();
+			Boolean isActive = (Boolean) row[7];
+
+			String thumbnail = row.length > 8 && row[8] != null ? (String) row[8] : null;
+			Double minPrice = row.length > 9 && row[9] != null ? ((Number) row[9]).doubleValue() : price;
+
+			ProductResponseDto.CategoryInfo categoryInfo = null;
+			if (row.length > 12 && row[10] != null && row[11] != null && row[12] != null) {
+				categoryInfo = ProductResponseDto.CategoryInfo.builder().id(((Number) row[10]).longValue())
+						.name((String) row[11]).slug((String) row[12]).build();
+			}
+
+			return ProductResponseDto.builder().id(productId).name(name).slug(slug).brand(brand)
+					.shortDescription(shortDescription).price(price).stock(stock).inStock(stock > 0).isActive(isActive)
+					.mainImage(thumbnail).thumbnailImage(thumbnail).price(minPrice).category(categoryInfo).build();
+
+		} catch (Exception e) {
+			log.error("Error mapping product row to DTO: {}", e.getMessage());
+			return null;
+		}
+	}
+
+	// These methods are kept but not used in the current implementation
+	private int calculateTotalPages(long totalElements, int size) {
+		return (int) Math.ceil((double) totalElements / size);
+	}
+
+	private boolean isLastPage(int page, long totalElements, int size) {
+		return (page + 1) * size >= totalElements;
+	}
 }

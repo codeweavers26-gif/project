@@ -1,11 +1,14 @@
 package com.project.backend.requestDto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Data
 @Schema(description = "Request payload for creating or updating a product")
@@ -70,13 +73,54 @@ public class ProductRequestDto {
     @Schema(description = "Estimated delivery time in days", example = "5")
     private Integer deliveryDays;
 
-    @Schema(description = "List of product image URLs (maximum 6 allowed)")
-    private List<String> images;
-
+ private List<VariantRequest> variants;
+    
+    private List<ImageRequest> images;
 //    @Schema(description = "Product attributes like color, size, material")
 //    private Map<String, String> attributes;
     
     @Schema(description = "Category ID to which product belongs", example = "2")
     private Long categoryId;
+    
+    @Data
+    public static class VariantRequest {
+        @NotBlank
+        private String size;
+        
+        @NotBlank
+        private String color;
+        
+        @NotNull
+        private BigDecimal mrp;
+        @Schema(description = "Product price", example = "3499")
+        @NotNull(message = "Price is required")
+        private Double price;
+        @NotNull
+        private BigDecimal sellingPrice;
+        
+        private BigDecimal costPrice;
+        
+        @NotNull
+        private Integer initialStock; // For Delhi warehouse
+    }
+    
+    @Data
+    public static class ImageRequest {
+        private String imageUrl;
+        private Boolean isPrimary;
+        private Integer displayOrder;
+    }
+    
+    @Data
+    public static class StockUpdateRequest {
+        @NotNull(message = "Variant ID is required")
+        private Long variantId;
+        
+        @NotNull(message = "Warehouse ID is required")
+        private Long warehouseId;
+        
+        @NotNull(message = "Quantity is required")
+        private Integer quantity;
+    }
 
 }

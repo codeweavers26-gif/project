@@ -8,13 +8,17 @@ import lombok.Data;
 @Data
 @Builder
 public class AdminCartItemDto {
-    private Long cartId;
-    private Long productId;
-    private String productName;
-    private String productImage;
-    private Double productPrice;
-    private Integer quantity;
-    private Double subtotal;
-    private Boolean inStock;
-    private Instant addedAt;
+	  private Long cartId;
+	    private Long itemId;        // This was missing
+	    private Long userId;
+	    private String userName;
+	    private String userEmail;
+	    private Long productId;
+	    private String productName;
+	    private String productImage;
+	    private Double productPrice;
+	    private Integer quantity;
+	    private Double subtotal;
+	    private Boolean inStock;
+	    private Instant addedAt;
 }
