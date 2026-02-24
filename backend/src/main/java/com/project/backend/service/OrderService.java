@@ -118,15 +118,15 @@ public class OrderService {
 	        OrderItem orderItem = OrderItem.builder()
 	                .order(order)
 	                .product(product)
-	                .price(product.getPrice())
+	                //.price(product.getPrice())
 	                .quantity(item.getQuantity())
 	                .build();
 
 	        order.getItems().add(orderItem);
 	        orderItemRepository.save(orderItem);
 
-	        subtotal += product.getPrice() * item.getQuantity();
-	        tax += (product.getTaxPercent() / 100) * product.getPrice() * item.getQuantity();
+//	        subtotal += product.getPrice() * item.getQuantity();
+//	        tax += (product.getTaxPercent() / 100) * product.getPrice() * item.getQuantity();
 	    }
 
 	    double shipping = order.getShippingCharges() != null ? order.getShippingCharges() : 0;

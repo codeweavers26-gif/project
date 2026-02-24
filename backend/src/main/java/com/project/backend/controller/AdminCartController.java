@@ -70,7 +70,7 @@ public class AdminCartController {
 
     @GetMapping("/users/{userId}")
     public ResponseEntity<AdminCartSummaryDto> getUserCart(@PathVariable Long userId) {
-        return ResponseEntity.ok(adminCartService.getUserCart(userId)); // Make sure method name matches
+        return ResponseEntity.ok(adminCartService.getUserCartDetails(userId)); 
     }
 
     @Operation(summary = "Get abandoned carts (>48h old)", security = @SecurityRequirement(name = "Bearer Authentication"))

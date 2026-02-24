@@ -1,5 +1,7 @@
 package com.project.backend.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -9,47 +11,36 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Entity
-@Table(name = "order_items")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class OrderItem {
+@Entity
+@Table(name = "stock_movements")
+public class StockMovement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+    @JoinColumn(name = "warehouse_id", nullable = false)
+    private Warehouse warehouse;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "variant_id", nullable = false)
     private ProductVariant variant;
 
-    @Column(name = "product_name", length = 200)
-    private String productName;
-    @ManyToOne
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @Column(length = 50)
+    private String type;
 
     @Column(nullable = false)
     private Integer quantity;
 
-    @Column(nullable = false)
-    private Double price;
-    
-    @Column(length = 20)
-    private String size;
+    @Column(name = "reference_id")
+    private Long referenceId;
 
-    @Column(length = 50)
-    private String color;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 }

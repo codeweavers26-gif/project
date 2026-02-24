@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.project.backend.entity.Category;
 import com.project.backend.entity.Section;
-import com.project.backend.entity.SubCategory;
 import com.project.backend.service.CatalogService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,15 +37,4 @@ public class CatalogController {
         return ResponseEntity.ok(catalogService.getCategoriesBySection(sectionId));
     }
 
-    @Operation(summary = "Get subcategories by category")
-    @GetMapping("/subcategories")
-    public ResponseEntity<List<SubCategory>> getSubCategories(@RequestParam Long categoryId) {
-        return ResponseEntity.ok(catalogService.getSubCategories(categoryId));
-    }
-
-    @Operation(summary = "Get filters for subcategory")
-    @GetMapping("/filters")
-    public ResponseEntity<Map<String, List<String>>> getFilters(@RequestParam Long subCategoryId) {
-        return ResponseEntity.ok(catalogService.getFiltersForSubCategory(subCategoryId));
-    }
 }

@@ -39,4 +39,7 @@ public class ProductImage {
     
     @Column(name = "cloudinary_public_id")
     private String cloudinaryPublicId; 
+    
+    @Column(name = "is_primary")
+    private Boolean isPrimary = false;
 }

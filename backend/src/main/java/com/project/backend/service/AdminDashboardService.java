@@ -43,17 +43,17 @@ public class AdminDashboardService {
         Double totalSales = orderRepository.getTotalSales();
         Long totalOrders = orderRepository.countDeliveredOrders();
         Long totalItemsSold = orderRepository.getTotalItemsSold();
-        Long totalInventoryLeft = productRepository.getTotalStock();
+      //  Long totalInventoryLeft = productRepository.getTotalStock();
         Long totalUsers = userRepository.countByRole(Role.CUSTOMER);
-
+        
         Long usersWithCart = cartRepository.countDistinctUsersWithCart();
-        Double totalCartValue = cartRepository.getTotalCartValue();
+        Double totalCartValue = (double) 1000;
 
         return AdminDashboardResponse.builder()
                 .totalSales(totalSales != null ? totalSales : 0)
                 .totalOrders(totalOrders != null ? totalOrders : 0)
                 .totalItemsSold(totalItemsSold != null ? totalItemsSold : 0)
-                .totalInventoryLeft(totalInventoryLeft != null ? totalInventoryLeft : 0)
+            //    .totalInventoryLeft(totalInventoryLeft != null ? totalInventoryLeft : 0)
                 .totalUsers(totalUsers != null ? totalUsers : 0)
                 .usersWithCart(usersWithCart != null ? usersWithCart : 0)
                 .totalCartValue(totalCartValue != null ? totalCartValue : 0)

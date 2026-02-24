@@ -1,6 +1,6 @@
 package com.project.backend.repository;
 
-import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -12,7 +12,7 @@ public interface AttributeConfigRepository extends JpaRepository<AttributeConfig
 
 	boolean existsByNameIgnoreCase(String name);
  //   List<AttributeConfig> findByCategoryIdAndActiveTrue(Long categoryId);
-
+	Optional<AttributeConfig> findByName(String name);
 	//List<AttributeConfig> findByActiveTrue();
 }
 

@@ -1,5 +1,7 @@
 package com.project.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -9,47 +11,46 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Table(name = "order_items")
 @Getter
 @Setter
 @NoArgsConstructor
+@Entity
 @AllArgsConstructor
 @Builder
-public class OrderItem {
+@Table(name = "warehouse_inventory", 
+       uniqueConstraints = @UniqueConstraint(columnNames = {"warehouse_id", "variant_id"}))
+public class WarehouseInventory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+    @JoinColumn(name = "warehouse_id", nullable = false)
+    @JsonIgnore
+    private Warehouse warehouse;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "variant_id", nullable = false)
+    @JsonIgnore
     private ProductVariant variant;
+    @Min(0)
+    @Column(name = "available_quantity", nullable = false)
+    private Integer availableQuantity = 0;
 
-    @Column(name = "product_name", length = 200)
-    private String productName;
-    @ManyToOne
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @Min(0)
+    @Column(name = "reserved_quantity", nullable = false)
+    private Integer reservedQuantity = 0;
 
-    @Column(nullable = false)
-    private Integer quantity;
-
-    @Column(nullable = false)
-    private Double price;
-    
-    @Column(length = 20)
-    private String size;
-
-    @Column(length = 50)
-    private String color;
+    @Version
+    private Integer version;
 }
