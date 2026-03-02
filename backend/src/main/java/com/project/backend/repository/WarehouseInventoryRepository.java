@@ -68,4 +68,12 @@ public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInv
 	        @Param("minQuantity") int minQuantity
 	    );
 	List<WarehouseInventory> findByVariantId(Long variantId);
+	
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("""
+	    SELECT wi
+	    FROM WarehouseInventory wi
+	    WHERE wi.variant.id = :variantId
+	""")
+	List<WarehouseInventory> findByVariantIdForUpdate(@Param("variantId") Long variantId);
 }

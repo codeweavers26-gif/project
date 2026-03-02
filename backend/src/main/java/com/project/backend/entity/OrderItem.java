@@ -14,7 +14,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
 @Entity
 @Table(name = "order_items")
 @Getter
@@ -31,22 +30,22 @@ public class OrderItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "variant_id", nullable = false)
-    private ProductVariant variant;
+
+    @Column(name = "product_id", nullable = false)
+    private Long productId;
+
+    @Column(name = "variant_id", nullable = false)
+    private Long variantId;
 
     @Column(name = "product_name", length = 200)
     private String productName;
-    @ManyToOne
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
 
     @Column(nullable = false)
     private Integer quantity;
 
     @Column(nullable = false)
     private Double price;
-    
+
     @Column(length = 20)
     private String size;
 

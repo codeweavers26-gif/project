@@ -43,15 +43,14 @@ public interface OrderReturnRepository extends JpaRepository<OrderReturn, Long> 
 			""")
 	Page<Object[]> returnTrend(Pageable pageable);
 
-	@Query("""
-			    SELECT r.orderItem.product.id,
-			           r.orderItem.product.name,
-			           COUNT(r)
-			    FROM OrderReturn r
-			    GROUP BY r.orderItem.product.id, r.orderItem.product.name
-			    ORDER BY COUNT(r) DESC
-			""")
-	Page<Object[]> topReturnedProducts(Pageable pageable);
+	 @Query("""
+		        SELECT r.orderItem.productName as productName,
+		               COUNT(r) as returnCount
+		        FROM OrderReturn r
+		        GROUP BY r.orderItem.productName
+		        ORDER BY returnCount DESC
+		    """)
+		    Page<Object[]> topReturnedProducts(Pageable pageable);
 
 	@Query("""
 			    SELECT r.reason, COUNT(r)

@@ -19,8 +19,6 @@ import com.project.backend.ResponseDto.ReturnResponseDto;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.OrderReturn;
-import com.project.backend.entity.ProductInventory;
-import com.project.backend.entity.ReturnReason;
 import com.project.backend.entity.ReturnStatus;
 import com.project.backend.entity.User;
 import com.project.backend.exception.BadRequestException;
@@ -29,7 +27,6 @@ import com.project.backend.exception.UnauthorizedException;
 import com.project.backend.repository.OrderItemRepository;
 import com.project.backend.repository.OrderRepository;
 import com.project.backend.repository.OrderReturnRepository;
-import com.project.backend.repository.ProductInventoryRepository;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.requestDto.ReturnRequestDto;
@@ -43,79 +40,58 @@ import lombok.RequiredArgsConstructor;
 public class AdminReturnService {
 
 	private final OrderReturnRepository returnRepo;
-	private final ProductInventoryRepository inventoryRepository;
 	private final UserRepository userRepository;
 	private final CartService cartService;
 	private final OrderRepository orderRepository;
 	private final OrderItemRepository orderItemRepository;
 	private final OrderReturnRepository orderReturnRepository;
 
-	public PageResponseDto<AdminReturnResponseDto> getAllReturns(int page, int size) {
-
-		Page<OrderReturn> returns = returnRepo.findAll(PageRequest.of(page, size, Sort.by("requestedAt").descending()));
-
-		return PageResponseDto.<AdminReturnResponseDto>builder()
-				.content(returns.getContent().stream().map(this::mapToAdminDto).toList()).page(returns.getNumber())
-				.size(returns.getSize()).totalElements(returns.getTotalElements()).totalPages(returns.getTotalPages())
-				.last(returns.isLast()).build();
-	}
-
-	private AdminReturnResponseDto mapToAdminDto(OrderReturn r) {
-
-		return AdminReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
-				.userId(r.getOrderItem().getOrder().getUser().getId())
-				.userEmail(r.getOrderItem().getOrder().getUser().getEmail())
-				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
-				.reason(r.getReason().name()).status(r.getStatus().name()).refundAmount(r.getRefundAmount())
-				.requestedAt(r.getRequestedAt()).build();
-	}
-
-	@Transactional
-	public void updateReturnStatus(Long returnId, UpdateReturnStatusDto dto) {
-
-		OrderReturn r = returnRepo.findById(returnId).orElseThrow(() -> new NotFoundException("Return not found"));
-
-		r.setStatus(ReturnStatus.valueOf(dto.getStatus()));
-		r.setRefundAmount(dto.getRefundAmount());
-		r.setAdminComment(dto.getAdminComment());
-
-		returnRepo.save(r);
-	}
-
-	public PageResponseDto<AdminUserReturnResponseDto> getReturnsByUser(Long userId, int page, int size) {
-
-		userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
-
-		Page<OrderReturn> returns = returnRepo.findByOrderItem_Order_User_Id(userId,
-				PageRequest.of(page, size, Sort.by("requestedAt").descending()));
-
-		return PageResponseDto.<AdminUserReturnResponseDto>builder()
-				.content(returns.getContent().stream().map(this::mapToUserReturnDto).toList()).page(returns.getNumber())
-				.size(returns.getSize()).totalElements(returns.getTotalElements()).totalPages(returns.getTotalPages())
-				.last(returns.isLast()).build();
-	}
-
-	private AdminUserReturnResponseDto mapToUserReturnDto(OrderReturn r) {
-
-		return AdminUserReturnResponseDto.builder().returnId(r.getId())
-				.userId(r.getOrderItem().getOrder().getUser().getId())
-				.userEmail(r.getOrderItem().getOrder().getUser().getEmail())
-				.orderId(r.getOrderItem().getOrder().getId()).orderItemId(r.getOrderItem().getId())
-				.productId(r.getOrderItem().getProduct().getId()).productName(r.getOrderItem().getProduct().getName())
-				.quantity(r.getReturnQuantity()).reason(r.getReason().name()).status(r.getStatus().name())
-				.refundAmount(r.getRefundAmount()).requestedAt(r.getRequestedAt()).build();
-	}
-
-	private ReturnResponseDto mapToReturnDto(OrderReturn r) {
-
-		return ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
-				.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
-				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
-				.status(r.getStatus()).reason(r.getReason()) // ✅ FIXED
-				.refundAmount(r.getRefundAmount()).requestedAt(r.getRequestedAt()).build();
-	}
+//	public PageResponseDto<AdminReturnResponseDto> getAllReturns(int page, int size) {
 //
-//	private AdminUserReturnResponseDto mapToDto(OrderReturn r) {
+//		Page<OrderReturn> returns = returnRepo.findAll(PageRequest.of(page, size, Sort.by("requestedAt").descending()));
+//
+//		return PageResponseDto.<AdminReturnResponseDto>builder()
+//				.content(returns.getContent().stream().map(this::mapToAdminDto).toList()).page(returns.getNumber())
+//				.size(returns.getSize()).totalElements(returns.getTotalElements()).totalPages(returns.getTotalPages())
+//				.last(returns.isLast()).build();
+//	}
+//
+//	private AdminReturnResponseDto mapToAdminDto(OrderReturn r) {
+//
+//		return AdminReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
+//				.userId(r.getOrderItem().getOrder().getUser().getId())
+//				.userEmail(r.getOrderItem().getOrder().getUser().getEmail())
+//				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
+//				.reason(r.getReason().name()).status(r.getStatus().name()).refundAmount(r.getRefundAmount())
+//				.requestedAt(r.getRequestedAt()).build();
+//	}
+//
+//	@Transactional
+//	public void updateReturnStatus(Long returnId, UpdateReturnStatusDto dto) {
+//
+//		OrderReturn r = returnRepo.findById(returnId).orElseThrow(() -> new NotFoundException("Return not found"));
+//
+//		r.setStatus(ReturnStatus.valueOf(dto.getStatus()));
+//		r.setRefundAmount(dto.getRefundAmount());
+//		r.setAdminComment(dto.getAdminComment());
+//
+//		returnRepo.save(r);
+//	}
+//
+//	public PageResponseDto<AdminUserReturnResponseDto> getReturnsByUser(Long userId, int page, int size) {
+//
+//		userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+//
+//		Page<OrderReturn> returns = returnRepo.findByOrderItem_Order_User_Id(userId,
+//				PageRequest.of(page, size, Sort.by("requestedAt").descending()));
+//
+//		return PageResponseDto.<AdminUserReturnResponseDto>builder()
+//				.content(returns.getContent().stream().map(this::mapToUserReturnDto).toList()).page(returns.getNumber())
+//				.size(returns.getSize()).totalElements(returns.getTotalElements()).totalPages(returns.getTotalPages())
+//				.last(returns.isLast()).build();
+//	}
+//
+//	private AdminUserReturnResponseDto mapToUserReturnDto(OrderReturn r) {
 //
 //		return AdminUserReturnResponseDto.builder().returnId(r.getId())
 //				.userId(r.getOrderItem().getOrder().getUser().getId())
@@ -125,124 +101,145 @@ public class AdminReturnService {
 //				.quantity(r.getReturnQuantity()).reason(r.getReason().name()).status(r.getStatus().name())
 //				.refundAmount(r.getRefundAmount()).requestedAt(r.getRequestedAt()).build();
 //	}
-
-	public List<ReturnByReasonDto> getReturnsByReason() {
-
-		return returnRepo.countByReason().stream()
-				.map(r -> ReturnByReasonDto.builder().reason(r[0].toString()).count((Long) r[1]).build()).toList();
-	}
-
-	public PageResponseDto<ReturnResponseDto> getUserReturns(Long userId, int page, int size) {
-
-		Page<OrderReturn> returns = returnRepo.findByOrderItem_Order_User_Id(userId,
-				PageRequest.of(page, size, Sort.by("createdAt").descending()));
-
-		return mapToPageDto(returns);
-	}
-
-	public PageResponseDto<ReturnResponseDto> adminSearchReturns(Long userId, ReturnStatus status, int page, int size) {
-
-		Page<OrderReturn> returns = returnRepo.search(userId, status,
-				PageRequest.of(page, size, Sort.by("createdAt").descending()));
-
-		return mapToPageDto(returns);
-	}
-
-	private PageResponseDto<ReturnResponseDto> mapToPageDto(Page<OrderReturn> page) {
-
-		List<ReturnResponseDto> content = page.getContent().stream().map(this::mapToReturnDto).toList();
-
-		return PageResponseDto.<ReturnResponseDto>builder().content(content).page(page.getNumber()).size(page.getSize())
-				.totalElements(page.getTotalElements()).totalPages(page.getTotalPages()).last(page.isLast()).build();
-	}
-
-	public PageResponseDto<ReturnResponseDto> getReturnsByStatus(ReturnStatus status, int page, int size) {
-
-		Page<OrderReturn> returns = returnRepo.findByStatus(status,
-				PageRequest.of(page, size, Sort.by("requestedAt").descending()));
-
-		return PageResponseDto.<ReturnResponseDto>builder().content(returns.getContent().stream()
-				.map(r -> ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
-						.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
-						.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
-						.status(r.getStatus()).reason(r.getReason()).refundAmount(r.getRefundAmount())
-						.requestedAt(r.getRequestedAt()).build())
-				.toList()).page(returns.getNumber()).size(returns.getSize()).totalElements(returns.getTotalElements())
-				.totalPages(returns.getTotalPages()).last(returns.isLast()).build();
-	}
-
-	@Transactional
-	public ReorderResponseDto reorder(User user, Long orderId) {
-
-		Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));
-
-		if (!order.getUser().getId().equals(user.getId())) {
-			throw new UnauthorizedException("Not your order");
-		}
-
-		List<ReorderItemSuccessDto> success = new ArrayList<>();
-		List<ReorderItemFailureDto> failed = new ArrayList<>();
-
-		for (OrderItem item : order.getItems()) {
-
-			ProductInventory inventory = inventoryRepository
-					.findByProductAndLocation(item.getProduct(), order.getLocation()).orElse(null);
-
-			if (inventory == null || inventory.getStock() <= 0) {
-
-				failed.add(ReorderItemFailureDto.builder().productId(item.getProduct().getId())
-						.productName(item.getProduct().getName()).requestedQty(item.getQuantity()).availableQty(0)
-						.reason("Out of stock").build());
-				continue;
-			}
-
-			int qtyToAdd = Math.min(item.getQuantity(), inventory.getStock());
-
-		//	cartService.addOrUpdate(user, item.getProduct(), qtyToAdd);
-
-			success.add(ReorderItemSuccessDto.builder().productId(item.getProduct().getId())
-					.productName(item.getProduct().getName()).quantityAdded(qtyToAdd).build());
-
-			if (qtyToAdd < item.getQuantity()) {
-				failed.add(ReorderItemFailureDto.builder().productId(item.getProduct().getId())
-						.productName(item.getProduct().getName()).requestedQty(item.getQuantity())
-						.availableQty(inventory.getStock()).reason("Partial stock available").build());
-			}
-		}
-
-		return ReorderResponseDto.builder().success(!success.isEmpty())
-				.message(failed.isEmpty() ? "Reorder completed" : "Reorder partially completed").addedItems(success)
-				.failedItems(failed).build();
-	}
-
-	@Transactional
-	public ReturnResponseDto requestReturn(User user, ReturnRequestDto dto) {
-
-		OrderItem orderItem = orderItemRepository.findById(dto.getOrderItemId())
-				.orElseThrow(() -> new NotFoundException("Order item not found"));
-
-		if (!orderItem.getOrder().getUser().getId().equals(user.getId())) {
-			throw new UnauthorizedException("Not your order");
-		}
-
-		if (dto.getQuantity() <= 0 || dto.getQuantity() > orderItem.getQuantity()) {
-			throw new BadRequestException("Invalid return quantity");
-		}
-
-		OrderReturn orderReturn = OrderReturn.builder().orderItem(orderItem).user(user)
-				.returnQuantity(dto.getQuantity()).reason(dto.getReason()).status(ReturnStatus.REQUESTED)
-				.refundAmount(orderItem.getPrice() * dto.getQuantity()).requestedAt(Instant.now()).build();
-
-		orderReturnRepository.save(orderReturn);
-
-		return mapToDto(orderReturn);
-	}
-
-	private ReturnResponseDto mapToDto(OrderReturn r) {
-		return ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
-				.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
-				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
-				.reason(r.getReason()).status(r.getStatus()).refundAmount(r.getRefundAmount())
-				.requestedAt(r.getRequestedAt()).build();
-	}
+//
+//	private ReturnResponseDto mapToReturnDto(OrderReturn r) {
+//
+//		return ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
+//				.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
+//				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
+//				.status(r.getStatus()).reason(r.getReason()) // ✅ FIXED
+//				.refundAmount(r.getRefundAmount()).requestedAt(r.getRequestedAt()).build();
+//	}
+////
+////	private AdminUserReturnResponseDto mapToDto(OrderReturn r) {
+////
+////		return AdminUserReturnResponseDto.builder().returnId(r.getId())
+////				.userId(r.getOrderItem().getOrder().getUser().getId())
+////				.userEmail(r.getOrderItem().getOrder().getUser().getEmail())
+////				.orderId(r.getOrderItem().getOrder().getId()).orderItemId(r.getOrderItem().getId())
+////				.productId(r.getOrderItem().getProduct().getId()).productName(r.getOrderItem().getProduct().getName())
+////				.quantity(r.getReturnQuantity()).reason(r.getReason().name()).status(r.getStatus().name())
+////				.refundAmount(r.getRefundAmount()).requestedAt(r.getRequestedAt()).build();
+////	}
+//
+//	public List<ReturnByReasonDto> getReturnsByReason() {
+//
+//		return returnRepo.countByReason().stream()
+//				.map(r -> ReturnByReasonDto.builder().reason(r[0].toString()).count((Long) r[1]).build()).toList();
+//	}
+//
+//	public PageResponseDto<ReturnResponseDto> getUserReturns(Long userId, int page, int size) {
+//
+//		Page<OrderReturn> returns = returnRepo.findByOrderItem_Order_User_Id(userId,
+//				PageRequest.of(page, size, Sort.by("createdAt").descending()));
+//
+//		return mapToPageDto(returns);
+//	}
+//
+//	public PageResponseDto<ReturnResponseDto> adminSearchReturns(Long userId, ReturnStatus status, int page, int size) {
+//
+//		Page<OrderReturn> returns = returnRepo.search(userId, status,
+//				PageRequest.of(page, size, Sort.by("createdAt").descending()));
+//
+//		return mapToPageDto(returns);
+//	}
+//
+//	private PageResponseDto<ReturnResponseDto> mapToPageDto(Page<OrderReturn> page) {
+//
+//		List<ReturnResponseDto> content = page.getContent().stream().map(this::mapToReturnDto).toList();
+//
+//		return PageResponseDto.<ReturnResponseDto>builder().content(content).page(page.getNumber()).size(page.getSize())
+//				.totalElements(page.getTotalElements()).totalPages(page.getTotalPages()).last(page.isLast()).build();
+//	}
+//
+//	public PageResponseDto<ReturnResponseDto> getReturnsByStatus(ReturnStatus status, int page, int size) {
+//
+//		Page<OrderReturn> returns = returnRepo.findByStatus(status,
+//				PageRequest.of(page, size, Sort.by("requestedAt").descending()));
+//
+//	return null;
+//		//PageResponseDto.<ReturnResponseDto>builder().content(returns.getContent().stream()
+////				.map(r -> ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
+////						.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
+////						.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
+////						.status(r.getStatus()).reason(r.getReason()).refundAmount(r.getRefundAmount())
+////						.requestedAt(r.getRequestedAt()).build())
+////				.toList()).page(returns.getNumber()).size(returns.getSize()).totalElements(returns.getTotalElements())
+////				.totalPages(returns.getTotalPages()).last(returns.isLast()).build();
+//	}
+//
+//	@Transactional
+//	public ReorderResponseDto reorder(User user, Long orderId) {
+//
+//		Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));
+//
+//		if (!order.getUser().getId().equals(user.getId())) {
+//			throw new UnauthorizedException("Not your order");
+//		}
+//
+//		List<ReorderItemSuccessDto> success = new ArrayList<>();
+//		List<ReorderItemFailureDto> failed = new ArrayList<>();
+//
+//		for (OrderItem item : order.getItems()) {
+//
+//			ProductInventory inventory = inventoryRepository
+//					.findByProductAndLocation(item.getProduct(), order.getLocation()).orElse(null);
+//
+//			if (inventory == null || inventory.getStock() <= 0) {
+//
+//				failed.add(ReorderItemFailureDto.builder().productId(item.getProduct().getId())
+//						.productName(item.getProduct().getName()).requestedQty(item.getQuantity()).availableQty(0)
+//						.reason("Out of stock").build());
+//				continue;
+//			}
+//
+//			int qtyToAdd = Math.min(item.getQuantity(), inventory.getStock());
+//
+//		//	cartService.addOrUpdate(user, item.getProduct(), qtyToAdd);
+//
+//			success.add(ReorderItemSuccessDto.builder().productId(item.getProduct().getId())
+//					.productName(item.getProduct().getName()).quantityAdded(qtyToAdd).build());
+//
+//			if (qtyToAdd < item.getQuantity()) {
+//				failed.add(ReorderItemFailureDto.builder().productId(item.getProduct().getId())
+//						.productName(item.getProduct().getName()).requestedQty(item.getQuantity())
+//						.availableQty(inventory.getStock()).reason("Partial stock available").build());
+//			}
+//		}
+//
+//		return ReorderResponseDto.builder().success(!success.isEmpty())
+//				.message(failed.isEmpty() ? "Reorder completed" : "Reorder partially completed").addedItems(success)
+//				.failedItems(failed).build();
+//	}
+//
+//	@Transactional
+//	public ReturnResponseDto requestReturn(User user, ReturnRequestDto dto) {
+//
+//		OrderItem orderItem = orderItemRepository.findById(dto.getOrderItemId())
+//				.orElseThrow(() -> new NotFoundException("Order item not found"));
+//
+//		if (!orderItem.getOrder().getUser().getId().equals(user.getId())) {
+//			throw new UnauthorizedException("Not your order");
+//		}
+//
+//		if (dto.getQuantity() <= 0 || dto.getQuantity() > orderItem.getQuantity()) {
+//			throw new BadRequestException("Invalid return quantity");
+//		}
+//
+//		OrderReturn orderReturn = OrderReturn.builder().orderItem(orderItem).user(user)
+//				.returnQuantity(dto.getQuantity()).reason(dto.getReason()).status(ReturnStatus.REQUESTED)
+//				.refundAmount(orderItem.getPrice() * dto.getQuantity()).requestedAt(Instant.now()).build();
+//
+//		orderReturnRepository.save(orderReturn);
+//
+//		return mapToDto(orderReturn);
+//	}
+//
+//	private ReturnResponseDto mapToDto(OrderReturn r) {
+//		return ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
+//				.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
+//				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
+//				.reason(r.getReason()).status(r.getStatus()).refundAmount(r.getRefundAmount())
+//				.requestedAt(r.getRequestedAt()).build();
+//	}
 }

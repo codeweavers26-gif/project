@@ -1,6 +1,7 @@
 package com.project.backend.repository;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -55,51 +56,50 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 	@Query("SELECT COALESCE(SUM(o.taxAmount),0) FROM Order o WHERE o.createdAt >= :time")
 	Double sumTaxAmountByCreatedAtAfter(Instant time);
 	
-	@Query("SELECT DISTINCT o FROM Order o " +
-		       "LEFT JOIN FETCH o.user u " + 
-		       "LEFT JOIN FETCH o.items i " +
-		       "LEFT JOIN FETCH i.product p " +
-		       "WHERE (:status IS NULL OR o.status = :status) " +
-		       "AND (:userId IS NULL OR o.user.id = :userId) " +
-		       "AND (:orderId IS NULL OR o.id = :orderId) " +
-		       "AND (:email IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :email, '%'))) " +
-		       "AND (:fromDate IS NULL OR o.createdAt >= :fromDate) " +
-		       "AND (:toDate IS NULL OR o.createdAt <= :toDate)")
-		Page<Order> searchOrders(
-		        @Param("status") OrderStatus status,
-		        @Param("userId") Long userId,
-		        @Param("orderId") Long orderId,
-		        @Param("email") String email,
-		        @Param("fromDate") Instant fromDate,
-		        @Param("toDate") Instant toDate,
-		        Pageable pageable);
-
-
-	 @Query("SELECT DISTINCT o FROM Order o " +
-	           "LEFT JOIN o.items i " +
-	           "LEFT JOIN i.product p " +
-	           "WHERE (:userId IS NULL OR o.user.id = :userId) " +
-	           "AND (:status IS NULL OR o.status = :status) " +
-	           "AND (:paymentStatus IS NULL OR o.paymentStatus = :paymentStatus) " +
-	           "AND (:paymentMethod IS NULL OR o.paymentMethod = :paymentMethod) " +
-	           "AND (:minAmount IS NULL OR o.totalAmount >= :minAmount) " +
-	           "AND (:maxAmount IS NULL OR o.totalAmount <= :maxAmount) " +
+	   @Query("SELECT DISTINCT o FROM Order o " +
+	           "LEFT JOIN FETCH o.user u " +
+	           "LEFT JOIN FETCH o.items i " +
+	           "WHERE (:status IS NULL OR o.status = :status) " +
+	           "AND (:userId IS NULL OR o.user.id = :userId) " +
+	           "AND (:orderId IS NULL OR o.id = :orderId) " +
+	           "AND (:email IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :email, '%'))) " +
 	           "AND (:fromDate IS NULL OR o.createdAt >= :fromDate) " +
-	           "AND (:toDate IS NULL OR o.createdAt <= :toDate) " +
-	           "AND (:search IS NULL OR " +
-	           "    CAST(o.id AS string) LIKE %:search% OR " +
-	           "    p.name LIKE %:search% OR " +
-	           "    p.brand LIKE %:search%)")
-	    Page<Order> findOrdersByFilters(
-	            @Param("userId") Long userId,
+	           "AND (:toDate IS NULL OR o.createdAt <= :toDate)")
+	    Page<Order> searchOrders(
 	            @Param("status") OrderStatus status,
-	            @Param("paymentStatus") PaymentStatus paymentStatus,
-	            @Param("paymentMethod") PaymentMethod paymentMethod,
-	            @Param("minAmount") Double minAmount,
-	            @Param("maxAmount") Double maxAmount,
+	            @Param("userId") Long userId,
+	            @Param("orderId") Long orderId,
+	            @Param("email") String email,
 	            @Param("fromDate") Instant fromDate,
 	            @Param("toDate") Instant toDate,
-	            @Param("search") String search,
 	            Pageable pageable);
+	   
+	   @Query("SELECT DISTINCT o FROM Order o " +
+		       "LEFT JOIN FETCH o.user u " +
+		       "WHERE (:userId IS NULL OR o.user.id = :userId) " +
+		       "AND (:status IS NULL OR o.status = :status) " +
+		             "AND (:minAmount IS NULL OR o.totalAmount >= :minAmount) " +
+		       "AND (:maxAmount IS NULL OR o.totalAmount  <= :maxAmount) " +
+		       "AND (:fromDate IS NULL OR o.createdAt >= :fromDate) " +
+		       "AND (:toDate IS NULL OR o.createdAt <= :toDate) " +
+		       "AND (:search IS NULL OR " +
+		       "    CAST(o.id AS string) LIKE %:search% OR " +
+		       "    u.email LIKE %:search% OR " +
+		       "    u.name LIKE %:search%)")
+		Page<Order> findOrdersByFilters(
+		        @Param("userId") Long userId,
+		        @Param("status") OrderStatus status,
+		        @Param("minAmount") Double minAmount,
+		        @Param("maxAmount") Double maxAmount,
+		        @Param("fromDate") Instant fromDate,
+		        @Param("toDate") Instant toDate,
+		        @Param("search") String search,
+		        Pageable pageable);
+	   
+	   
+	   @Query("SELECT DISTINCT o FROM Order o " +
+	           "JOIN o.items i " +
+	           "WHERE i.productName LIKE %:productName%")
+	    List<Order> findByProductName(@Param("productName") String productName);
 	
 }

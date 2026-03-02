@@ -18,6 +18,7 @@ import com.project.backend.ResponseDto.OrderAddressDto;
 import com.project.backend.ResponseDto.OrderItemAdminDto;
 import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.entity.Order;
+import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.OrderStatus;
 import com.project.backend.mapper.OrderMapper;
 import com.project.backend.repository.OrderRepository;
@@ -119,22 +120,49 @@ public class AdminOrderService {
 
 	private AdminUserOrderResponseDto map(Order order) {
 
-		double subtotal = order.getItems().stream().mapToDouble(i -> i.getPrice() * i.getQuantity()).sum();
+	    double subtotal = order.getItems()
+	            .stream()
+	            .mapToDouble(i -> i.getPrice() * i.getQuantity())
+	            .sum();
 
-		return AdminUserOrderResponseDto.builder().orderId(order.getId()).status(order.getStatus())
-				.paymentStatus(order.getPaymentStatus()).paymentMethod(order.getPaymentMethod()).subtotal(subtotal)
-				.taxAmount(order.getTaxAmount()).shippingCharges(order.getShippingCharges())
-				.discountAmount(order.getDiscountAmount()).totalAmount(order.getTotalAmount())
-				.deliveryAddress(OrderAddressDto.builder().line1(order.getDeliveryAddressLine1())
-						.line2(order.getDeliveryAddressLine2()).city(order.getDeliveryCity())
-						.state(order.getDeliveryState()).postalCode(order.getDeliveryPostalCode())
-						.country(order.getDeliveryCountry()).build())
-				.items(order.getItems().stream()
-						.map(i -> OrderItemAdminDto.builder().productId(i.getProduct().getId())
-								.productName(i.getProduct().getName()).price(i.getPrice()).quantity(i.getQuantity())
-								.total(i.getPrice() * i.getQuantity()).build())
-						.toList())
-				.createdAt(order.getCreatedAt()).build();
+	    return AdminUserOrderResponseDto.builder()
+	            .orderId(order.getId())
+	            .status(order.getStatus())
+	            .paymentStatus(order.getPaymentStatus())
+	            .paymentMethod(order.getPaymentMethod())
+	            .subtotal(subtotal)
+	            .taxAmount(order.getTaxAmount())
+	            .shippingCharges(order.getShippingCharges())
+	            .discountAmount(order.getDiscountAmount())
+	            .totalAmount(order.getTotalAmount())
+
+	            .deliveryAddress(OrderAddressDto.builder()
+	                    .line1(order.getDeliveryAddressLine1())
+	                    .line2(order.getDeliveryAddressLine2())
+	                    .city(order.getDeliveryCity())
+	                    .state(order.getDeliveryState())
+	                    .postalCode(order.getDeliveryPostalCode())
+	                    .country(order.getDeliveryCountry())
+	                    .build())
+
+	            .items(order.getItems().stream()
+	                    .map(this::mapToAdminItem)
+	                    .toList())
+
+	            .createdAt(order.getCreatedAt())
+	            .build();
+	}
+	private OrderItemAdminDto mapToAdminItem(OrderItem i) {
+	    return OrderItemAdminDto.builder()
+	            .productId(i.getProductId())
+	            .variantId(i.getVariantId())
+	            .productName(i.getProductName())
+	            .price(i.getPrice())
+	            .quantity(i.getQuantity())
+	         //   .size(i.getSize())
+	         //   .color(i.getColor())
+	            .total(i.getPrice() * i.getQuantity())
+	            .build();
 	}
 	
 	

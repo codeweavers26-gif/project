@@ -7,6 +7,7 @@ import lombok.Data;
 @Builder
 public class OrderItemAdminDto {
     private Long productId;
+    private Long variantId;
     private String productName;
     private Double price;
     private Integer quantity;
