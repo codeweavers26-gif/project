@@ -15,5 +15,6 @@ public class AdminCartSummaryDto {
     private Integer totalQuantity;
     private Double totalValue;
     private Instant lastActivity;
+    private String cartAge;
     private List<AdminCartItemDto> items;
 }

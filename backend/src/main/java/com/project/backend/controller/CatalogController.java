@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.project.backend.ResponseDto.CategoryResponseDto;
 import com.project.backend.entity.Category;
 import com.project.backend.entity.Section;
 import com.project.backend.service.CatalogService;
@@ -33,7 +34,7 @@ public class CatalogController {
 
     @Operation(summary = "Get categories by section")
     @GetMapping("/categories")
-    public ResponseEntity<List<Category>> getCategories(@RequestParam Long sectionId) {
+    public ResponseEntity<List<CategoryResponseDto>> getCategories(@RequestParam Long sectionId) {
         return ResponseEntity.ok(catalogService.getCategoriesBySection(sectionId));
     }
 

@@ -9,7 +9,7 @@ import lombok.Data;
 @Builder
 public class AdminCartItemDto {
 	  private Long cartId;
-	    private Long itemId;        // This was missing
+	    private Long itemId;      
 	    private Long userId;
 	    private String userName;
 	    private String userEmail;

@@ -198,7 +198,7 @@ public class AdminReturnService {
 
 			int qtyToAdd = Math.min(item.getQuantity(), inventory.getStock());
 
-			cartService.addOrUpdate(user, item.getProduct(), qtyToAdd);
+		//	cartService.addOrUpdate(user, item.getProduct(), qtyToAdd);
 
 			success.add(ReorderItemSuccessDto.builder().productId(item.getProduct().getId())
 					.productName(item.getProduct().getName()).quantityAdded(qtyToAdd).build());

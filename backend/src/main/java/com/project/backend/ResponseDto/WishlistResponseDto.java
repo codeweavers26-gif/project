@@ -1,14 +1,31 @@
 package com.project.backend.ResponseDto;
 
+import java.time.Instant;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.project.backend.requestDto.WishlistItemDto;
+
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class WishlistResponseDto {
-    private Long productId;
-    private String productName;
-    private String image;
-    private Double price;
-    private Boolean inStock;
+    private Long id;
+    private Long userId;
+    private String userName;
+    private Integer totalItems;
+    private List<WishlistItemDto> items;
+    private Instant createdAt;
+    private Instant updatedAt;
+    
+    // Statistics
+    private Long totalWishlists; // For admin
+    private Double averageItemsPerWishlist; // For admin
 }

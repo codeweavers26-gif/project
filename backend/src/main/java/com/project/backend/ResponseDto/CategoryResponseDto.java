@@ -6,7 +6,9 @@ import lombok.Data;
 @Data
 @Builder
 public class CategoryResponseDto {
-    private Long id;
-    private String name;
-    private Long sectionId;
+	   private Long id;
+	    private String name;
+	    private String slug;
+	    private Boolean isActive;
+	    private Long sectionId;
 }

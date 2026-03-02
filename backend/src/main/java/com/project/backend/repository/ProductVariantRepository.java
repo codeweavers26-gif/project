@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductVariant;
 import com.project.backend.requestDto.VariantAvailabilityDto;
 
@@ -52,13 +53,7 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     
     @Query("SELECT DISTINCT v.color FROM ProductVariant v WHERE v.product.id = :productId AND v.isActive = true")
     List<String> findDistinctColorsByProductId(@Param("productId") Long productId);
-    
-    @Query("""
-            SELECT v FROM ProductVariant v
-            WHERE v.product.category.id = :categoryId
-            OR v.product.category.parent.id = :categoryId
-        """)
-        List<ProductVariant> findByCategoryId(@Param("categoryId") Long categoryId);
+   
     
     @Query("SELECT DISTINCT v.size FROM ProductVariant v WHERE v.product.category.id = :categoryId AND v.size IS NOT NULL")
     List<String> findDistinctSizesByCategoryId(@Param("categoryId") Long categoryId);
@@ -71,4 +66,22 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     @Query("SELECT MIN(v.sellingPrice), MAX(v.sellingPrice) FROM ProductVariant v")
     List<Object[]> findGlobalPriceRange();
+    @Query("SELECT pv FROM ProductVariant pv " +
+           "LEFT JOIN FETCH pv.product " +
+           "LEFT JOIN FETCH pv.inventories " +
+           "WHERE pv.id = :variantId")
+    Optional<ProductVariant> findByIdWithProductAndInventories(@Param("variantId") Long variantId);
+    
+    @Query("SELECT pv FROM ProductVariant pv " +
+           "LEFT JOIN FETCH pv.product " +
+           "LEFT JOIN FETCH pv.inventories " +
+           "WHERE pv.id = :variantId AND pv.product.id = :productId")
+    Optional<ProductVariant> findByIdAndProductIdWithInventories(
+        @Param("variantId") Long variantId, 
+        @Param("productId") Long productId);
+    
+    
+    @Query("SELECT pv FROM ProductVariant pv LEFT JOIN FETCH pv.inventories WHERE pv.id = :variantId")
+    Optional<ProductVariant> findByIdWithInventories(@Param("variantId") Integer variantId);
+ 
 }

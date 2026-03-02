@@ -1,4 +1,4 @@
-package com.project.backend.requestDto;
+package com.project.backend.ResponseDto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,9 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CartMergeDto {
+public class MergeFailedItemDto {
     private Long productId;
     private Long variantId;
-    private Integer quantity;
+    private String reason;
 }
-

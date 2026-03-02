@@ -16,4 +16,8 @@ public class CartStatisticsDto {
     private Double abandonedCartsValue;
     private Map<String, Long> hourlyActivity;
     private List<Map<String, Object>> topProducts;
+    private Long totalCarts;
+    private Double averageItemsPerCart;
+    private Long cartsWithItems;
+    private Long emptyCarts;
 }

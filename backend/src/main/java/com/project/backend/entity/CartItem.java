@@ -25,6 +25,10 @@ public class CartItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "variant_id", nullable = false)
@@ -33,7 +37,9 @@ public class CartItem {
     @Column(nullable = false)
     private Integer quantity;
 
-    // 🔥 ADD THIS FIELD - Missing field that queries are trying to use
+    @Column(nullable = false)
+    private Integer price;
+    
     @Column(name = "added_at")
     private LocalDateTime addedAt;
 

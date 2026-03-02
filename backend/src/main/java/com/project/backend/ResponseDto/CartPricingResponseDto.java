@@ -18,4 +18,7 @@ public class CartPricingResponseDto {
 	    private String appliedCoupon;
 	    private Boolean couponApplied;
 	    private String message;
+	    private Integer totalItems;
+	    private Double totalMrp;
+	    private Double totalSavings;
 }

@@ -62,12 +62,16 @@ public class AdminCartController {
                 minQuantity, maxQuantity, fromDate, toDate, page, size));
     }
 
-    @Operation(summary = "Get cart summaries (grouped by user)", security = @SecurityRequirement(name = "Bearer Authentication"))
-    @GetMapping("/summaries")
-    public ResponseEntity<List<AdminCartSummaryDto>> getCartSummaries() {
-        return ResponseEntity.ok(adminCartService.getCartSummaries());
-    }
-
+    @Operation(summary = "Get cart summaries (grouped by user)", 
+            security = @SecurityRequirement(name = "Bearer Authentication"))
+ @GetMapping("/summaries")
+ public ResponseEntity<PageResponseDto<AdminCartSummaryDto>> getCartSummaries(
+         @RequestParam(defaultValue = "0") int page,
+         @RequestParam(defaultValue = "20") int size) {
+     
+     return ResponseEntity.ok(adminCartService.getCartSummaries(page, size));}
+    @Operation(summary = "Get cart of user", 
+            security = @SecurityRequirement(name = "Bearer Authentication"))
     @GetMapping("/users/{userId}")
     public ResponseEntity<AdminCartSummaryDto> getUserCart(@PathVariable Long userId) {
         return ResponseEntity.ok(adminCartService.getUserCartDetails(userId)); 
@@ -85,59 +89,59 @@ public class AdminCartController {
         return ResponseEntity.ok(adminCartService.getCartStatistics());
     }
 
-//    @Operation(summary = "Remove specific cart item", security = @SecurityRequirement(name = "Bearer Authentication"))
-//    @DeleteMapping("/items/{cartId}")
-//    public ResponseEntity<Void> removeCartItem(@PathVariable Long cartId) {
-//        adminCartService.removeCartItem(cartId);
+////    @Operation(summary = "Remove specific cart item", security = @SecurityRequirement(name = "Bearer Authentication"))
+////    @DeleteMapping("/items/{cartId}")
+////    public ResponseEntity<Void> removeCartItem(@PathVariable Long cartId) {
+////        adminCartService.removeCartItem(cartId);
+////        return ResponseEntity.ok().build();
+////    }
+//
+//    @Operation(summary = "Clear entire user cart", security = @SecurityRequirement(name = "Bearer Authentication"))
+//    @DeleteMapping("/users/{userId}/clear")
+//    public ResponseEntity<Void> clearUserCart(@PathVariable Long userId) {
+//        adminCartService.clearUserCart(userId);
 //        return ResponseEntity.ok().build();
 //    }
-
-    @Operation(summary = "Clear entire user cart", security = @SecurityRequirement(name = "Bearer Authentication"))
-    @DeleteMapping("/users/{userId}/clear")
-    public ResponseEntity<Void> clearUserCart(@PathVariable Long userId) {
-        adminCartService.clearUserCart(userId);
-        return ResponseEntity.ok().build();
-    }
-
-//    @Operation(summary = "Update cart item quantity", security = @SecurityRequirement(name = "Bearer Authentication"))
-//    @PatchMapping("/items/{cartId}")
-//    public ResponseEntity<AdminCartItemDto> updateCartItemQuantity(
-//            @PathVariable Long cartId,
-//            @RequestParam Integer quantity) {
-//        return ResponseEntity.ok(adminCartService.updateCartItemQuantity(cartId, quantity));
-//    }
-
-//    @Operation(summary = "Export cart data to CSV")
-//    @GetMapping("/export")
-//    public ResponseEntity<byte[]> exportCartData() {
-//        List<List<String>> csvData = adminCartService.exportCartData();
+//
+////    @Operation(summary = "Update cart item quantity", security = @SecurityRequirement(name = "Bearer Authentication"))
+////    @PatchMapping("/items/{cartId}")
+////    public ResponseEntity<AdminCartItemDto> updateCartItemQuantity(
+////            @PathVariable Long cartId,
+////            @RequestParam Integer quantity) {
+////        return ResponseEntity.ok(adminCartService.updateCartItemQuantity(cartId, quantity));
+////    }
+//
+////    @Operation(summary = "Export cart data to CSV")
+////    @GetMapping("/export")
+////    public ResponseEntity<byte[]> exportCartData() {
+////        List<List<String>> csvData = adminCartService.exportCartData();
+////        
+////        // Convert to CSV
+////        StringBuilder csv = new StringBuilder();
+////        for (List<String> row : csvData) {
+////            csv.append(String.join(",", row)).append("\n");
+////        }
+////        
+////        HttpHeaders headers = new HttpHeaders();
+////        headers.setContentType(MediaType.TEXT_PLAIN);
+////        headers.setContentDisposition(ContentDisposition.builder("attachment")
+////                .filename("cart-export-" + LocalDate.now() + ".csv").build());
+////        
+////        return new ResponseEntity<>(csv.toString().getBytes(), headers, HttpStatus.OK);
+////    }
+//
+//    @Operation(summary = "Bulk delete abandoned carts", security = @SecurityRequirement(name = "Bearer Authentication"))
+//    @DeleteMapping("/abandoned/clear")
+//    public ResponseEntity<Map<String, Object>> clearAbandonedCarts() {
+//        List<AdminCartSummaryDto> abandoned = adminCartService.getAbandonedCarts();
 //        
-//        // Convert to CSV
-//        StringBuilder csv = new StringBuilder();
-//        for (List<String> row : csvData) {
-//            csv.append(String.join(",", row)).append("\n");
+//        for (AdminCartSummaryDto cart : abandoned) {
+//            adminCartService.clearUserCart(cart.getUserId());
 //        }
 //        
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setContentType(MediaType.TEXT_PLAIN);
-//        headers.setContentDisposition(ContentDisposition.builder("attachment")
-//                .filename("cart-export-" + LocalDate.now() + ".csv").build());
-//        
-//        return new ResponseEntity<>(csv.toString().getBytes(), headers, HttpStatus.OK);
+//        return ResponseEntity.ok(Map.of(
+//                "message", "Abandoned carts cleared",
+//                "count", abandoned.size()
+//        ));
 //    }
-
-    @Operation(summary = "Bulk delete abandoned carts", security = @SecurityRequirement(name = "Bearer Authentication"))
-    @DeleteMapping("/abandoned/clear")
-    public ResponseEntity<Map<String, Object>> clearAbandonedCarts() {
-        List<AdminCartSummaryDto> abandoned = adminCartService.getAbandonedCarts();
-        
-        for (AdminCartSummaryDto cart : abandoned) {
-            adminCartService.clearUserCart(cart.getUserId());
-        }
-        
-        return ResponseEntity.ok(Map.of(
-                "message", "Abandoned carts cleared",
-                "count", abandoned.size()
-        ));
-    }
 }

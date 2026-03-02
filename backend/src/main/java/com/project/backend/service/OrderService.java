@@ -317,7 +317,7 @@ public class OrderService {
 	    }
 
 	    for (OrderItem item : order.getItems()) {
-	    	cartService.addOrUpdate(user, item.getProduct(), item.getQuantity());
+//	    	cartService.addOrUpdate(user, item.getProduct(), item.getQuantity());
 
 	    }
 	}
