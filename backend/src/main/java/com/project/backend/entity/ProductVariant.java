@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -80,4 +81,5 @@ public class ProductVariant {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+
 }

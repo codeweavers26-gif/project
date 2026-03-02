@@ -1,9 +1,9 @@
 package com.project.backend.service;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,20 +42,16 @@ import lombok.extern.slf4j.Slf4j;
 public class AdminCartService {
 
     private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository; // Add this
+    private final CartItemRepository cartItemRepository; 
     private final UserRepository userRepository;
 
-    /**
-     * Get paginated cart items with filters
-     */
     public PageResponseDto<AdminCartItemDto> getCartItems(
             Long userId, Long productId, String userEmail, String userName,
             String productName, Integer minQuantity, Integer maxQuantity,
             Instant fromDate, Instant toDate, int page, int size) {
         
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("addedAt").descending());
         
-        // Fix: Use CartItemRepository instead of CartRepository
         Page<CartItem> cartItemPage = cartItemRepository.findCartItemsWithFilters(
                 userId, productId, userEmail, userName, productName,
                 minQuantity, maxQuantity, fromDate, toDate, pageable);
@@ -75,16 +71,11 @@ public class AdminCartService {
                 .build();
     }
 
-    /**
-     * Get detailed cart for a specific user
-     */
-    public AdminCartSummaryDto getUserCartDetails(Long userId) { // Renamed to match controller
+    public AdminCartSummaryDto getUserCartDetails(Long userId) { 
         
-        // Check if user exists
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found with ID: " + userId));
         
-        // Get user's cart
         Cart cart = cartRepository.findByUserIdWithItems(userId)
                 .orElseThrow(() -> new NotFoundException("Cart not found for user: " + userId));
         
@@ -96,7 +87,7 @@ public class AdminCartService {
         if (items.isEmpty()) {
             throw new NotFoundException("No valid cart items found for user: " + userId);
         }
-        
+
         Integer totalQuantity = items.stream()
                 .mapToInt(AdminCartItemDto::getQuantity)
                 .sum();
@@ -119,66 +110,82 @@ public class AdminCartService {
                 .items(items)
                 .build();
     }
-
-    /**
-     * Get all carts grouped by user (summary view)
-     */
-    public List<AdminCartSummaryDto> getCartSummaries() {
+    private String calculateCartAge(Instant lastActivity) {
+        if (lastActivity == null) return "Unknown";
         
-        List<Cart> allCarts = cartRepository.findAllActiveCarts();
+        long hours = ChronoUnit.HOURS.between(lastActivity, Instant.now());
+        long days = ChronoUnit.DAYS.between(lastActivity, Instant.now());
         
-        if (allCarts == null || allCarts.isEmpty()) {
-            return new ArrayList<>();
+        if (days > 0) {
+            return days + " day" + (days > 1 ? "s" : "");
+        } else if (hours > 0) {
+            return hours + " hour" + (hours > 1 ? "s" : "");
+        } else {
+            long minutes = ChronoUnit.MINUTES.between(lastActivity, Instant.now());
+            return minutes + " minute" + (minutes > 1 ? "s" : "");
         }
-        
-        // Group by user
-        Map<Long, List<CartItem>> itemsByUser = allCarts.stream()
-                .filter(cart -> cart != null && cart.getUser() != null)
-                .collect(Collectors.toMap(
-                        cart -> cart.getUser().getId(),
-                        cart -> new ArrayList<>(cart.getItems()),
-                        (list1, list2) -> {
-                            list1.addAll(list2);
-                            return list1;
-                        }
-                ));
-        
-        List<AdminCartSummaryDto> summaries = new ArrayList<>();
-        
-        for (Map.Entry<Long, List<CartItem>> entry : itemsByUser.entrySet()) {
-            Long userId = entry.getKey();
-            List<CartItem> items = entry.getValue();
-            
-            User user = userRepository.findById(userId).orElse(null);
-            if (user == null) continue;
-            
-            List<AdminCartItemDto> itemDtos = items.stream()
-                    .map(this::mapToAdminCartItemDto)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            
-            if (itemDtos.isEmpty()) continue;
-            
-            summaries.add(AdminCartSummaryDto.builder()
-                    .userId(userId)
-                    .userName(user.getName() != null ? user.getName() : "N/A")
-                    .userEmail(user.getEmail() != null ? user.getEmail() : "N/A")
-                    .totalItems(itemDtos.size())
-                    .totalQuantity(itemDtos.stream().mapToInt(AdminCartItemDto::getQuantity).sum())
-                    .totalValue(itemDtos.stream().mapToDouble(AdminCartItemDto::getSubtotal).sum())
-                    .lastActivity(Instant.now()) // You might want to track this
-                    .items(itemDtos)
-                    .build());
-        }
-        
-        return summaries.stream()
-                .sorted(Comparator.comparing(AdminCartSummaryDto::getTotalValue).reversed())
-                .collect(Collectors.toList());
     }
 
-    /**
-     * Helper: Map CartItem to AdminCartItemDto
-     */
+    public PageResponseDto<AdminCartSummaryDto> getCartSummaries(int page, int size) {
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by("totalValue").descending());
+        
+        Page<Object[]> summaryPage = cartRepository.findCartSummaries(pageable);
+        
+        if (summaryPage.isEmpty()) {
+            return PageResponseDto.<AdminCartSummaryDto>builder()
+                    .content(new ArrayList<>())
+                    .page(page)
+                    .size(size)
+                    .totalElements(0)
+                    .totalPages(0)
+                    .last(true)
+                    .build();
+        }
+        
+        List<AdminCartSummaryDto> summaries = summaryPage.getContent().stream()
+                .map(this::mapToAdminCartSummaryFromRow)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        
+        return PageResponseDto.<AdminCartSummaryDto>builder()
+                .content(summaries)
+                .page(summaryPage.getNumber())
+                .size(summaryPage.getSize())
+                .totalElements(summaryPage.getTotalElements())
+                .totalPages(summaryPage.getTotalPages())
+                .last(summaryPage.isLast())
+                .build();
+    }
+    
+    private AdminCartSummaryDto mapToAdminCartSummaryFromRow(Object[] row) {
+        try {
+            Long userId = (Long) row[0];
+            String userName = (String) row[1];
+            String userEmail = (String) row[2];
+            Long totalItems = ((Number) row[3]).longValue();
+            Integer totalQuantity = ((Number) row[4]).intValue();
+            Double totalValue = ((Number) row[5]).doubleValue();
+            Instant lastActivity = (Instant) row[6];
+            String cartAge = calculateCartAge(lastActivity);
+
+            return AdminCartSummaryDto.builder()
+                    .userId(userId)
+                    .userName(userName != null ? userName : "N/A")
+                    .userEmail(userEmail != null ? userEmail : "N/A")
+                    .totalItems((int) totalItems.longValue())
+                    .totalQuantity(totalQuantity)
+                    .totalValue(Math.round(totalValue * 100.0) / 100.0)
+                    .lastActivity(lastActivity)
+                   .cartAge(cartAge)
+                    .build();
+                    
+        } catch (Exception e) {
+            log.error("Error mapping cart summary row: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private AdminCartItemDto mapToAdminCartItemDto(CartItem cartItem) {
         
         if (cartItem == null) {
@@ -208,6 +215,10 @@ public class AdminCartService {
                         .sum() : 0;
         
         Boolean inStock = availableStock >= quantity;
+        Instant addedAt = null;
+        if (cartItem.getAddedAt() != null) {
+            addedAt = cartItem.getAddedAt().atZone(ZoneId.systemDefault()).toInstant();
+        }
         
         return AdminCartItemDto.builder()
                 .cartId(cartItem.getCart().getId())
@@ -222,7 +233,7 @@ public class AdminCartService {
                 .quantity(quantity)
                 .subtotal(subtotal)
                 .inStock(inStock)
-               
+               .addedAt(addedAt)
                 .build();
     }
 
@@ -241,45 +252,70 @@ public class AdminCartService {
                 .orElse(product.getImages().get(0).getImageUrl());
     }
 
-    /**
-     * Get abandoned carts (older than 48 hours)
-     */
+
     public List<AdminCartSummaryDto> getAbandonedCarts() {
         
         Instant threshold = Instant.now().minus(48, ChronoUnit.HOURS);
-        List<Cart> oldCarts = cartRepository.findCartsUpdatedBefore(threshold);
+        List<Cart> oldCarts = cartRepository.findAbandonedCartsWithItems(threshold);
         
         if (oldCarts == null || oldCarts.isEmpty()) {
             return new ArrayList<>();
         }
         
-        List<AdminCartSummaryDto> abandonedCarts = new ArrayList<>();
-        
-        for (Cart cart : oldCarts) {
-            if (cart == null || cart.getUser() == null || cart.getItems().isEmpty()) {
-                continue;
+        return oldCarts.stream()
+            .filter(cart -> cart != null && cart.getUser() != null && cart.getItems() != null && !cart.getItems().isEmpty())
+            .map(this::mapToAbandonedCartSummary)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    }
+
+    private AdminCartSummaryDto mapToAbandonedCartSummary(Cart cart) {
+        try {
+            List<AdminCartItemDto> items = cart.getItems().stream()
+                .map(this::mapToAdminCartItemDto)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+            
+            if (items.isEmpty()) {
+                return null;
             }
             
-            List<AdminCartItemDto> items = cart.getItems().stream()
-                    .map(this::mapToAdminCartItemDto)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+            int totalQuantity = items.stream()
+                .mapToInt(AdminCartItemDto::getQuantity)
+                .sum();
             
-            if (items.isEmpty()) continue;
+            double totalValue = items.stream()
+                .mapToDouble(AdminCartItemDto::getSubtotal)
+                .sum();
             
-            abandonedCarts.add(AdminCartSummaryDto.builder()
-                    .userId(cart.getUser().getId())
-                    .userName(cart.getUser().getName() != null ? cart.getUser().getName() : "N/A")
-                    .userEmail(cart.getUser().getEmail() != null ? cart.getUser().getEmail() : "N/A")
-                    .totalItems(items.size())
-                    .totalQuantity(items.stream().mapToInt(AdminCartItemDto::getQuantity).sum())
-                    .totalValue(items.stream().mapToDouble(AdminCartItemDto::getSubtotal).sum())
-                    .lastActivity(cart.getUpdatedAt() != null ? cart.getUpdatedAt() : cart.getCreatedAt())
-                    .items(items)
-                    .build());
+            return AdminCartSummaryDto.builder()
+                .userId(cart.getUser().getId())
+                .userName(cart.getUser().getName() != null ? cart.getUser().getName() : "N/A")
+                .userEmail(cart.getUser().getEmail() != null ? cart.getUser().getEmail() : "N/A")
+                .totalItems(items.size())
+                .totalQuantity(totalQuantity)
+                .totalValue(Math.round(totalValue * 100.0) / 100.0) 
+                .lastActivity(cart.getUpdatedAt() != null ? cart.getUpdatedAt() : cart.getCreatedAt())
+                .cartAge(getCartAge(cart))
+                .items(items)
+                .build();
+                
+        } catch (Exception e) {
+            log.error("Error mapping abandoned cart: {}", e.getMessage());
+            return null;
         }
+    }
+
+    private String getCartAge(Cart cart) {
+        Instant lastActivity = cart.getUpdatedAt() != null ? cart.getUpdatedAt() : cart.getCreatedAt();
+        long hours = ChronoUnit.HOURS.between(lastActivity, Instant.now());
         
-        return abandonedCarts;
+        if (hours < 24) {
+            return hours + " hours";
+        } else {
+            long days = hours / 24;
+            return days + " days";
+        }
     }
 
     /**
@@ -295,28 +331,6 @@ public class AdminCartService {
         cartItemRepository.delete(cartItem);
     }
 
-    /**
-     * Admin action: Clear entire user cart
-     */
-    @Transactional
-    public void clearUserCart(Long userId) {
-        
-        if (!userRepository.existsById(userId)) {
-            throw new NotFoundException("User not found with ID: " + userId);
-        }
-        
-//        Cart cart = cartRepository.findByUserId(userId)
-//                .orElseThrow(() -> new NotFoundException("Cart not found for user: " + userId));
-//        
-//        log.info("Admin cleared cart for user {}. Removed {} items", 
-//                userId, cart.getItems().size());
-//        
-//        cartItemRepository.deleteByCartId(cart.getId());
-    }
-    
-    /**
-     * Admin action: Update cart item quantity
-     */
     @Transactional
     public AdminCartItemDto updateCartItemQuantity(Long itemId, Integer newQuantity) {
         
@@ -327,7 +341,6 @@ public class AdminCartService {
         CartItem cartItem = cartItemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("Cart item not found with ID: " + itemId));
         
-        // Check stock
         Integer availableStock = cartItem.getVariant().getInventories().stream()
                 .mapToInt(wi -> wi.getAvailableQuantity() != null ? wi.getAvailableQuantity() : 0)
                 .sum();
@@ -343,38 +356,55 @@ public class AdminCartService {
         
         return mapToAdminCartItemDto(updated);
     }
-    
-    /**
-     * Get cart statistics for dashboard
-     */
+
     public CartStatisticsDto getCartStatistics() {
+        log.info("Fetching cart statistics for dashboard");
         
         Long totalUsersWithCart = cartRepository.countUsersWithActiveCart();
         Long totalItems = cartItemRepository.countTotalItems();
-      //  Double totalValue = cartItemRepository.sumTotalCartValue();
+        Double totalValue = cartRepository.getTotalCartValue();
+        Long totalCarts = cartRepository.count();
         
-        // Abandoned carts (older than 48 hours)
         Instant threshold = Instant.now().minus(48, ChronoUnit.HOURS);
         Long abandonedCount = cartRepository.countAbandonedCarts(threshold);
         Double abandonedValue = cartItemRepository.sumAbandonedCartValue(threshold);
         
-        // Get top products in carts
+        Double averageCartValue = 0.0;
+        if (totalUsersWithCart != null && totalUsersWithCart > 0 && totalValue != null) {
+            averageCartValue = totalValue / totalUsersWithCart;
+        }
+        
+        Double averageItemsPerCart = 0.0;
+        Long cartsWithItems = cartRepository.countCartsWithItems();
+        Long emptyCarts = cartRepository.countEmptyCarts();
+        Double avgItemsPerCart = cartRepository.averageItemsPerCart();
+        
+        if (totalUsersWithCart != null && totalUsersWithCart > 0) {
+            averageCartValue = totalValue / totalUsersWithCart;
+        }
+        
+        if (totalCarts != null && totalCarts > 0) {
+
+            averageItemsPerCart = totalItems / (double) totalCarts;
+        }
+        
         List<Map<String, Object>> topProducts = getTopProductsInCarts(5);
         
         return CartStatisticsDto.builder()
                 .totalUsersWithCart(totalUsersWithCart != null ? totalUsersWithCart : 0L)
                 .totalCartItems(totalItems != null ? totalItems : 0L)
-              //  .totalCartValue(totalValue != null ? totalValue : 0.0)
-            //    .averageCartValue(totalUsersWithCart != null && totalUsersWithCart > 0 )
+                .totalCartValue(totalValue != null ? Math.round(totalValue * 100.0) / 100.0 : 0.0)
+                .averageCartValue(Math.round(averageCartValue * 100.0) / 100.0)
+                .averageItemsPerCart(avgItemsPerCart != null ? Math.round(avgItemsPerCart * 100.0) / 100.0 : 0.0)
                 .abandonedCartsCount(abandonedCount != null ? abandonedCount : 0L)
-                .abandonedCartsValue(abandonedValue != null ? abandonedValue : 0.0)
+                .abandonedCartsValue(abandonedValue != null ? Math.round(abandonedValue * 100.0) / 100.0 : 0.0)
                 .topProducts(topProducts != null ? topProducts : new ArrayList<>())
+                .totalCarts(totalCarts != null ? totalCarts : 0L)
+                .cartsWithItems(cartsWithItems != null ? cartsWithItems : 0L)
+                .emptyCarts(emptyCarts != null ? emptyCarts : 0L)
                 .build();
     }
-    
-    /**
-     * Helper: Get top products in carts
-     */
+
     private List<Map<String, Object>> getTopProductsInCarts(int limit) {
         
         List<Object[]> results = cartItemRepository.findTopProducts(limit);

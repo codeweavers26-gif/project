@@ -64,7 +64,7 @@ public class SecurityConfig {
 						// Orders require any logged-in user
 						.requestMatchers("/api/orders/**").authenticated()
 						.requestMatchers("/api/locations/**", "/api/products/**", "/api/categories/**",
-								"/api/sections/**")
+								"/api/sections/**", "/api/catalog/**")
 						.permitAll()
 
 						// Everything else

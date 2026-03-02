@@ -26,16 +26,13 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    private Category parent;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "parent_id")
+//    private Category parent;
 
     @NotBlank
     @Column(nullable = false, length = 100)
     private String name;
-
-    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
-    private List<Category> subCategories;
 
     @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
     private List<Product> products;
