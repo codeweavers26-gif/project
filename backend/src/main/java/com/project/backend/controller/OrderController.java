@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.project.backend.ResponseDto.CheckoutResponseDto;
 import com.project.backend.ResponseDto.CreateOrderResponse;
 import com.project.backend.ResponseDto.OrderResponseDto;
+import com.project.backend.ResponseDto.PlaceOrderResponseDto;
+import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.User;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.CheckoutRequestDto;
@@ -101,6 +103,19 @@ public class OrderController {
 	    
 	    return ResponseEntity.ok(razorpayService.createOrder(paymentRequest, user));
 	}
+	
+	 @PostMapping("/place")
+	 @Operation(summary = "place order", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
+	    public ResponseEntity<PlaceOrderResponseDto> placeOrder(
+	    		Authentication auth ,
+	    		@RequestParam Long addressId, 	@RequestParam PaymentMethod paymentMethod
+	         ) {
+		 User user = getCurrentUser(auth);
+		 PlaceOrderResponseDto response = orderService.placeOrder(user, addressId,paymentMethod);
+
+	        return ResponseEntity.ok(response);
+	    }
 
 //	@PostMapping("/items/{orderItemId}/return")
 //	@Operation(summary = "Request return for order item", security = {

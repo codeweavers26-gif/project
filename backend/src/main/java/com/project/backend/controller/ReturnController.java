@@ -32,16 +32,16 @@ public class ReturnController {
         return userRepository.findByEmail(auth.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
     }
-
-    @PostMapping
-    @Operation(summary = "Request product return",
-        security = @SecurityRequirement(name = "Bearer Authentication"))
-    public ResponseEntity<ReturnResponseDto> requestReturn(
-            Authentication auth,
-            @RequestBody ReturnRequestDto dto) {
-
-        return ResponseEntity.ok(
-            returnService.requestReturn(getUser(auth), dto)
-        );
-    }
+//
+//    @PostMapping
+//    @Operation(summary = "Request product return",
+//        security = @SecurityRequirement(name = "Bearer Authentication"))
+//    public ResponseEntity<ReturnResponseDto> requestReturn(
+//            Authentication auth,
+//            @RequestBody ReturnRequestDto dto) {
+//
+//        return ResponseEntity.ok(
+//            returnService.requestReturn(getUser(auth), dto)
+//        );
+//    }
 }

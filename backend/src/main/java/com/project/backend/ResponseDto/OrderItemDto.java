@@ -7,9 +7,14 @@ import lombok.Data;
 @Data
 @Builder
 public class OrderItemDto {
-    private Long productId;
-    private String productName;
-    private Double price;
-    private Integer quantity;
-    private Double total;
+	  private Long productId;
+	    private Long variantId;   
+
+	    private String productName;
+	    private String size;
+	    private String color;
+
+	    private Double price;
+	    private Integer quantity;
+	    private Double total;
 }

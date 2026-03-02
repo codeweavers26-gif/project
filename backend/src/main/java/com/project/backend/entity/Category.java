@@ -26,9 +26,6 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "parent_id")
-//    private Category parent;
 
     @NotBlank
     @Column(nullable = false, length = 100)

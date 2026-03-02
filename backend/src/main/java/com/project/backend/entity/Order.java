@@ -2,9 +2,8 @@ package com.project.backend.entity;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
-
-
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -40,21 +39,20 @@ public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+ 
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
+    private LocalDateTime paymentExpiry;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "location_id", nullable = false)
     private Location location;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "warehouse_id", nullable = false)
     private Warehouse warehouse;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shipping_address_id", nullable = false)
-    private UserAddress  shippingAddress;
+    @Column(name = "shipping_address_id")
+    private Long shippingAddressId;
     @Column(name = "cgst_amount", precision = 10, scale = 2)
     private BigDecimal cgstAmount;
 
