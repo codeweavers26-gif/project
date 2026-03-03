@@ -456,16 +456,13 @@ public class OrderService {
 
 	public PageResponseDto<OrderResponseDto> getUserOrdersWithFilters(OrderFilter filter, int page, int size) {
 
-		// Validate user exists
 		if (filter.getUserId() != null) {
 			userRepository.findById(filter.getUserId()).orElseThrow(() -> new NotFoundException("User not found"));
 		}
 
-		// Parse dates
 		Instant from = parseDate(filter.getFromDate(), false);
 		Instant to = parseDate(filter.getToDate(), true);
 
-		// Parse enums
 		OrderStatus orderStatus = filter.getStatus() != null ? OrderStatus.valueOf(filter.getStatus().toUpperCase())
 				: null;
 
@@ -477,12 +474,10 @@ public class OrderService {
 				? PaymentMethod.valueOf(filter.getPaymentMethod().toUpperCase())
 				: null;
 
-		// Create sort
 		Sort sort = Sort.by(Sort.Direction.fromString(filter.getSortDirection()), filter.getSortBy());
 		PageRequest pageable = PageRequest.of(page, size, sort);
 		String paymentMethodString = paymentMethod != null ? paymentMethod.name() : null;
 
-		// Get filtered orders
 		Page<Order> orders = orderRepository.findOrdersByFilters(filter.getUserId(), orderStatus, filter.getMinAmount(),
 				filter.getMaxAmount(), from, to, filter.getSearch(), pageable);
 

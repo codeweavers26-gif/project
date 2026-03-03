@@ -83,13 +83,14 @@ public class OrderController {
 		return ResponseEntity.ok(orderService.getOrderById(orderId, user));
 	}
 
-	@PostMapping("/{orderId}/reorder")
-	@Operation(summary = "Reorder previous order", security = { @SecurityRequirement(name = "Bearer Authentication") })
-	public ResponseEntity<Void> reorder(Authentication auth, @PathVariable Long orderId) {
-
-		orderService.reorder(getCurrentUser(auth), orderId);
-		return ResponseEntity.ok().build();
-	}
+//	@PostMapping("/{orderId}/reorder")
+//	public ResponseEntity<OrderResponseDto> reorder(
+//			Authentication auth,
+//	        @PathVariable Long orderId) {
+//		User user = getCurrentUser(auth);
+//	    OrderResponseDto response = orderService.reorder(user, orderId);
+//	    return ResponseEntity.ok(response);
+//	}
 	
 	@PostMapping("/{orderId}/payment/initiate")
 	@Operation(summary = "Initiate payment for prepaid order", security = {
@@ -98,7 +99,6 @@ public class OrderController {
 	        @PathVariable Long orderId,
 	        @RequestBody CreateOrderRequest paymentRequest) {
 		User user = getCurrentUser(auth);
-	    // Set the orderId from path
 	    paymentRequest.setOrderId(orderId);
 	    
 	    return ResponseEntity.ok(razorpayService.createOrder(paymentRequest, user));
