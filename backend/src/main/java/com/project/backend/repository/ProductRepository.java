@@ -390,10 +390,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	List<String> findDistinctBrandsByCategoryId(@Param("categoryId") Long categoryId);
 	@Query(value = """
 		    SELECT DISTINCT 
-		        p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active,
+		        p.id, 
+		        p.name, 
+		        p.slug, 
+		        p.brand, 
+		        p.short_description,
+		        p.price, 
+		        p.stock, 
+		        p.is_active,
 		        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
 		        MIN(v.selling_price) as min_price,
-		        c.id, c.name, c.slug
+		        c.id, 
+		        c.name, 
+		        c.slug
 		    FROM products p
 		    LEFT JOIN categories c ON p.category_id = c.id
 		    LEFT JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
@@ -401,22 +410,24 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    WHERE p.is_active = true 
 		    AND p.is_deleted = false
 		    AND (:categoryId IS NULL OR p.category_id = :categoryId)
+		    AND (:sectionId IS NULL OR c.section_id = :sectionId)  /* 👈 NEW: section filter */
 		    AND (:minPrice IS NULL OR v.selling_price >= :minPrice)
 		    AND (:maxPrice IS NULL OR v.selling_price <= :maxPrice)
 		    AND (:size IS NULL OR v.size = :size)
 		    AND (:color IS NULL OR v.color = :color)
 		    AND (:brand IS NULL OR p.brand = :brand)
 		    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
-		    ORDER BY p.created_at DESC
 		    """,
 		    countQuery = """
 		    SELECT COUNT(DISTINCT p.id)
 		    FROM products p
+		    LEFT JOIN categories c ON p.category_id = c.id
 		    LEFT JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
 		    LEFT JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
 		    WHERE p.is_active = true 
 		    AND p.is_deleted = false
 		    AND (:categoryId IS NULL OR p.category_id = :categoryId)
+		    AND (:sectionId IS NULL OR c.section_id = :sectionId)
 		    AND (:minPrice IS NULL OR v.selling_price >= :minPrice)
 		    AND (:maxPrice IS NULL OR v.selling_price <= :maxPrice)
 		    AND (:size IS NULL OR v.size = :size)
@@ -426,6 +437,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    nativeQuery = true)
 		Page<Object[]> findActiveProductsWithFiltersNative(
 		        @Param("categoryId") Long categoryId,
+		        @Param("sectionId") Long sectionId,          /* 👈 NEW parameter */
 		        @Param("minPrice") Double minPrice,
 		        @Param("maxPrice") Double maxPrice,
 		        @Param("size") String size,

@@ -6,9 +6,11 @@ import org.springframework.stereotype.Service;
 
 import com.project.backend.entity.User;
 import com.project.backend.entity.UserAddress;
+import com.project.backend.exception.NotFoundException;
 import com.project.backend.repository.UserAddressRepository;
 import com.project.backend.requestDto.UserAddressDto;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -41,5 +43,33 @@ public class UserAddressService {
 
 	public void deleteAddress(Long id) {
 		repo.deleteById(id);
+	}
+	
+	@Transactional
+	public UserAddress updateAddress(User user, Long addressId, UserAddressDto dto) {
+	    
+	    UserAddress address = repo.findById(addressId)
+	            .orElseThrow(() -> new NotFoundException("Address not found with id: " + addressId));
+	    
+	  
+	    
+	    if (dto.isDefault() && !address.isDefault()) {
+	        UserAddress existingDefault = repo.findByUserAndIsDefault(user, true);
+	        if (existingDefault != null && !existingDefault.getId().equals(addressId)) {
+	            existingDefault.setDefault(false);
+	            repo.save(existingDefault);
+	        }
+	    }
+	    
+	    address.setAddressLine1(dto.getAddressLine1());
+	    address.setAddressLine2(dto.getAddressLine2());
+	    address.setCity(dto.getCity());
+	    address.setState(dto.getState());
+	    address.setPostalCode(dto.getPostalCode());
+	    address.setCountry(dto.getCountry());
+	    address.setAddressType(dto.getAddressType());
+	    address.setDefault(dto.isDefault());
+	    
+	    return repo.save(address);
 	}
 }

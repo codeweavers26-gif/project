@@ -35,10 +35,10 @@ public class Warehouse {
 	private String name;
 
 	@Column(unique = true, length = 50)
-	private String code; // Warehouse code like "DEL-01", "MUM-01"
+	private String code; 
 
 	@Column(name = "location_id")
-	private Long locationId; // 🔥 ADD THIS - Reference to your location table
+	private Long locationId; 
 
 	private String address;
 	private String city;
@@ -61,7 +61,6 @@ public class Warehouse {
 	@Column(name = "is_active")
 	private Boolean isActive = true;
 
-	// Geo coordinates for future use
 	private Double latitude;
 	private Double longitude;
 
