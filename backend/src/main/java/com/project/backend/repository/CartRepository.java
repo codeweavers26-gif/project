@@ -207,11 +207,11 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
 	    @Query("SELECT c FROM Cart c WHERE c.updatedAt < :cutoffTime AND c.totalQuantity > 0")
 	    List<Cart> findAbandonedCarts(@Param("cutoffTime") Instant cutoffTime);
 	    
-	    @Query("SELECT DISTINCT c FROM Cart c " +
-	            "LEFT JOIN FETCH c.items ci " +
-	            "LEFT JOIN FETCH ci.product " +
-	            "LEFT JOIN FETCH ci.variant " +
-	            "WHERE c.updatedAt < :threshold AND c.totalQuantity > 0")
+		    @Query("SELECT DISTINCT c FROM Cart c " +
+		            "LEFT JOIN FETCH c.items ci " +
+		            "LEFT JOIN FETCH ci.product " +
+		            "LEFT JOIN FETCH ci.variant " +
+		            "WHERE c.updatedAt < :threshold AND c.totalQuantity > 0")
 	     List<Cart> findAbandonedCartsWithItems(@Param("threshold") Instant threshold);
 	    
 	    @Query("SELECT DISTINCT c FROM Cart c " +

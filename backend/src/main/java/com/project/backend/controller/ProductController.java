@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -74,9 +76,9 @@ public class ProductController {
 
 	private final ProductFilterService filterService;
 
-	@GetMapping("/filter")
+	@PostMapping("/filter")
 	@Operation(summary = "Filter products by hierarchy")
-	public ResponseEntity<PageResponseDto<ProductResponseDto>> filterProducts(@ModelAttribute ProductFilterDto filter) {
+	public ResponseEntity<PageResponseDto<ProductResponseDto>> filterProducts(@RequestBody ProductFilterDto filter) {
 		return ResponseEntity.ok(filterService.filterProducts(filter));
 	}
 

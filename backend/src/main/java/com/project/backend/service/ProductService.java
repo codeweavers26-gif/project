@@ -928,7 +928,7 @@ public class ProductService {
 				.size(productPage.getSize()).totalElements(productPage.getTotalElements())
 				.totalPages(productPage.getTotalPages()).last(productPage.isLast()).build();
 	}
-
+	
 	public PageResponseDto<ProductResponseDto> getRelatedProducts(Long productId, int page, int size) {
 		Pageable pageable = PageRequest.of(page, size);
 		Page<Object[]> productPage = productRepository.findRelatedProducts(productId, pageable);

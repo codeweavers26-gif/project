@@ -78,4 +78,15 @@ public class UserAccountController {
         addressService.deleteAddress(id);
         return ResponseEntity.noContent().build();
     }
+    
+    @Operation(summary = "Update an address", description = "Updates an existing address for the logged-in user", security = {
+    	    @SecurityRequirement(name = "Bearer Authentication") })
+    	@PutMapping("/addresses/{addressId}")
+    	public ResponseEntity<UserAddress> updateAddress(
+    	        Authentication auth,
+    	        @PathVariable Long addressId,
+    	        @RequestBody UserAddressDto dto) {
+    	    
+    	    return ResponseEntity.ok(addressService.updateAddress(getCurrentUser(auth), addressId, dto));
+    	}
 }
