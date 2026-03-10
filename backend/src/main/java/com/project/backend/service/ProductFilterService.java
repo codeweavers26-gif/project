@@ -1,6 +1,7 @@
 package com.project.backend.service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,9 +40,7 @@ public class ProductFilterService {
 	private final ProductVariantRepository variantRepo;
 	private final SectionRepository sectionRepository;
 
-	/**
-	 * Filter products with pagination
-	 */
+
 	public PageResponseDto<ProductResponseDto> filterProducts(ProductFilterDto filter) {
 		 log.info("Filter params - sectionId: {}, categoryId: {}, minPrice: {}, maxPrice: {}, color: {}, size: {}, brand: {}", 
 			        filter.getSectionId(), filter.getCategoryId(), filter.getMinPrice(), 
@@ -60,6 +59,14 @@ public class ProductFilterService {
 	    }
 	    Pageable pageable = createPageable(filter);
 	    log.info("Pageable: {}", pageable);
+	    
+	    String search = filter.getSearch();
+
+	    if (search != null && !search.trim().isEmpty()) {
+	        String[] words = search.toLowerCase().split("\\s+");
+	        search = String.join("%", words); 
+	    }
+	    
 	    Page<Object[]> productPage = productRepo.findActiveProductsWithFiltersNative(
 	            categoryId,
 	            sectionId, 
@@ -68,6 +75,7 @@ public class ProductFilterService {
 	            filter.getSize(),
 	            filter.getColor(),
 	            filter.getBrands() != null && !filter.getBrands().isEmpty() ? filter.getBrands().get(0) : null,
+	            		search, 
 	            pageable
 	    );
 	    log.info("Query returned {} results, total elements: {}", 
@@ -87,9 +95,7 @@ public class ProductFilterService {
 	            .last(productPage.isLast())
 	            .build();
 	}
-	/**
-	 * Get filter options for current hierarchy level
-	 */
+
 	public Map<String, Object> getFilterOptions(Long sectionId, Long categoryId, Long subCategoryId) {
 
 		Map<String, Object> options = new HashMap<>();

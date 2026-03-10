@@ -53,8 +53,6 @@ public class ProductController {
 
 		return ResponseEntity.ok(productService.getActiveProducts(filter));
 	}
-
-	// GET PRODUCT BY ID
 	@Operation(summary = "Get product details by ID", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping("/{id}")
