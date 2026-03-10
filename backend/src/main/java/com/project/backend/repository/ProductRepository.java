@@ -416,6 +416,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    AND (:size IS NULL OR v.size = :size)
 		    AND (:color IS NULL OR v.color = :color)
 		    AND (:brand IS NULL OR p.brand = :brand)
+		    AND (
+    :search IS NULL
+    OR MATCH(p.name, p.short_description, p.brand, p.slug)
+       AGAINST(:search IN BOOLEAN MODE)
+)
 		    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
 		    """,
 		    countQuery = """
@@ -433,16 +438,22 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    AND (:size IS NULL OR v.size = :size)
 		    AND (:color IS NULL OR v.color = :color)
 		    AND (:brand IS NULL OR p.brand = :brand)
+		    AND (
+    :search IS NULL
+    OR MATCH(p.name, p.short_description, p.brand, p.slug)
+       AGAINST(:search IN BOOLEAN MODE)
+)
 		    """,
 		    nativeQuery = true)
 		Page<Object[]> findActiveProductsWithFiltersNative(
 		        @Param("categoryId") Long categoryId,
-		        @Param("sectionId") Long sectionId,          /* 👈 NEW parameter */
+		        @Param("sectionId") Long sectionId,      
 		        @Param("minPrice") Double minPrice,
 		        @Param("maxPrice") Double maxPrice,
 		        @Param("size") String size,
 		        @Param("color") String color,
 		        @Param("brand") String brand,
+		        @Param("search") String search,
 		        Pageable pageable);
 	
 }

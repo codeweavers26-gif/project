@@ -7,6 +7,7 @@ import java.util.List;
 @Data
 @Builder
 public class ProductFilterDto {
+	 private String search;
     private Long sectionId;
     private Long categoryId;
     private Long subCategoryId;
