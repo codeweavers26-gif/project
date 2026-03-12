@@ -136,7 +136,9 @@ public class ProductService {
 
 		Product product = Product.builder().name(dto.getName()).brand(dto.getBrand())
 				.shortDescription(dto.getShortDescription()).description(dto.getDescription()).category(category)
-				.isActive(true).isDeleted(false).price(dto.getPrice())
+				.isActive(true).isDeleted(false).price(dto.getPrice()).deliveryDays(dto.getDeliveryDays()).mrp(dto.getMrp())
+				.codAvailable(dto.getCodAvailable()).discountPercent(dto.getDiscountPercent()).taxPercent(dto.getTaxPercent())
+				.weight(dto.getWeight()).length(dto.getLength()).width(dto.getWidth()).height(dto.getHeight())
 				.stock(dto.getStock() != null ? dto.getStock() : 0).build();
 
 		product.setSlug(generateUniqueSlug(dto.getName()));

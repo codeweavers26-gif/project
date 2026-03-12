@@ -79,11 +79,13 @@ public class OrderService {
 			throw new BadRequestException("Address does not belong to user");
 		}
 
-		Location location = locationRepository.findFirstByPincodeAndIsActiveTrue(address.getPostalCode())
-				.orElseThrow(() -> new BadRequestException("Delivery not available at this postal code"));
+		// Location location =
+		// locationRepository.findFirstByPincodeAndIsActiveTrue(address.getPostalCode())
+		// .orElseThrow(() -> new BadRequestException("Delivery not available at this
+		// postal code"));
 
-		Integer deliveryDays = location.getDeliveryDays();
-		Double extraShippingCharge = location.getExtraShippingCharge();
+		// Integer deliveryDays = location.getDeliveryDays();
+		Double extraShippingCharge = null;
 		if (extraShippingCharge == null) {
 			extraShippingCharge = 0.0;
 		}
@@ -100,12 +102,31 @@ public class OrderService {
 		List<CheckoutResponseDto.CheckoutItemDto> itemDtos = new ArrayList<>();
 		List<String> validationErrors = new ArrayList<>();
 		boolean isValidForCheckout = true;
-
+		int maxDeliveryDays = 0;
+		  boolean isCodAvailable = true; 
 		for (CartItem item : cart.getItems()) {
 
 			ProductVariant variant = item.getVariant();
 			Product product = item.getProduct();
 			Integer qty = item.getQuantity();
+			Integer productDeliveryDays = product.getDeliveryDays();
+
+			if (productDeliveryDays == null) {
+				log.warn("Product {} has no delivery days set", product.getId());
+				productDeliveryDays = 10;
+
+			}
+			if (productDeliveryDays > maxDeliveryDays) {
+				maxDeliveryDays = productDeliveryDays;
+				log.debug("New max delivery days: {} from product: {}", maxDeliveryDays, product.getName());
+			}
+			
+			  Boolean productCodAvailable = product.getCodAvailable();
+		        if (productCodAvailable == null) {
+		            productCodAvailable = true; 
+		        }
+		        
+
 			List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
 
 			int totalAvailable = inventories.stream().mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
@@ -123,14 +144,12 @@ public class OrderService {
 			BigDecimal mrp = variant.getMrp() != null ? variant.getMrp() : price;
 			BigDecimal itemSubtotal = price.multiply(BigDecimal.valueOf(qty));
 
-			// Tax calculation
 			BigDecimal gstPercent = BigDecimal.valueOf(5);
 			BigDecimal itemTax = itemSubtotal.multiply(gstPercent).divide(BigDecimal.valueOf(100));
 
 			subtotal = subtotal.add(itemSubtotal);
 			taxTotal = taxTotal.add(itemTax);
 
-			// Calculate discount percentage
 			int discountPercentage = 0;
 			if (mrp.compareTo(BigDecimal.ZERO) > 0 && mrp.compareTo(price) > 0) {
 				discountPercentage = mrp.subtract(price).multiply(BigDecimal.valueOf(100))
@@ -154,7 +173,7 @@ public class OrderService {
 		}
 
 		BigDecimal grandTotal = subtotal.add(taxTotal).add(shipping);
-		LocalDate expectedDelivery = LocalDate.now().plusDays(deliveryDays);
+		LocalDate expectedDelivery = LocalDate.now().plusDays(maxDeliveryDays);
 
 		// Build address DTO
 		CheckoutResponseDto.AddressDto addressDto = CheckoutResponseDto.AddressDto.builder()
@@ -164,14 +183,36 @@ public class OrderService {
 
 		return CheckoutResponseDto.builder().subtotal(subtotal).taxAmount(taxTotal).shippingCharges(shipping)
 				.discountAmount(BigDecimal.ZERO).totalAmount(grandTotal).items(itemDtos)
-				.totalItems(cart.getTotalQuantity()).deliveryAddress(addressDto).deliveryDays(deliveryDays)
+				.totalItems(cart.getTotalQuantity()).deliveryAddress(addressDto).deliveryDays(maxDeliveryDays)
 				.expectedDelivery(expectedDelivery).isDeliveryAvailable(true).paymentMethod(request.getPaymentMethod())
 				.requiresPayment(request.getPaymentMethod() != PaymentMethod.COD).paymentMessage(null)
-				.isCodAvailable(location.getCodAvailable() != null ? location.getCodAvailable() : false)
+				.isCodAvailable(isCodAvailable)
 				.cartId(cart.getId()).isValidForCheckout(isValidForCheckout).validationErrors(validationErrors).build();
 	}
 
-	// Helper method for product image
+	private BigDecimal calculateGST(BigDecimal amount, ProductVariant variant) {
+	    BigDecimal gstPercent = getGSTPercentage(variant); // Should come from product/service
+	    return amount.multiply(gstPercent).divide(BigDecimal.valueOf(100));
+	}
+
+	private BigDecimal getGSTPercentage(ProductVariant variant) {
+	    return BigDecimal.valueOf(5); 
+	}
+	
+	private BigDecimal calculateShipping(BigDecimal subtotal, Location location) {
+	    BigDecimal shipping = BigDecimal.valueOf(
+	        location.getExtraShippingCharge() != null ? location.getExtraShippingCharge() : 0.0
+	    );
+	    
+	    // Make threshold configurable
+	    BigDecimal freeShippingThreshold = BigDecimal.valueOf(999);
+	    
+	    if (subtotal.compareTo(freeShippingThreshold) > 0) {
+	        return BigDecimal.ZERO;
+	    }
+	    return shipping;
+	}
+	
 	private String getProductImage(Product product) {
 		if (product.getImages() != null && !product.getImages().isEmpty()) {
 			return product.getImages().get(0).getImageUrl();
@@ -189,9 +230,6 @@ public class OrderService {
 			throw new BadRequestException("Address does not belong to user");
 		}
 
-		Location location = locationRepository.findFirstByPincodeAndIsActiveTrue(address.getPostalCode())
-				.orElseThrow(() -> new BadRequestException("Delivery not available"));
-
 		Cart cart = cartRepository.findByUserId(user.getId()).orElseThrow(() -> new BadRequestException("Cart empty"));
 
 		if (cart.getItems().isEmpty()) {
@@ -200,13 +238,12 @@ public class OrderService {
 
 		BigDecimal subtotal = BigDecimal.ZERO;
 		BigDecimal taxTotal = BigDecimal.ZERO;
-		BigDecimal shipping = BigDecimal
-				.valueOf(location.getExtraShippingCharge() != null ? location.getExtraShippingCharge() : 0.0);
+		BigDecimal shipping = BigDecimal.valueOf(12);
 
 		Warehouse defaultWarehouse = warehouseRepository.findById(1L)
 				.orElseThrow(() -> new NotFoundException("Default warehouse not found"));
 
-		Order order = Order.builder().user(user).location(location).shippingAddressId(addressId)
+		Order order = Order.builder().user(user).shippingAddressId(addressId)
 				.deliveryAddressLine1(address.getAddressLine1()).deliveryAddressLine2(address.getAddressLine2())
 				.deliveryCity(address.getCity()).deliveryState(address.getState())
 				.deliveryPostalCode(address.getPostalCode()).deliveryCountry(address.getCountry())
@@ -219,10 +256,14 @@ public class OrderService {
 
 		order = orderRepository.save(order);
 
+		int maxDays =0;
+		
 		for (CartItem item : cart.getItems()) {
 
 			ProductVariant variant = item.getVariant();
 			int qty = item.getQuantity();
+			Product p = item.getProduct();
+			maxDays = p.getDeliveryDays(); 
 
 			List<WarehouseInventory> inventories = inventoryRepository.findByVariantIdForUpdate(variant.getId());
 
@@ -264,14 +305,15 @@ public class OrderService {
 
 		orderRepository.save(order);
 
-		return PlaceOrderResponseDto.builder().orderId(order.getId())
-				.subtotal(subtotal).taxAmount(taxTotal).shippingCharges(shipping)
-			//	.discountAmount(BigDecimal.valueOf(order.getDiscountAmount() != null ? order.getDiscountAmount() : 0.0))
+		return PlaceOrderResponseDto.builder().orderId(order.getId()).subtotal(subtotal).taxAmount(taxTotal)
+				.shippingCharges(shipping)
+				// .discountAmount(BigDecimal.valueOf(order.getDiscountAmount() != null ?
+				// order.getDiscountAmount() : 0.0))
 				.totalAmount(grandTotal).orderStatus(order.getStatus() != null ? order.getStatus().name() : null)
 				.paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
 				.paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null)
-				.expectedDelivery(LocalDate.now().plusDays(location.getDeliveryDays()))
-				.deliveryDays(location.getDeliveryDays()).paymentExpiry(order.getPaymentExpiry())
+				.expectedDelivery(LocalDate.now().plusDays(maxDays))
+				.deliveryDays(maxDays).paymentExpiry(order.getPaymentExpiry())
 				.requiresPayment(paymentMethod != PaymentMethod.COD)
 				.deliveryAddress(PlaceOrderResponseDto.DeliveryAddressDto.builder()
 						.addressLine1(address.getAddressLine1()).addressLine2(address.getAddressLine2())
