@@ -2,6 +2,7 @@ package com.project.backend.service;
 
 import java.util.List;
 
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -23,7 +24,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 		User user = userRepository.findByEmail(username)
 				.orElseThrow(() -> new UsernameNotFoundException("User not found"));
-		return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(),
-				List.of(new SimpleGrantedAuthority(user.getRole().name())));
-	}
+        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
+        
+        return new org.springframework.security.core.userdetails.User(
+                user.getEmail(), 
+                user.getPassword(),
+                List.of(authority)
+        );
+    }
 }

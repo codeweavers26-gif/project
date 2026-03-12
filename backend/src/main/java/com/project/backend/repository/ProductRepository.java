@@ -60,9 +60,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			""")
 	Page<Product> findAvailableInLocation(@Param("locationId") Long locationId, Pageable pageable);
 
-	// ============= FILTERING QUERIES =============
-
-	// 🔥 FIXED: Simplified filter using only category
 	@Query("""
 			    SELECT DISTINCT p FROM Product p
 			    LEFT JOIN FETCH p.images
@@ -75,7 +72,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	Page<Product> filterProducts(@Param("categoryId") Long categoryId, @Param("minPrice") Double minPrice,
 			@Param("maxPrice") Double maxPrice, @Param("brand") String brand, Pageable pageable);
 
-	// 🔥 FIXED: Get distinct brands by category
 	@Query("""
 			    SELECT DISTINCT p.brand FROM Product p
 			    WHERE p.isActive = true
@@ -84,7 +80,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			""")
 	List<String> findDistinctBrandsByCategory(@Param("categoryId") Long categoryId);
 
-	// 🔥 FIXED: Get price range by category
 	@Query("""
 			    SELECT MIN(p.price), MAX(p.price) FROM Product p
 			    WHERE p.isActive = true
@@ -106,8 +101,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		return (Double) result.get(0)[1];
 	}
 
-	// ============= COUNT QUERIES =============
-
 	@Query("SELECT COUNT(p) FROM Product p WHERE p.isActive = true")
 	Long getTotalActiveProducts();
 
@@ -122,11 +115,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	@Query("SELECT COUNT(p) FROM Product p WHERE p.category.id = :categoryId")
 	Long countByCategoryId(@Param("categoryId") Long categoryId);
-
-//    @Override
-//    @EntityGraph(attributePaths = {"variants", "images", "variants.inventories"})
-//    Optional<Product> findById(Long id);
-//    
+   
 	@Query("""
 			    SELECT p FROM Product p
 			    LEFT JOIN FETCH p.variants v

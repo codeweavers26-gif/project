@@ -15,7 +15,6 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 400 - Validation Errors
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException ex,
@@ -37,7 +36,22 @@ public class GlobalExceptionHandler {
         );
     }
 
-    // 404
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequest(
+            BadRequestException ex, 
+            HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                ErrorResponse.builder()
+                        .timestamp(Instant.now())
+                        .status(400)
+                        .error("Bad Request")
+                        .message(ex.getMessage())  // This will show "Maximum purchase quantity is 10 units"
+                        .path(request.getRequestURI())
+                        .build()
+        );
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(
             NotFoundException ex, HttpServletRequest request) {
@@ -53,7 +67,6 @@ public class GlobalExceptionHandler {
         );
     }
 
-    // 401 / 403
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorized(
             UnauthorizedException ex, HttpServletRequest request) {
@@ -69,10 +82,11 @@ public class GlobalExceptionHandler {
         );
     }
 
-    // 500 - fallback
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(
             Exception ex, HttpServletRequest request) {
+        
+        ex.printStackTrace();
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ErrorResponse.builder()

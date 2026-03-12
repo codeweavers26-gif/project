@@ -57,7 +57,6 @@ public class ProductResponseDto {
 	@Schema(description = "Tax percentage applied", example = "12")
 	private Double taxPercent;
 
-	/* ---------------- STOCK (CUSTOMER SAFE) ---------------- */
 
 	@Schema(description = "Available stock quantity", example = "120")
 	private Integer stock;
@@ -70,15 +69,11 @@ public class ProductResponseDto {
 	@Schema(description = "Stock status label", example = "IN_STOCK / LOW_STOCK / OUT_OF_STOCK")
 	private String stockStatus;
 
-	/* ---------------- RATINGS ---------------- */
-
 	@JsonProperty("average_rating")
 	private Double averageRating;
 
 	@JsonProperty("total_reviews")
 	private Integer totalReviews;
-
-	/* ---------------- DELIVERY ---------------- */
 
 	@JsonProperty("cod_available")
 	private Boolean codAvailable;
@@ -88,14 +83,10 @@ public class ProductResponseDto {
 	@JsonProperty("delivery_days")
 	private Integer deliveryDays;
 
-	/* ---------------- SHIPPING DIMENSIONS ---------------- */
-
 	private Double weight;
 	private Double length;
 	private Double width;
 	private Double height;
-
-	/* ---------------- IMAGES ---------------- */
 
 	@JsonProperty("main_image")
 	private String mainImage;

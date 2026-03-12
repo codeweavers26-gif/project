@@ -50,7 +50,25 @@ public class Product {
     @Column(length = 20)
     private String status = "ACTIVE";
     private String slug;
-
+    private String sku; 
+    private Double mrp; 
+    @Column(name = "discount_percent")
+    private Double discountPercent;
+    private Double weight;
+    private Double length;
+    private Double width;
+    private Double height;
+    @Column(name = "cod_available")
+    private Boolean codAvailable = true;
+    
+    private Boolean returnable = true;
+    @Column(name = "average_rating")
+    private Double averageRating = 0.0;
+    
+    @Column(name = "total_reviews")
+    private Integer totalReviews = 0;
+    @Column(name = "delivery_days")
+    private Integer deliveryDays;
     private String brand;
 
     @Column(name = "short_description")
@@ -63,7 +81,6 @@ public class Product {
     @JoinColumn(name = "category_id")
     private Category category;
 
-    // 🔥 ADD THIS FIELD - Product price
     @Column(nullable = false)
     private Double price;
 
@@ -104,8 +121,11 @@ public class Product {
     }
 
     @Builder
-    public Product(Long id, String name, String slug, String brand, String shortDescription, 
-                  String description, Category category, Double price, Double taxPercent,
+    public Product(Long id, String name, String slug, String sku, String brand, String shortDescription, 
+                  String description, Category category, Double price,Double mrp, Double discountPercent,
+                  Double taxPercent, Double weight, Double length, 
+                  Double width, Double height, Boolean codAvailable, Boolean returnable,
+                  Integer deliveryDays, Double averageRating, Integer totalReviews,
                   Boolean isActive, Boolean isDeleted, LocalDateTime createdAt, 
                   LocalDateTime updatedAt, List<ProductVariant> variants, List<ProductImage> images, Integer stock) {
         this.id = id;
@@ -115,7 +135,21 @@ public class Product {
         this.shortDescription = shortDescription;
         this.description = description;
         this.category = category;
-        this.price = price; // 🔥 ADD THIS
+        this.sku = sku;
+        this.mrp = mrp;
+        this.discountPercent = discountPercent;
+        this.taxPercent = taxPercent;
+        this.stock = stock != null ? stock : 0;
+        this.weight = weight;
+        this.length = length;
+        this.width = width;
+        this.height = height;
+        this.codAvailable = codAvailable != null ? codAvailable : true;
+        this.returnable = returnable != null ? returnable : true;
+        this.deliveryDays = deliveryDays;
+        this.averageRating = averageRating != null ? averageRating : 0.0;
+        this.totalReviews = totalReviews != null ? totalReviews : 0;
+        this.price = price;
         this.taxPercent = taxPercent;
         this.isActive = isActive != null ? isActive : true;
         this.isDeleted = isDeleted != null ? isDeleted : false;

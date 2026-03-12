@@ -45,9 +45,6 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
     private LocalDateTime paymentExpiry;
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "location_id", nullable = false)
-    private Location location;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "warehouse_id", nullable = false)
     private Warehouse warehouse;

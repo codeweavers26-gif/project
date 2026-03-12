@@ -53,8 +53,7 @@ public class ProductController {
 
 		return ResponseEntity.ok(productService.getActiveProducts(filter));
 	}
-	@Operation(summary = "Get product details by ID", security = {
-			@SecurityRequirement(name = "Bearer Authentication") })
+	@Operation(summary = "Get product details by ID")
 	@GetMapping("/{id}")
 	public ResponseEntity<ProductResponseDto> getProductById(@PathVariable Long id) {
 		return ResponseEntity.ok(productService.getActiveProductById(id));
@@ -63,8 +62,7 @@ public class ProductController {
 	/**
 	 * Get products available at a location
 	 */
-	@Operation(summary = "Get products by location", security = {
-			@SecurityRequirement(name = "Bearer Authentication") })
+	@Operation(summary = "Get products by location")
 	@GetMapping(params = { "locationId" })
 	public ResponseEntity<PageResponseDto<ProductResponseDto>> getProductsByLocation(@RequestParam Long locationId,
 			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
