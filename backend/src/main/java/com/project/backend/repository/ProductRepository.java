@@ -279,7 +279,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    AND v.is_active = true 
 		    AND wi.available_quantity > 0
 		    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
-		    """, nativeQuery = true)
+		    """, 
+    countQuery = """
+    SELECT COUNT(DISTINCT p.id) 
+    FROM products p
+    JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
+    JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
+    WHERE p.is_active = true 
+        AND (p.is_deleted IS NULL OR p.is_deleted = false)
+        AND v.is_active = true 
+        AND wi.available_quantity > 0
+    """,nativeQuery = true)
 		Page<Object[]> findFeaturedProducts(Pageable pageable);
 
 	@Query(value = """
@@ -309,7 +319,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    AND p.is_deleted = false
 		    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
 
-		    """, nativeQuery = true)
+		    """,countQuery = """
+        SELECT COUNT(DISTINCT p.id) 
+        FROM products p
+        JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
+        JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
+        WHERE p.is_active = true 
+            AND (p.is_deleted IS NULL OR p.is_deleted = false)
+            AND v.is_active = true 
+            AND wi.available_quantity > 0
+        """, nativeQuery = true)
 		Page<Object[]> findNewArrivals(Pageable pageable);
 
 		@Query(value = """
@@ -339,7 +358,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			    AND p.is_deleted = false
 			    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
 	
-			    """, nativeQuery = true)
+			    """,  countQuery = """
+    SELECT COUNT(DISTINCT p.id) 
+    FROM products p
+    JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
+    JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
+    WHERE p.is_active = true 
+        AND (p.is_deleted IS NULL OR p.is_deleted = false)
+        AND v.is_active = true 
+        AND wi.available_quantity > 0
+    """, nativeQuery = true)
 			Page<Object[]> findBestSellers(Pageable pageable);
 
 	@Query(value = """
