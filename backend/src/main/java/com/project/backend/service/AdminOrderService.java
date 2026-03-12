@@ -3,6 +3,8 @@ package com.project.backend.service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -93,20 +95,31 @@ public class AdminOrderService {
 
 	private void validateStatusTransition(OrderStatus current, OrderStatus next) {
 
-		if (current == OrderStatus.CANCELLED || current == OrderStatus.DELIVERED) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Final order status cannot be changed");
-		}
-//
-//        if (current == OrderStatus.PENDING && !(next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED))
-//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid transition");
-//
-//        if (current == OrderStatus.CONFIRMED && !(next == OrderStatus.SHIPPED || next == OrderStatus.CANCELLED))
-//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid transition");
-
-		if (current == OrderStatus.SHIPPED && next != OrderStatus.DELIVERED)
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only DELIVERED allowed after SHIPPED");
+	    if (current == OrderStatus.CANCELLED || current == OrderStatus.DELIVERED) {
+	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+	            "Cannot change status of a " + current + " order");
+	    }
+	    
+	    Map<OrderStatus, Set<OrderStatus>> validTransitions = Map.of(
+	        OrderStatus.PENDING, Set.of(OrderStatus.PAID, OrderStatus.PLACED, OrderStatus.CANCELLED),
+	        OrderStatus.PENDING_PAYMENT, Set.of(OrderStatus.PAID, OrderStatus.PLACED, OrderStatus.CANCELLED),
+	        OrderStatus.PLACED, Set.of(OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+	        OrderStatus.PAID, Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+	        OrderStatus.SHIPPED, Set.of(OrderStatus.DELIVERED, OrderStatus.RETURN_REQUESTED),
+	        OrderStatus.RETURN_REQUESTED, Set.of(OrderStatus.CANCELLED)
+	    );
+	    
+	    Set<OrderStatus> allowedNext = validTransitions.get(current);
+	    if (allowedNext == null) {
+	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+	            "Unknown order status: " + current);
+	    }
+	    
+	    if (!allowedNext.contains(next)) {
+	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+	            "Invalid transition from " + current + " to " + next);
+	    }
 	}
-
 	public PageResponseDto<AdminUserOrderResponseDto> getOrdersOfUser(Long userId, int page, int size) {
 
 		Page<Order> orders = orderRepository.findByUserId(userId,
