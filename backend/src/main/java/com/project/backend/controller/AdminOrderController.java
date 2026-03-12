@@ -18,6 +18,8 @@ import com.project.backend.requestDto.UpdateOrderStatusDto;
 import com.project.backend.service.AdminOrderService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +59,12 @@ public class AdminOrderController {
 	}
 
 	@Operation(summary = "Cancel order", security = @SecurityRequirement(name = "Bearer Authentication"))
+	@ApiResponses(value = {
+		    @ApiResponse(responseCode = "200", description = "Order cancelled successfully"),
+		    @ApiResponse(responseCode = "400", description = "Invalid request - Order cannot be cancelled (delivered, shipped, or already cancelled)"),
+		    @ApiResponse(responseCode = "404", description = "Order not found"),
+		    @ApiResponse(responseCode = "500", description = "Internal server error")
+		})
 	@PutMapping("/{orderId}/cancel")
 	public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
 		adminOrderService.cancelOrder(orderId);

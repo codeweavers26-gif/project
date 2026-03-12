@@ -1,10 +1,12 @@
 package com.project.backend.service;
 
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -22,6 +24,8 @@ import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.OrderStatus;
+import com.project.backend.exception.BadRequestException;
+import com.project.backend.exception.NotFoundException;
 import com.project.backend.mapper.OrderMapper;
 import com.project.backend.repository.OrderRepository;
 import com.project.backend.repository.UserRepository;
@@ -42,13 +46,17 @@ public class AdminOrderService {
 
 	public PageResponseDto<OrderResponseDto> searchOrders(OrderStatus status, Long userId, Long orderId, String email,
 	        String from, String to, int page, int size) {
-
+		  try {
 	    PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
 	    Instant fromDate = from != null ? LocalDate.parse(from).atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
 	    Instant toDate = to != null ? LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
 	            : null;
-
+	    if (email != null && !email.trim().isEmpty()) {
+            if (!isValidEmail(email)) {
+                throw new BadRequestException("Invalid email format");
+            }
+        }
 	    Page<Order> orders = orderRepository.searchOrders(status, userId, orderId, email, fromDate, toDate, pageable);
 
 	    return PageResponseDto.<OrderResponseDto>builder()
@@ -65,29 +73,93 @@ public class AdminOrderService {
 	            .totalPages(orders.getTotalPages())
 	            .last(orders.isLast())
 	            .build();
+	    
+		  } catch (BadRequestException e) {
+		        throw e;
+		    } catch (Exception e) {
+
+		        throw new RuntimeException("Failed to search orders", e);
+		    }
 	}
+		  
+		  private boolean isValidEmail(String email) {
+			    if (email == null || email.trim().isEmpty()) {
+			        return false;
+			    }
+			    String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+			    Pattern pattern = Pattern.compile(emailRegex);
+			    return pattern.matcher(email).matches();
+			}
+		  
 	@Transactional
 	public OrderResponseDto updateStatus(Long orderId, OrderStatus newStatus) {
+		
+		try {
+		  if (orderId == null) {
+	            throw new BadRequestException("Order ID cannot be null");
+	        }
+	        if (newStatus == null) {
+	            throw new BadRequestException("Order status cannot be null");
+	        }
 
 		Order order = getOrder(orderId);
+		
+		
+		 if (order.getStatus() == newStatus) {
+	            throw new BadRequestException("Order is already in " + newStatus + " status");
+	        }
 		validateStatusTransition(order.getStatus(), newStatus);
 
 		order.setStatus(newStatus);
-		return OrderMapper.toDto(orderRepository.save(order));
+		return OrderMapper.toDto(orderRepository.save(order)); } catch (NotFoundException | BadRequestException e) 
+		{
+	        throw e;
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to update order status", e);
+	    }
 	}
 
 	@Transactional
 	public void cancelOrder(Long orderId) {
+		
+	    try {
+	        if (orderId == null) {
+	            throw new BadRequestException("Order ID cannot be null");
+	        }
 		Order order = getOrder(orderId);
 
-		if (order.getStatus() == OrderStatus.DELIVERED) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Delivered order cannot be cancelled");
-		}
+		 validateCancellation(order);
+		
 
 		order.setStatus(OrderStatus.CANCELLED);
 		orderRepository.save(order);
+	    } catch (NotFoundException | BadRequestException e) {
+	        throw e;
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to cancel order", e);
+	    }
 	}
 
+	
+	private void validateCancellation(Order order) {
+	    if (order.getStatus() == OrderStatus.CANCELLED) {
+	        throw new BadRequestException("Order is already cancelled");
+	    }
+	    
+	    if (order.getStatus() == OrderStatus.DELIVERED) {
+	        throw new BadRequestException("Delivered order cannot be cancelled");
+	    }
+	    
+	    if (order.getStatus() == OrderStatus.SHIPPED) {
+	        throw new BadRequestException("Shipped order cannot be cancelled. Please request return instead.");
+	    }
+	    if (order.getStatus() == OrderStatus.RETURN_REQUESTED) {
+	        throw new BadRequestException("Order with return request cannot be cancelled. Please process return first.");
+	    }
+	    
+	
+	}
+	
 	private Order getOrder(Long id) {
 		return orderRepository.findById(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -96,7 +168,7 @@ public class AdminOrderService {
 	private void validateStatusTransition(OrderStatus current, OrderStatus next) {
 
 	    if (current == OrderStatus.CANCELLED || current == OrderStatus.DELIVERED) {
-	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+	        throw new BadRequestException(
 	            "Cannot change status of a " + current + " order");
 	    }
 	    
@@ -111,17 +183,17 @@ public class AdminOrderService {
 	    
 	    Set<OrderStatus> allowedNext = validTransitions.get(current);
 	    if (allowedNext == null) {
-	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+	        throw new BadRequestException(
 	            "Unknown order status: " + current);
 	    }
 	    
 	    if (!allowedNext.contains(next)) {
-	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+	        throw new BadRequestException(
 	            "Invalid transition from " + current + " to " + next);
 	    }
 	}
 	public PageResponseDto<AdminUserOrderResponseDto> getOrdersOfUser(Long userId, int page, int size) {
-
+try {
 		Page<Order> orders = orderRepository.findByUserId(userId,
 				PageRequest.of(page, size, Sort.by("createdAt").descending()));
 
@@ -129,6 +201,12 @@ public class AdminOrderService {
 				.content(orders.getContent().stream().map(this::map).toList()).page(orders.getNumber())
 				.size(orders.getSize()).totalElements(orders.getTotalElements()).totalPages(orders.getTotalPages())
 				.last(orders.isLast()).build();
+		
+	   } catch (BadRequestException e) {
+	        throw e;
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to fetch user orders", e);
+	    }
 	}
 
 	private AdminUserOrderResponseDto map(Order order) {
