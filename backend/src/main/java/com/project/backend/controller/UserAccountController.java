@@ -35,7 +35,6 @@ public class UserAccountController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // ---------------- PROFILE ----------------
 
     @Operation(summary = "Get current user profile", description = "Returns the profile of the logged-in user", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
@@ -53,7 +52,6 @@ public class UserAccountController {
         return ResponseEntity.ok(profileService.updateProfile(getCurrentUser(auth), dto));
     }
 
-    // ---------------- ADDRESSES ----------------
 
     @Operation(summary = "Get all addresses of user", description = "Fetches all saved addresses of the logged-in user", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
