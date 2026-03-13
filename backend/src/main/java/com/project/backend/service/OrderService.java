@@ -222,106 +222,216 @@ public class OrderService {
 
 	@Transactional
 	public PlaceOrderResponseDto placeOrder(User user, Long addressId, PaymentMethod paymentMethod) {
+	    try {
+	        if (user == null) {
+	            throw new BadRequestException("User not authenticated");
+	        }
+	        
+	        if (addressId == null) {
+	            throw new BadRequestException("Address ID is required");
+	        }
+	        
+	        if (paymentMethod == null) {
+	            throw new BadRequestException("Payment method is required");
+	        }
 
-		UserAddress address = userAddressRepository.findById(addressId)
-				.orElseThrow(() -> new NotFoundException("Address not found"));
+	        UserAddress address = userAddressRepository.findById(addressId)
+	                .orElseThrow(() -> new NotFoundException("Address not found with ID: " + addressId));
 
-		if (!address.getUser().getId().equals(user.getId())) {
-			throw new BadRequestException("Address does not belong to user");
-		}
+	        if (!address.getUser().getId().equals(user.getId())) {
+	            throw new BadRequestException("Address does not belong to the current user");
+	        }
 
-		Cart cart = cartRepository.findByUserId(user.getId()).orElseThrow(() -> new BadRequestException("Cart empty"));
+	        Cart cart = cartRepository.findByUserId(user.getId())
+	                .orElseThrow(() -> new BadRequestException("Cart is empty"));
 
-		if (cart.getItems().isEmpty()) {
-			throw new BadRequestException("Cart empty");
-		}
+	        if (cart.getItems() == null || cart.getItems().isEmpty()) {
+	            throw new BadRequestException("Cart has no items");
+	        }
 
-		BigDecimal subtotal = BigDecimal.ZERO;
-		BigDecimal taxTotal = BigDecimal.ZERO;
-		BigDecimal shipping = BigDecimal.valueOf(12);
+	        Warehouse defaultWarehouse = warehouseRepository.findById(1L)
+	                .orElseThrow(() -> new NotFoundException("Default warehouse not configured. Please contact support."));
 
-		Warehouse defaultWarehouse = warehouseRepository.findById(1L)
-				.orElseThrow(() -> new NotFoundException("Default warehouse not found"));
+	        BigDecimal subtotal = BigDecimal.ZERO;
+	        BigDecimal taxTotal = BigDecimal.ZERO;
+	        BigDecimal shipping = BigDecimal.valueOf(12);
+	        int maxDeliveryDays = 0;
 
-		Order order = Order.builder().user(user).shippingAddressId(addressId)
-				.deliveryAddressLine1(address.getAddressLine1()).deliveryAddressLine2(address.getAddressLine2())
-				.deliveryCity(address.getCity()).deliveryState(address.getState())
-				.deliveryPostalCode(address.getPostalCode()).deliveryCountry(address.getCountry())
-				.paymentMethod(paymentMethod).status(OrderStatus.PENDING_PAYMENT).paymentStatus(PaymentStatus.PENDING)
-				.paymentExpiry(LocalDateTime.now().plusMinutes(15)).taxAmount(0.0).warehouse(defaultWarehouse)
-//	            .cgstAmount(0.0)  
-//	            .igstAmount(0.0) 
-//	            .sgstAmount(0.0) 
-				.shippingCharges(shipping.doubleValue()).totalAmount(0.0).build();
+	        Order order = Order.builder()
+	                .user(user)
+	                .shippingAddressId(addressId)
+	                .deliveryAddressLine1(address.getAddressLine1())
+	                .deliveryAddressLine2(address.getAddressLine2())
+	                .deliveryCity(address.getCity())
+	                .deliveryState(address.getState())
+	                .deliveryPostalCode(address.getPostalCode())
+	                .deliveryCountry(address.getCountry())
+	                .paymentMethod(paymentMethod)
+	                .status(OrderStatus.PENDING_PAYMENT)
+	                .paymentStatus(PaymentStatus.PENDING)
+	                .paymentExpiry(LocalDateTime.now().plusMinutes(15))
+	                .taxAmount(0.0)
+	                .warehouse(defaultWarehouse)
+	                .shippingCharges(shipping.doubleValue())
+	                .totalAmount(0.0)
+	                .build();
 
-		order = orderRepository.save(order);
+	        order = orderRepository.save(order);
 
-		int maxDays =0;
-		
-		for (CartItem item : cart.getItems()) {
+	        for (CartItem item : cart.getItems()) {
+	            try {
+	                if (item.getVariant() == null) {
+	                    throw new BadRequestException("Invalid cart item: missing variant information");
+	                }
+	                
+	                if (item.getProduct() == null) {
+	                    throw new BadRequestException("Invalid cart item: missing product information");
+	                }
 
-			ProductVariant variant = item.getVariant();
-			int qty = item.getQuantity();
-			Product p = item.getProduct();
-			maxDays = p.getDeliveryDays(); 
+	                ProductVariant variant = item.getVariant();
+	                int quantity = item.getQuantity();
+	                Product product = item.getProduct();
 
-			List<WarehouseInventory> inventories = inventoryRepository.findByVariantIdForUpdate(variant.getId());
+	                Integer deliveryDays = product.getDeliveryDays();
+	                if (deliveryDays == null) {
+	                    log.warn("Product ID: {} has null delivery days. Using default value of 5 days", product.getId());
+	                    deliveryDays = 5; 
+	                }
+	                maxDeliveryDays = Math.max(maxDeliveryDays, deliveryDays);
 
-			int available = inventories.stream().mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
-					.sum();
+	                List<WarehouseInventory> inventories;
+	                try {
+	                    inventories = inventoryRepository.findByVariantIdForUpdate(variant.getId());
+	                } catch (Exception e) {
+	                    log.error("Error fetching inventory for variant ID: {}", variant.getId(), e);
+	                    throw new BadRequestException("Unable to check inventory. Please try again.");
+	                }
 
-			if (available < qty) {
-				throw new BadRequestException(variant.getSku() + " out of stock");
-			}
+	                if (inventories == null || inventories.isEmpty()) {
+	                    throw new BadRequestException("Product variant " + variant.getSku() + " is out of stock");
+	                }
 
-			BigDecimal price = variant.getSellingPrice();
+	                int available = inventories.stream()
+	                        .mapToInt(i -> {
+	                            int availableQty = i.getAvailableQuantity() - i.getReservedQuantity();
+	                            return Math.max(availableQty, 0); // Ensure non-negative
+	                        })
+	                        .sum();
 
-			BigDecimal itemSubtotal = price.multiply(BigDecimal.valueOf(qty));
-			BigDecimal gstPercent = BigDecimal.valueOf(5);
-			BigDecimal itemTax = itemSubtotal.multiply(gstPercent).divide(BigDecimal.valueOf(100));
+	                if (available < quantity) {
+	                    throw new BadRequestException("Insufficient stock for " + variant.getSku() + 
+	                            ". Available: " + available + ", Requested: " + quantity);
+	                }
 
-			subtotal = subtotal.add(itemSubtotal);
-			taxTotal = taxTotal.add(itemTax);
+	                BigDecimal price = variant.getSellingPrice();
+	                if (price == null) {
+	                    log.error("Variant ID: {} has null selling price", variant.getId());
+	                    throw new BadRequestException("Product price not configured");
+	                }
 
-			OrderItem orderItem = OrderItem.builder().order(order).productId(variant.getProduct().getId())
-					.variantId(variant.getId()).productName(variant.getProduct().getName())
-					.price(variant.getSellingPrice().doubleValue()).quantity(qty).size(variant.getSize())
-					.color(variant.getColor()).build();
+	                BigDecimal itemSubtotal = price.multiply(BigDecimal.valueOf(quantity));
+	                
+	                BigDecimal gstPercent;
+	                try {
+	                    gstPercent = BigDecimal.valueOf(product.getTaxPercent() != null ? product.getTaxPercent() : 5);
+	                } catch (Exception e) {
+	                    log.warn("Error getting tax percent for product ID: {}, using default 5%", product.getId());
+	                    gstPercent = BigDecimal.valueOf(5);
+	                }
+	                
+	                BigDecimal itemTax = itemSubtotal.multiply(gstPercent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
-			orderItemRepository.save(orderItem);
+	                subtotal = subtotal.add(itemSubtotal);
+	                taxTotal = taxTotal.add(itemTax);
+	                OrderItem orderItem = OrderItem.builder()
+	                        .order(order)
+	                        .productId(variant.getProduct().getId())
+	                        .variantId(variant.getId())
+	                        .productName(variant.getProduct().getName())
+	                        .price(variant.getSellingPrice().doubleValue())
+	                        .quantity(quantity)
+	                        .size(variant.getSize())
+	                        .color(variant.getColor())
+	                        .build();
 
-			reserveStock(inventories, qty);
-		}
+	                try {
+	                    orderItemRepository.save(orderItem);
+	                } catch (Exception e) {
+	                    log.error("Failed to save order item for variant ID: {}", variant.getId(), e);
+	                    throw new BadRequestException("Failed to process order item. Please try again.");
+	                }
 
-		if (subtotal.compareTo(BigDecimal.valueOf(999)) > 0) {
-			shipping = BigDecimal.ZERO;
-		}
+	                try {
+	                    reserveStock(inventories, quantity);
+	                } catch (Exception e) {
+	                    log.error("Failed to reserve stock for variant ID: {}", variant.getId(), e);
+	                    throw new BadRequestException("Failed to reserve stock. Please try again.");
+	                }
 
-		BigDecimal grandTotal = subtotal.add(taxTotal).add(shipping);
+	            } catch (BadRequestException e) {
+	                throw e; // Re-throw BadRequestException
+	            } catch (Exception e) {
+	                log.error("Unexpected error processing cart item: {}", item.getId(), e);
+	                throw new BadRequestException("Error processing cart item: " + e.getMessage());
+	            }
+	        }
 
-		order.setTaxAmount(taxTotal.doubleValue());
-		order.setShippingCharges(shipping.doubleValue());
-		order.setTotalAmount(grandTotal.doubleValue());
+	        if (subtotal.compareTo(BigDecimal.valueOf(999)) > 0) {
+	            shipping = BigDecimal.ZERO;
+	        }
 
-		orderRepository.save(order);
+	        BigDecimal grandTotal = subtotal.add(taxTotal).add(shipping);
 
-		return PlaceOrderResponseDto.builder().orderId(order.getId()).subtotal(subtotal).taxAmount(taxTotal)
-				.shippingCharges(shipping)
-				// .discountAmount(BigDecimal.valueOf(order.getDiscountAmount() != null ?
-				// order.getDiscountAmount() : 0.0))
-				.totalAmount(grandTotal).orderStatus(order.getStatus() != null ? order.getStatus().name() : null)
-				.paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
-				.paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null)
-				.expectedDelivery(LocalDate.now().plusDays(maxDays))
-				.deliveryDays(maxDays).paymentExpiry(order.getPaymentExpiry())
-				.requiresPayment(paymentMethod != PaymentMethod.COD)
-				.deliveryAddress(PlaceOrderResponseDto.DeliveryAddressDto.builder()
-						.addressLine1(address.getAddressLine1()).addressLine2(address.getAddressLine2())
-						.city(address.getCity()).state(address.getState()).postalCode(address.getPostalCode())
-						.country(address.getCountry()).build())
-				.message("Order placed successfully").build();
+	        order.setTaxAmount(taxTotal.doubleValue());
+	        order.setShippingCharges(shipping.doubleValue());
+	        order.setTotalAmount(grandTotal.doubleValue());
+
+	        try {
+	            orderRepository.save(order);
+	        } catch (Exception e) {
+	            log.error("Failed to update order with ID: {}", order.getId(), e);
+	            throw new BadRequestException("Failed to finalize order. Please try again.");
+	        }
+
+	        try {
+	            cart.getItems().clear();
+	            cartRepository.save(cart);
+	        } catch (Exception e) {
+	            log.warn("Failed to clear cart after order placement. Order ID: {}", order.getId());
+
+	        }
+
+	        return PlaceOrderResponseDto.builder()
+	                .orderId(order.getId())
+	                .subtotal(subtotal)
+	                .taxAmount(taxTotal)
+	                .shippingCharges(shipping)
+	                .totalAmount(grandTotal)
+	                .orderStatus(order.getStatus() != null ? order.getStatus().name() : "PENDING")
+	                .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : "PENDING")
+	                .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null)
+	                .expectedDelivery(LocalDate.now().plusDays(maxDeliveryDays))
+	                .deliveryDays(maxDeliveryDays)
+	                .paymentExpiry(order.getPaymentExpiry())
+	                .requiresPayment(paymentMethod != PaymentMethod.COD)
+	                .deliveryAddress(PlaceOrderResponseDto.DeliveryAddressDto.builder()
+	                        .addressLine1(address.getAddressLine1())
+	                        .addressLine2(address.getAddressLine2())
+	                        .city(address.getCity())
+	                        .state(address.getState())
+	                        .postalCode(address.getPostalCode())
+	                        .country(address.getCountry())
+	                        .build())
+	                .message("Order placed successfully")
+	                .build();
+
+	    } catch (BadRequestException | NotFoundException e) {
+	        throw e;
+	    } catch (Exception e) {
+	        log.error("Unexpected error in placeOrder for user ID: {}", user != null ? user.getId() : "unknown", e);
+	        throw new BadRequestException("Failed to place order: " + e.getMessage());
+	    }
 	}
-
 	private void reserveStock(List<WarehouseInventory> inventories, int qty) {
 
 		for (WarehouseInventory inv : inventories) {
