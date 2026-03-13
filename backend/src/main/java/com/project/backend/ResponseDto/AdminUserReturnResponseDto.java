@@ -1,30 +1,31 @@
 package com.project.backend.ResponseDto;
 
-import java.time.Instant;
-import lombok.Builder;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import com.project.backend.entity.ReturnReason;
+import com.project.backend.entity.ReturnStatus;
+
 import lombok.Data;
 
 @Data
-@Builder
 public class AdminUserReturnResponseDto {
-
     private Long returnId;
-
-    private Long userId;
-    private String userEmail;
-
-    private Long orderId;
-    private Long orderItemId;
-
-    private Long productId;
-    private String productName;
-
+    private String returnNumber;
+    private ReturnStatus status;
+    private ReturnReason reason;
     private Integer quantity;
-
-    private String reason;      
-    private String status;    
-
-    private Double refundAmount;
-
-    private Instant requestedAt;
+    private BigDecimal refundAmount;
+    private LocalDateTime createdAt;
+    
+    private Long orderId;
+    private String orderNumber;
+    
+    private String productName;
+    private String productSku;
+    private Double productPrice;
+    
+    private String userEmail;
+    private String userName;
 }
