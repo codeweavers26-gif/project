@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserAddressRepository extends JpaRepository<UserAddress, Long> {
 
-    List<UserAddress> findByUser(User user);
+    List<UserAddress> findByUserAndIsActiveTrue(User user);
 
     UserAddress findByUserAndIsDefault(User user, boolean isDefault);
 }

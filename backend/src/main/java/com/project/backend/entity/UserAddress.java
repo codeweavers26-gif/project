@@ -25,8 +25,8 @@ public class UserAddress {
     private String state;
     private String postalCode;
     private String country;
-
-    private String addressType; // HOME / OFFICE / OTHER
+    private Boolean isActive;
+    private String addressType;
     private boolean isDefault;
 
     private Instant createdAt = Instant.now();

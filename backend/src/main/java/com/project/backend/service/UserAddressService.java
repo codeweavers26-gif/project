@@ -20,7 +20,7 @@ public class UserAddressService {
 	private final UserAddressRepository repo;
 
 	public List<UserAddress> getAllAddresses(User user) {
-		return repo.findByUser(user);
+		return repo.findByUserAndIsActiveTrue(user);
 	}
 
 	public UserAddress addAddress(User user, UserAddressDto dto) {
@@ -35,15 +35,21 @@ public class UserAddressService {
 
 		UserAddress addr = UserAddress.builder().user(user).addressLine1(dto.getAddressLine1())
 				.addressLine2(dto.getAddressLine2()).city(dto.getCity()).state(dto.getState())
-				.postalCode(dto.getPostalCode()).country(dto.getCountry()).addressType(dto.getAddressType())
+				.postalCode(dto.getPostalCode()).country(dto.getCountry()).addressType(dto.getAddressType()).isActive(true)
 				.isDefault(dto.isDefault()).build();
 
 		return repo.save(addr);
 	}
 
-	public void deleteAddress(Long id) {
-		repo.deleteById(id);
-	}
+	 @Transactional
+	    public void deleteAddress(Long id) {
+	        UserAddress address = repo.findById(id)
+	            .orElseThrow(() -> new NotFoundException("Address not found with id: " + id));
+	        
+	        address.setIsActive(false);  
+	        
+	        repo.save(address); 
+	    }
 	
 	@Transactional
 	public UserAddress updateAddress(User user, Long addressId, UserAddressDto dto) {
@@ -64,6 +70,7 @@ public class UserAddressService {
 	    address.setAddressLine1(dto.getAddressLine1());
 	    address.setAddressLine2(dto.getAddressLine2());
 	    address.setCity(dto.getCity());
+	    address.setIsActive(true);
 	    address.setState(dto.getState());
 	    address.setPostalCode(dto.getPostalCode());
 	    address.setCountry(dto.getCountry());
