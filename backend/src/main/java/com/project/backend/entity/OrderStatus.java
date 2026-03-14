@@ -11,6 +11,7 @@ public enum OrderStatus {
     PLACED,
     RETURN_REQUESTED,
     PENDING,
+    PREPAID,
     PENDING_PAYMENT;
     
     

@@ -1,11 +1,14 @@
 package com.project.backend.controller;
 
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,13 +16,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.project.backend.ResponseDto.CheckoutResponseDto;
 import com.project.backend.ResponseDto.CreateOrderResponse;
 import com.project.backend.ResponseDto.OrderResponseDto;
+import com.project.backend.ResponseDto.PaymentResponse;
 import com.project.backend.ResponseDto.PlaceOrderResponseDto;
 import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.User;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.CheckoutRequestDto;
-import com.project.backend.requestDto.CreateOrderRequest;
 import com.project.backend.requestDto.PageResponseDto;
+import com.project.backend.requestDto.PaymentRequest;
+import com.project.backend.requestDto.VerifyPaymentRequest;
 import com.project.backend.service.OrderService;
 import com.project.backend.service.RazorpayService;
 
@@ -97,12 +102,49 @@ public class OrderController {
 			@SecurityRequirement(name = "Bearer Authentication") })
 	public ResponseEntity<CreateOrderResponse> initiatePayment(Authentication auth,
 	        @PathVariable Long orderId,
-	        @RequestBody CreateOrderRequest paymentRequest) {
+	        @RequestBody PaymentRequest paymentRequest) {
 		User user = getCurrentUser(auth);
 	    paymentRequest.setOrderId(orderId);
 	    
 	    return ResponseEntity.ok(razorpayService.createOrder(paymentRequest, user));
 	}
+	
+	   @PostMapping("/verify")
+
+		@Operation(summary = "Get order details", security = { @SecurityRequirement(name = "Bearer Authentication") })
+	    public ResponseEntity<Map<String, Object>> verifyPayment(Authentication auth,@RequestBody VerifyPaymentRequest request) {
+		   
+		   User user = getCurrentUser(auth);
+		   PaymentResponse res = razorpayService.verifyPayment(request,user);
+	        
+		   
+	        boolean isValid =res.isSuccess();
+	        		
+	        		
+	        
+	        if (isValid) {
+	            return ResponseEntity.ok(Map.of(
+	                "success", true,
+	                "message", "Payment verified successfully"
+	            ));
+	        } else {
+	            return ResponseEntity.badRequest().body(Map.of(
+	                "success", false,
+	                "message", "Payment verification failed"
+	            ));
+	        }
+	    }
+
+	    @PostMapping("/webhook")
+
+		@Operation(summary = "Get order details", security = { @SecurityRequirement(name = "Bearer Authentication") })
+	    public ResponseEntity<String> handleWebhook(
+	            @RequestBody String payload,
+	            @RequestHeader("X-Razorpay-Signature") String signature) {
+	        
+	    	razorpayService.handleWebhook(payload, signature);
+	        return ResponseEntity.ok("Webhook received");
+	    }
 	
 	 @PostMapping("/place")
 	 @Operation(summary = "place order", security = {
