@@ -267,8 +267,11 @@ public class OrderService {
 	                .deliveryPostalCode(address.getPostalCode())
 	                .deliveryCountry(address.getCountry())
 	                .paymentMethod(paymentMethod)
-	                .status(OrderStatus.PENDING_PAYMENT)
+	                .status(paymentMethod == PaymentMethod.COD ? 
+	                        OrderStatus.PENDING : OrderStatus.PENDING_PAYMENT)
 	                .paymentStatus(PaymentStatus.PENDING)
+	                .paymentExpiry(paymentMethod == PaymentMethod.PREPAID ? 
+	                               LocalDateTime.now().plusMinutes(15) : null)
 	                .paymentExpiry(LocalDateTime.now().plusMinutes(15))
 	                .taxAmount(0.0)
 	                .warehouse(defaultWarehouse)

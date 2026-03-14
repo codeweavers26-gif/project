@@ -14,9 +14,12 @@ import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.PaymentStatus;
 import com.project.backend.entity.PaymentTransaction;
 import com.project.backend.entity.User;
+import com.project.backend.exception.BadRequestException;
+import com.project.backend.exception.NotFoundException;
+import com.project.backend.exception.UnauthorizedException;
 import com.project.backend.repository.OrderRepository;
 import com.project.backend.repository.PaymentTransactionRepository;
-import com.project.backend.requestDto.CreateOrderRequest;
+import com.project.backend.requestDto.PaymentRequest;
 import com.project.backend.requestDto.VerifyPaymentRequest;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
@@ -45,40 +48,38 @@ public class RazorpayService {
      * Create Razorpay order for PREPAID orders
      */
     @Transactional
-    public CreateOrderResponse createOrder(CreateOrderRequest request, User user) {
+    public CreateOrderResponse createOrder(PaymentRequest request, User user) {
         try {
-            // Fetch order
             com.project.backend.entity.Order order = orderRepository.findById(request.getOrderId())
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new NotFoundException("Order not found"));
             
-            // Verify order belongs to user
             if (!order.getUser().getId().equals(user.getId())) {
-                throw new RuntimeException("Unauthorized access to order");
+                throw new UnauthorizedException("Unauthorized access to order");
             }
             
-            // Check if order is already paid
             if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
                 throw new RuntimeException("Order already paid");
             }
             
-            // Ensure it's a PREPAID order
             if (order.getPaymentMethod() != PaymentMethod.PREPAID) {
                 throw new RuntimeException("Order is not prepaid");
             }
             
-            // Check if transaction already exists
-            paymentTransactionRepository.findByOrderId(order.getId())
-                .ifPresent(transaction -> {
-                    if (!"FAILED".equals(transaction.getStatus())) {
-                        throw new RuntimeException("Payment already initiated for this order");
-                    }
-                });
+            if (order.getPaymentMethod() == PaymentMethod.COD) {
+                throw new RuntimeException("COD orders cannot be paid online");
+            }
             
-            // Create Razorpay order
+            paymentTransactionRepository.findByOrderId(order.getId())
+            .ifPresent(transaction -> {
+                if (!"FAILED".equals(transaction.getStatus())) {
+                    throw new RuntimeException("Payment already initiated for this order");
+                }
+            });
+            int amountInPaise = request.getAmount().multiply(BigDecimal.valueOf(100)).intValue();
             JSONObject orderRequest = new JSONObject();
-            orderRequest.put("amount", request.getAmount().multiply(new BigDecimal(100)).intValue()); // Convert to paise
-            orderRequest.put("currency", request.getCurrency());
-            orderRequest.put("receipt", "receipt_" + order.getId());
+            orderRequest.put("amount", amountInPaise);
+            orderRequest.put("currency", request.getCurrency() != null ? request.getCurrency() : "INR");
+            orderRequest.put("receipt", request.getReceipt() != null ? request.getReceipt() : "receipt_" + order.getId());
             
             JSONObject notes = new JSONObject();
             notes.put("order_id", order.getId());
@@ -91,7 +92,6 @@ public class RazorpayService {
             log.info("Creating Razorpay order for order ID: {}", order.getId());
             Order razorpayOrder = razorpayClient.orders.create(orderRequest);
             
-            // Save payment transaction
             PaymentTransaction transaction = PaymentTransaction.builder()
                 .order(order)
                 .razorpayOrderId(razorpayOrder.get("id"))
@@ -103,7 +103,6 @@ public class RazorpayService {
             
             paymentTransactionRepository.save(transaction);
             
-            // Update order payment status to PENDING
             order.setPaymentStatus(PaymentStatus.PENDING);
             orderRepository.save(order);
             
@@ -120,13 +119,11 @@ public class RazorpayService {
             
         } catch (RazorpayException e) {
             log.error("Razorpay order creation failed", e);
-            throw new RuntimeException("Payment initiation failed: " + e.getMessage());
+            throw new BadRequestException("Failed to create payment order: " + e.getMessage());
         }
     }
 
-    /**
-     * Verify payment signature
-     */
+  
     @Transactional
     public PaymentResponse verifyPayment(VerifyPaymentRequest request, User user) {
         try {
@@ -212,60 +209,53 @@ public class RazorpayService {
         }
     }
 
-    /**
-     * Handle webhook from Razorpay
-     */
+
+    
     @Transactional
     public void handleWebhook(String payload, String signature) {
         try {
+            // Verify webhook signature
+            // TODO: Implement webhook signature verification using razorpay.webhook.secret
+            
             JSONObject webhookData = new JSONObject(payload);
             String event = webhookData.getString("event");
-            
-            log.info("Received Razorpay webhook: {}", event);
-            
-            JSONObject paymentEntity = webhookData.getJSONObject("payload")
-                .getJSONObject("payment").getJSONObject("entity");
+            JSONObject paymentEntity = webhookData.getJSONObject("payload").getJSONObject("payment").getJSONObject("entity");
             
             String razorpayOrderId = paymentEntity.getString("order_id");
             String razorpayPaymentId = paymentEntity.getString("id");
+            String status = paymentEntity.getString("status");
             
             PaymentTransaction transaction = paymentTransactionRepository
                 .findByRazorpayOrderId(razorpayOrderId)
-                .orElseThrow(() -> new RuntimeException("Transaction not found"));
-            
-            com.project.backend.entity.Order order = transaction.getOrder();
+                .orElseThrow(() -> new NotFoundException("Transaction not found"));
             
             switch (event) {
                 case "payment.captured":
-                case "payment.authorized":
                     transaction.setRazorpayPaymentId(razorpayPaymentId);
-                    transaction.setStatus("PAID");
+                    transaction.setStatus("COMPLETED");
                     transaction.setCompletedAt(Instant.now());
-                    if (paymentEntity.has("method")) {
-                        transaction.setRazorpayPaymentMethod(paymentEntity.getString("method"));
-                    }
                     
-                    // Update order with your enums
-                    order.setPaymentStatus(PaymentStatus.SUCCESS);
-                    order.setStatus(OrderStatus.PLACED);
+                    com.project.backend.entity.Order order = transaction.getOrder();
+                    order.setPaymentStatus(com.project.backend.entity.PaymentStatus.COMPLETED);
+                    orderRepository.save(order);
                     break;
                     
                 case "payment.failed":
-                    String errorDescription = paymentEntity.optString("error_description");
                     transaction.setStatus("FAILED");
-                    transaction.setFailureReason(errorDescription);
-                    
-                    // Update order with your enums
-                    order.setPaymentStatus(PaymentStatus.FAILED);
+                    transaction.setFailureReason(paymentEntity.optString("error_description"));
                     break;
             }
             
+            transaction.setGatewayResponse(payload);
             paymentTransactionRepository.save(transaction);
-            orderRepository.save(order);
             
+            log.info("Webhook processed: {} for order {}", event, razorpayOrderId);
+
         } catch (Exception e) {
-            log.error("Webhook processing error", e);
-            throw new RuntimeException("Webhook processing failed", e);
+            log.error("Webhook processing failed", e);
+            throw new BadRequestException("Webhook processing failed");
         }
     }
+    
+    
 }

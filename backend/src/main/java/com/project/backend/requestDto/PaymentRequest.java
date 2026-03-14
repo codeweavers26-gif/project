@@ -13,7 +13,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class CreateOrderRequest {
+public class PaymentRequest {
     
     @NotNull(message = "Order ID is required")
     private Long orderId;
@@ -23,6 +23,8 @@ public class CreateOrderRequest {
     private BigDecimal amount;
     
     private String currency = "INR";
+    
+    private String receipt;
     
     @NotBlank(message = "Customer name is required")
     private String customerName;
