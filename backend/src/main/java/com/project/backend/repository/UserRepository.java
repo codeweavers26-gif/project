@@ -1,6 +1,7 @@
 package com.project.backend.repository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Repository;
 
 import com.project.backend.entity.Role;
 import com.project.backend.entity.User;
+
+import io.lettuce.core.dynamic.annotation.Param;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -26,6 +29,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     	""")
     	Page<User> searchUsers(String search, Instant from, Instant to, Pageable pageable);
 
+    @Query("SELECT u.createdAt FROM User u WHERE u.id = :userId")
+    LocalDateTime getUserCreatedDate(@Param("userId") Long userId);
+    
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.id = :userId AND u.createdAt >= :date")
+    boolean isUserCreatedAfter(@Param("userId") Long userId, @Param("date") LocalDateTime date);
 
 
 

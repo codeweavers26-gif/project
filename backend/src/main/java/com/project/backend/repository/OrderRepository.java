@@ -1,6 +1,8 @@
 package com.project.backend.repository;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -18,7 +20,7 @@ import com.project.backend.entity.User;
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
 	Page<Order> findAll(Pageable pageable);
-
+Long countByUserId(Long userId);
 	Page<Order> findByUser(User user, Pageable pageable);
 
 	Page<Order> findByStatus(OrderStatus status, Pageable pageable);
@@ -101,5 +103,24 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 	           "JOIN o.items i " +
 	           "WHERE i.productName LIKE %:productName%")
 	    List<Order> findByProductName(@Param("productName") String productName);
+
+
+		 @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.user.id = :userId AND o.paymentStatus = 'SUCCESS'")
+    BigDecimal getTotalSpentByUser(@Param("userId") Long userId);
+      @Query("SELECT o FROM Order o WHERE o.user.id = :userId AND o.createdAt >= :since")
+    List<Order> findUserOrdersSince(@Param("userId") Long userId, @Param("since") LocalDateTime since);
+    
+    @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END FROM Order o WHERE o.user.id = :userId AND o.id = :orderId")
+    boolean isOrderBelongsToUser(@Param("userId") Long userId, @Param("orderId") Long orderId);
+    
+    @Query("SELECT o.paymentMethod FROM Order o WHERE o.id = :orderId")
+    String getPaymentMethodByOrderId(@Param("orderId") Long orderId);
+    
+    @Query("SELECT DISTINCT oi.productId FROM OrderItem oi WHERE oi.order.id = :orderId")
+    List<Long> findProductIdsByOrderId(@Param("orderId") Long orderId);
+    
+
+    @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
+    List<Order> findOrdersBetweenDates(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 	
 }

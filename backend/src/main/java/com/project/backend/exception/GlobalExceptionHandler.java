@@ -98,6 +98,19 @@ public class GlobalExceptionHandler {
                         .build()
         );
     }
-    
+    @ExceptionHandler(DuplicateResourceException.class)
+public ResponseEntity<ErrorResponse> handleDuplicateResource(
+        DuplicateResourceException ex, HttpServletRequest request) {
+      
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(
+            ErrorResponse.builder()
+                    .timestamp(Instant.now())
+                    .status(409)
+                    .error("Conflict")
+                    .message(ex.getMessage())
+                    .path(request.getRequestURI())
+                    .build()
+    );
+}
  
 }

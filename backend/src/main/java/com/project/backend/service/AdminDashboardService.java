@@ -43,7 +43,6 @@ public class AdminDashboardService {
         Double totalSales = orderRepository.getTotalSales();
         Long totalOrders = orderRepository.countDeliveredOrders();
         Long totalItemsSold = orderRepository.getTotalItemsSold();
-      //  Long totalInventoryLeft = productRepository.getTotalStock();
         Long totalUsers = userRepository.countByRole(Role.CUSTOMER);
         
         Long usersWithCart = cartRepository.countDistinctUsersWithCart();
@@ -84,7 +83,6 @@ public class AdminDashboardService {
         );
     }
 
-    // 2️⃣ Orders by Status
     public OrderStatusCountDto getOrderStatusCounts() {
         return new OrderStatusCountDto(
                 orderRepository.countByStatus(OrderStatus.PENDING),
@@ -97,7 +95,6 @@ public class AdminDashboardService {
         );
     }
 
-    // 3️⃣ New Customers
     public CustomerSummaryDto getNewCustomers() {
     	Instant now = Instant.now();
 
@@ -121,26 +118,6 @@ public class AdminDashboardService {
                 userRepository.countByCreatedAtAfter(startOfMonth)
         );
     }
-
-//    // 4️⃣ Alerts
-//    public AlertSummaryDto getAlerts() {
-//        return new AlertSummaryDto(
-//                productRepository.countByStockLessThan(10), // low stock threshold
-//                paymentRepository.countByStatus("FAILED"),
-//                orderRepository.countByStatus("RETURN_REQUESTED")
-//        );
-//    }
-
-//    // 5️⃣ Shipping Summary
-//    public ShippingSummaryDto getShippingSummary() {
-//        LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
-//
-//        return new ShippingSummaryDto(
-//                shipmentRepository.countByStatus("READY_TO_SHIP"),
-//                shipmentRepository.countByStatus("IN_TRANSIT"),
-//                shipmentRepository.countByStatusAndDeliveredAtAfter("DELIVERED", startOfDay)
-//        );
-//    }
 
     public RevenueSummaryDto getRevenueSummary() {
         Instant now = Instant.now();

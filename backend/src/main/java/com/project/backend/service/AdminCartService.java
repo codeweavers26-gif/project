@@ -21,13 +21,13 @@ import com.project.backend.ResponseDto.AdminCartItemDto;
 import com.project.backend.ResponseDto.AdminCartSummaryDto;
 import com.project.backend.ResponseDto.CartStatisticsDto;
 import com.project.backend.entity.Cart;
-import com.project.backend.entity.CartItem; // Make sure you have this entity
+import com.project.backend.entity.CartItem; 
 import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductImage;
 import com.project.backend.entity.User;
 import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
-import com.project.backend.repository.CartItemRepository; // Add this
+import com.project.backend.repository.CartItemRepository; 
 import com.project.backend.repository.CartRepository;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.PageResponseDto;
@@ -208,7 +208,6 @@ public class AdminCartService {
         Integer quantity = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
         Double subtotal = price * quantity;
         
-        // Get available stock
         Integer availableStock = cartItem.getVariant().getInventories() != null ?
                 cartItem.getVariant().getInventories().stream()
                         .mapToInt(wi -> wi.getAvailableQuantity() != null ? wi.getAvailableQuantity() : 0)
