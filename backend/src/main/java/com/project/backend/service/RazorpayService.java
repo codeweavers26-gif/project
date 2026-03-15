@@ -138,7 +138,10 @@ public class RazorpayService {
             if (!order.getUser().getId().equals(user.getId())) {
                 throw new RuntimeException("Unauthorized access");
             }
-            
+            System.err.println(request.getRazorpaySignature());
+            System.err.println(request.getRazorpayPaymentId());
+            System.err.println(request.getRazorpayOrderId());
+
             // Verify signature
             JSONObject options = new JSONObject();
             options.put("razorpay_order_id", request.getRazorpayOrderId());

@@ -22,22 +22,15 @@ public class CloudinaryService {
     @Value("${cloudinary.folder:products}")
     private String defaultFolder;
 
-    /**
-     * Upload image to Cloudinary
-     */
     public Map uploadImage(MultipartFile multipartFile) throws IOException {
         return uploadImage(multipartFile, defaultFolder);
     }
 
-    /**
-     * Upload image to Cloudinary with specific folder
-     */
+  
     public Map uploadImage(MultipartFile multipartFile, String folder) throws IOException {
         try {
-            // Generate unique public ID
             String publicId = UUID.randomUUID().toString();
             
-            // Upload options
             Map<String, Object> options = ObjectUtils.asMap(
                 "folder", folder,
                 "public_id", publicId,
@@ -45,7 +38,6 @@ public class CloudinaryService {
                 "resource_type", "auto"
             );
             
-            // Upload file
             Map uploadResult = cloudinary.uploader().upload(multipartFile.getBytes(), options);
             
             return uploadResult;
@@ -55,9 +47,6 @@ public class CloudinaryService {
         }
     }
 
-    /**
-     * Upload with transformations (auto-optimization)
-     */
     public Map uploadOptimizedImage(MultipartFile multipartFile, Long productId) throws IOException {
         String folder = "products/" + productId;
         String publicId = UUID.randomUUID().toString();
@@ -74,16 +63,12 @@ public class CloudinaryService {
         return cloudinary.uploader().upload(multipartFile.getBytes(), options);
     }
 
-    /**
-     * Upload multiple sizes for responsive images
-     */
     public Map<String, String> uploadResponsiveImage(MultipartFile file, Long productId) throws IOException {
         String folder = "products/" + productId;
         String basePublicId = UUID.randomUUID().toString();
         
         Map<String, String> urls = new java.util.HashMap<>();
         
-        // Thumbnail (100x100)
         Map thumbResult = cloudinary.uploader().upload(file.getBytes(), 
             ObjectUtils.asMap(
                 "folder", folder,
@@ -92,7 +77,6 @@ public class CloudinaryService {
             ));
         urls.put("thumbnail", (String) thumbResult.get("secure_url"));
         
-        // Medium (400x400)
         Map mediumResult = cloudinary.uploader().upload(file.getBytes(),
             ObjectUtils.asMap(
                 "folder", folder,
@@ -100,8 +84,6 @@ public class CloudinaryService {
                 "transformation", new Transformation<>().width(400).height(400).crop("limit")
             ));
         urls.put("medium", (String) mediumResult.get("secure_url"));
-        
-        // Large (800x800)
         Map largeResult = cloudinary.uploader().upload(file.getBytes(),
             ObjectUtils.asMap(
                 "folder", folder,
@@ -112,17 +94,9 @@ public class CloudinaryService {
         
         return urls;
     }
-
-    /**
-     * Delete image from Cloudinary
-     */
-    public Map deleteImage(String publicId) throws IOException {
+  public Map deleteImage(String publicId) throws IOException {
         return cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
     }
-
-    /**
-     * Get image URL with transformations
-     */
     public String getOptimizedImageUrl(String publicId, int width, int height) {
         return cloudinary.url()
             .transformation(new Transformation<>()

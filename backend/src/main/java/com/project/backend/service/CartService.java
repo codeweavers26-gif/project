@@ -119,10 +119,8 @@ public class CartService {
 	            user.getId(), productId, qty);
 	    }
 	    
-	    // Update cart totals
 	    updateCartTotals(cart);
 	    
-	    // Return the updated/created item
 	    CartItem savedItem = existingItem != null ? existingItem : 
 	        cartItemRepository.findByCartIdAndVariantId(cart.getId(), variantId).get();
 	    
@@ -141,8 +139,6 @@ public class CartService {
 	        .map(this::mapToCartItemResponse)
 	        .collect(Collectors.toList());
 	}
-//
-//	// Helper method to update cart totals
 	private void updateCartTotals(Cart cart) {
 	    List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
 	    
@@ -158,8 +154,6 @@ public class CartService {
 	    cart.setTotalAmount(totalAmount);
 	    cartRepository.save(cart);
 	}
-//
-//	// Helper method to map CartItem to DTO
 	private CartItemResponseDto mapToCartItemResponse(CartItem item) {
 	    Product product = item.getProduct();
 	    ProductVariant variant = item.getVariant();
@@ -177,8 +171,6 @@ public class CartService {
 	        .totalPrice((double) (item.getPrice() * item.getQuantity()))
 	        .build();
 	}
-//
-//	// Helper method to get available stock
 	private Integer getAvailableStock(ProductVariant variant) {
 	    if (variant.getInventories() != null && !variant.getInventories().isEmpty()) {
 	        return variant.getInventories().stream()
@@ -187,8 +179,6 @@ public class CartService {
 	    }
 	    return 0;
 	}
-//
-//	// GET PRIMARY IMAGE
 	private String getPrimaryImage(Product product) {
 		if (product == null || product.getImages() == null || product.getImages().isEmpty()) {
 			return null;
@@ -197,7 +187,6 @@ public class CartService {
 		return product.getImages().stream().filter(img -> img.getIsPrimary() != null && img.getIsPrimary()).findFirst()
 				.map(ProductImage::getImageUrl).orElse(product.getImages().get(0).getImageUrl());
 	}
-//
 
 @Transactional
 public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newVariantId) {
@@ -206,11 +195,9 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
         throw new BadRequestException("Quantity is required");
     }
 
-    // Find the cart item
     CartItem cartItem = cartItemRepository.findById(cartItemId)
             .orElseThrow(() -> new NotFoundException("Cart item not found with id: " + cartItemId));
 
-    // Verify ownership
     if (!cartItem.getCart().getUser().getId().equals(user.getId())) {
         throw new UnauthorizedException("Unauthorized to modify this cart item");
     }
@@ -218,7 +205,6 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
     Cart cart = cartItem.getCart();
     Product currentProduct = cartItem.getProduct();
 
-    // Handle quantity <= 0 (remove item)
     if (qty <= 0) {
         cartItemRepository.delete(cartItem);
         
@@ -234,10 +220,8 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
         return;
     }
 
-    // Check if variant is being changed
     if (newVariantId != null && !newVariantId.equals(cartItem.getVariant().getId())) {
         
-        // Validate the new variant belongs to the same product
         ProductVariant newVariant = variantRepo.findByIdWithInventories(newVariantId)
                 .orElseThrow(() -> new NotFoundException("Variant not found with id: " + newVariantId));
         
@@ -245,13 +229,11 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
             throw new BadRequestException("Variant does not belong to the same product");
         }
         
-        // Check if the new variant is already in cart
         boolean variantExists = cart.getItems().stream()
             .anyMatch(item -> !item.getId().equals(cartItemId) 
                 && item.getVariant().getId().equals(newVariantId));
         
         if (variantExists) {
-            // Merge with existing item
             CartItem existingItem = cart.getItems().stream()
                 .filter(item -> item.getVariant().getId().equals(newVariantId))
                 .findFirst()
@@ -259,14 +241,12 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
             
             int newQuantity = existingItem.getQuantity() + qty;
             
-            // Check stock for new variant
             Integer availableStock = getAvailableStock(newVariant);
             if (availableStock < newQuantity) {
                 throw new BadRequestException(
                     String.format("Only %d units available for this variant", availableStock));
             }
             
-            // Update existing item and delete the old one
             existingItem.setQuantity(newQuantity);
             existingItem.setPrice(newVariant.getSellingPrice().intValue());
             cartItemRepository.save(existingItem);
@@ -275,7 +255,6 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
             log.info("Merged cart item - User: {}, Old Variant: {}, New Variant: {}", 
                      user.getId(), cartItem.getVariant().getId(), newVariantId);
         } else {
-            // Just update the variant
             Integer availableStock = getAvailableStock(newVariant);
             if (availableStock < qty) {
                 throw new BadRequestException(
@@ -327,41 +306,15 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
 	    long remainingItems = cartItemRepository.countByCartId(cart.getId());
 	    
 	    if (remainingItems == 0) {
-	        // No items left, delete the entire cart
 	        cartRepository.delete(cart);
 	        log.info("Cart {} deleted as it became empty", cart.getId());
 	    } else {
-	        // Update cart totals if items remain
 	        updateCartTotals(cart);
 	    }
 
 	    log.info("Removed cart item - User: {}, CartItem: {}", user.getId(), cartItemId);
 	}
 
-	// Helper method to update cart totals
-//	private void updateCartTotals(Cart cart) {
-//	    List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
-//	    
-//	    int totalQuantity = items.stream()
-//	        .mapToInt(CartItem::getQuantity)
-//	        .sum();
-//	    
-//	    int totalAmount = items.stream()
-//	        .mapToInt(item -> item.getPrice() * item.getQuantity())
-//	        .sum();
-//	    
-//	    cart.setTotalQuantity(totalQuantity);
-//	    cart.setTotalAmount(totalAmount);
-//	    cartRepository.save(cart);
-//	}
-//
-//	// CLEAR CART (after checkout)
-//	@Transactional
-//	public void clearCart(User user) {
-//		cartRepository.deleteByUser(user);
-//		log.info("Cleared cart for user: {}", user.getId());
-//	}
-//
 	@Transactional
 	public MergeCartResultDto mergeCart(User user, List<CartMergeDto> items) {
 	    if (items == null || items.isEmpty()) {
@@ -434,11 +387,9 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
 	}
 	public CartPricingResponseDto getCartPricing(User user, String couponCode) {
 
-	    // Get cart first, then its items
 	    Cart cart = cartRepository.findByUserId(user.getId())
 	        .orElse(null);
 	    
-	    // If no cart or no items, return empty response
 	    if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
 	        return CartPricingResponseDto.builder()
 	            .items(new ArrayList<>())
@@ -460,12 +411,10 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
 	    double tax = 0.0;
 	    List<CartItemResponseDto> itemDtos = new ArrayList<>();
 
-	    // Iterate through cart items
 	    for (CartItem cartItem : cart.getItems()) {
 	        Product product = cartItem.getProduct();
 	        ProductVariant variant = cartItem.getVariant();
 
-	        // Validate product exists
 	        if (product == null) {
 	            log.warn("Cart item {} has null product, skipping", cartItem.getId());
 	            continue;
@@ -473,12 +422,10 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
 
 	        int qty = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
 
-	        // Check if product is active
 	        if (!Boolean.TRUE.equals(product.getIsActive())) {
 	            throw new BadRequestException(product.getName() + " is not available");
 	        }
 
-	        // Get price from variant or product
 	        Double price = 0.0;
 	        Double mrp = 0.0;
 	        
@@ -493,7 +440,6 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
 	        double itemTotal = price * qty;
 	        double itemMrpTotal = mrp * qty;
 
-	        // Tax calculation
 	        double taxPercent = product.getTaxPercent() != null ? product.getTaxPercent() : 0.0;
 	        double itemTax = (taxPercent / 100.0) * itemTotal;
 
@@ -582,36 +528,4 @@ public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newV
 	    if (mrp == null || mrp == 0 || price == null) return 0;
 	    return (int) Math.round(((mrp - price) / mrp) * 100);
 	}
-//
-//	// ADD OR UPDATE CART ITEM (helper method)
-//	@Transactional
-//	public void addOrUpdate(User user, Product product, int quantity) {
-//
-//		// 🔥 FIX: Validate inputs
-//		if (product == null) {
-//			throw new BadRequestException("Product cannot be null");
-//		}
-//
-//		Cart cart = cartRepository.findByUserAndProduct(user, product)
-//				.orElse(Cart.builder().user(user).product(product).quantity(0).build());
-//
-//		int newQuantity = cart.getQuantity() + quantity;
-//
-//		Integer availableStock = 1000;
-//		if (availableStock < newQuantity) {
-//			throw new BadRequestException(
-//					String.format("Only %d units available for %s", availableStock, product.getName()));
-//		}
-//
-//		cart.setQuantity(newQuantity);
-//
-//		if (cart.getQuantity() <= 0) {
-//			cartRepository.delete(cart);
-//			log.info("Removed cart item via addOrUpdate - User: {}, Product: {}", user.getId(), product.getId());
-//		} else {
-//			cartRepository.save(cart);
-//			log.info("Updated cart via addOrUpdate - User: {}, Product: {}, Quantity: {}", user.getId(),
-//					product.getId(), newQuantity);
-//		}
-//	}
 }

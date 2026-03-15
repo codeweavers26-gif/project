@@ -141,13 +141,13 @@ public class AdminReturnController {
 	 
 	 
 	 @Operation(summary = "Get all returns of a user", security = @SecurityRequirement(name = "Bearer Authentication"))
-	 @GetMapping("/user/{userId}")
+	 @GetMapping("/user")
 	 public ResponseEntity<PageResponseDto<AdminUserReturnResponseDto>> getUserReturns(
-	         @PathVariable Long userId,
+	      Authentication auth,
 	         @RequestParam(defaultValue = "0") int page, 
 	         @RequestParam(defaultValue = "10") int size) {
-
-	     return ResponseEntity.ok(service.getReturnsByUser(userId, page, size));
+User user = getCurrentUser(auth);
+	     return ResponseEntity.ok(service.getReturnsByUser(user.getId(),page, size));
 	 }
 	 
 //
