@@ -91,5 +91,7 @@ public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInv
 	           nativeQuery = true)
 	    List<WarehouseInventory> findByVariantIdWithSkipLocked(@Param("variantId") Long variantId);
 
-	
+	    @Query("SELECT wi FROM WarehouseInventory wi WHERE wi.variant.id = :variantId")
+    List<WarehouseInventory> c(@Param("variantId") Long variantId);
+    
 }

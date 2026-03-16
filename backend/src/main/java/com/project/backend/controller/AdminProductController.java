@@ -41,9 +41,6 @@ public class AdminProductController {
 
 	private final ProductService productService;
 
-	/**
-	 * CREATE PRODUCT with images
-	 */
 	@Operation(summary = "Add product", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ProductResponseDto> addProduct(@RequestPart("product") @Valid ProductRequestDto dto,
@@ -54,9 +51,7 @@ public class AdminProductController {
 		return new ResponseEntity<>(response, HttpStatus.CREATED);
 	}
 
-	/**
-	 * UPDATE product
-	 */
+	
 	@Operation(summary = "Update product", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@PutMapping("/{id}")
 	public ResponseEntity<ProductResponseDto> updateProduct(@PathVariable Long id,
@@ -67,9 +62,6 @@ public class AdminProductController {
 		return ResponseEntity.ok(response);
 	}
 
-	/**
-	 * SOFT DELETE product
-	 */
 	@Operation(summary = "Soft delete product", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> softDeleteProduct(@PathVariable Long id) {
@@ -78,9 +70,6 @@ public class AdminProductController {
 		return ResponseEntity.noContent().build();
 	}
 
-	/**
-	 * ACTIVATE product
-	 */
 	@Operation(summary = "Activate product", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@PostMapping("/{id}/activate")
 	public ResponseEntity<Void> activateProduct(@PathVariable Long id) {
@@ -99,9 +88,7 @@ public class AdminProductController {
 //		return ResponseEntity.ok(productService.getAll());
 //	}
 
-	/**
-	 * GET PAGINATED products with filters
-	 */
+
 	@Operation(summary = "List products with pagination", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping

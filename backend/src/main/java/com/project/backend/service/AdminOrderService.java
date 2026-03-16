@@ -4,6 +4,7 @@ package com.project.backend.service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -24,11 +25,13 @@ import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.OrderStatus;
+import com.project.backend.entity.WarehouseInventory;
 import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.mapper.OrderMapper;
 import com.project.backend.repository.OrderRepository;
 import com.project.backend.repository.UserRepository;
+import com.project.backend.repository.WarehouseInventoryRepository;
 import com.project.backend.requestDto.PageResponseDto;
 
 import lombok.RequiredArgsConstructor;
@@ -39,6 +42,7 @@ public class AdminOrderService {
 
 	private final OrderRepository orderRepository;
 	private final UserRepository userRepository;
+	private final WarehouseInventoryRepository warehouseInventoryRepository;
 
 	public OrderResponseDto getOrderById(Long orderId) {
 		return OrderMapper.toDto(getOrder(orderId));
@@ -110,6 +114,15 @@ public class AdminOrderService {
 	        }
 		validateStatusTransition(order.getStatus(), newStatus);
 
+ if (newStatus == OrderStatus.DELIVERED && order.getStatus() != OrderStatus.DELIVERED) {
+            updateInventoryOnDelivery(order);
+        }
+
+		 if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.CANCELLED) {
+            releaseReservedStock(order);
+        }
+
+
 		order.setStatus(newStatus);
 		return OrderMapper.toDto(orderRepository.save(order)); } catch (NotFoundException | BadRequestException e) 
 		{
@@ -118,6 +131,83 @@ public class AdminOrderService {
 	        throw new RuntimeException("Failed to update order status", e);
 	    }
 	}
+
+	@Transactional
+protected void releaseReservedStock(Order order) {
+    
+    for (OrderItem item : order.getItems()) {
+        Long variantId = item.getVariantId();
+        Integer quantity = item.getQuantity();
+        
+        List<WarehouseInventory> inventories = warehouseInventoryRepository
+                .findByVariantId(variantId);
+        
+        int remainingToRelease = quantity;
+        
+        for (WarehouseInventory inventory : inventories) {
+            if (remainingToRelease <= 0) break;
+            
+            int reserved = inventory.getReservedQuantity();
+            if (reserved > 0) {
+                int releaseFromThis = Math.min(reserved, remainingToRelease);
+                
+                inventory.setReservedQuantity(reserved - releaseFromThis);
+                
+                remainingToRelease -= releaseFromThis;
+                
+               
+            }
+        }
+    }
+    
+    warehouseInventoryRepository.flush();
+}
+
+@Transactional
+protected void updateInventoryOnDelivery(Order order) {
+     
+    for (OrderItem item : order.getItems()) {
+        Long variantId = item.getVariantId();
+        Integer quantity = item.getQuantity();
+        
+        List<WarehouseInventory> inventories = warehouseInventoryRepository
+                .findByVariantId(variantId);
+        
+        if (inventories.isEmpty()) {
+            throw new BadRequestException("Inventory not found for product: " + item.getProductName());
+        }
+        
+        int remainingToDeduct = quantity;
+        
+        for (WarehouseInventory inventory : inventories) {
+            if (remainingToDeduct <= 0) break;
+            
+            int reserved = inventory.getReservedQuantity();
+            if (reserved > 0) {
+                int deductFromThis = Math.min(reserved, remainingToDeduct);
+                
+                inventory.setAvailableQuantity(
+                    inventory.getAvailableQuantity() - deductFromThis
+                );
+                
+                inventory.setReservedQuantity(reserved - deductFromThis);
+                
+                remainingToDeduct -= deductFromThis;
+                
+			}
+        }
+        
+        if (remainingToDeduct > 0) {
+           
+            throw new BadRequestException(
+                "Inventory inconsistency: Not enough reserved stock for " + item.getProductName()
+            );
+        }
+    }
+    
+    warehouseInventoryRepository.flush();
+}
+
 
 	@Transactional
 	public void cancelOrder(Long orderId) {

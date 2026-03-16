@@ -239,24 +239,41 @@ public class ProductService {
 					.map(v -> v.getSellingPrice() != null ? v.getSellingPrice().doubleValue() : null)
 					.filter(Objects::nonNull).min(Double::compareTo).orElse(null);
 		}
-
+Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 		Integer totalStock = 0;
 		if (product.getVariants() != null) {
 			totalStock = product.getVariants().stream().filter(v -> Boolean.TRUE.equals(v.getIsActive()))
 					.mapToInt(v -> 1).sum();
 		}
 
+		 Instant createdAt = product.getCreatedAt() != null 
+            ? product.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant() 
+            : null;
+
+
 		return ProductResponseDto.builder().id(product.getId()).name(product.getName()).slug(product.getSlug())
 				.brand(product.getBrand()).shortDescription(product.getShortDescription()).price(product.getPrice())
 				.stock(product.getStock()).inStock(product.getStock() != null && product.getStock() > 0)
 				.isActive(product.getIsActive()).mainImage(thumbnailImage).thumbnailImage(thumbnailImage)
+				  .mrp(product.getMrp())  .discountPercent(product.getDiscountPercent())
+            .taxPercent(product.getTaxPercent())
+            .weight(product.getWeight())
+            .length(product.getLength())
+            .width(product.getWidth())
+            .height(product.getHeight())
+            .codAvailable(product.getCodAvailable())
+            .returnable(product.getReturnable())
+            .deliveryDays(product.getDeliveryDays())
+            .averageRating(product.getAverageRating())
+            .totalReviews(product.getTotalReviews())
 				.price(minPrice)
-
+				.status(product.getStatus())
+				.description(product.getDescription())
+				.createdAt(createdAt)
 				.category(product.getCategory() != null
 						? ProductResponseDto.CategoryInfo.builder().id(product.getCategory().getId())
 								.name(product.getCategory().getName()).slug(product.getCategory().getSlug()).build()
 						: null)
-
 				.build();
 	}
 
