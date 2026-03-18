@@ -25,5 +25,5 @@ public class RefundDashboardStats {
     private BigDecimal averageRefundAmount;
     private Map<RefundStatus, Long> refundsByStatus;
     private Map<RefundMethod, BigDecimal> refundsByMethod;
- //   private List<DailyRefundSummary> dailyTrend;
+
 }

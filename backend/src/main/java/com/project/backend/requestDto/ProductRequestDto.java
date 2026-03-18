@@ -76,9 +76,7 @@ public class ProductRequestDto {
  private List<VariantRequest> variants;
     
     private List<ImageRequest> images;
-//    @Schema(description = "Product attributes like color, size, material")
-//    private Map<String, String> attributes;
-    
+
     @Schema(description = "Category ID to which product belongs", example = "2")
     private Long categoryId;
     
@@ -101,7 +99,7 @@ public class ProductRequestDto {
         private BigDecimal costPrice;
         
         @NotNull
-        private Integer initialStock; // For Delhi warehouse
+        private Integer initialStock; 
     }
     
     @Data

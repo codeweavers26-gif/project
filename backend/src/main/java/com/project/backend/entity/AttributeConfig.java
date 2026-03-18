@@ -27,11 +27,11 @@ public class AttributeConfig {
 	private Long id;
 
 	@Column(nullable = false)
-	private String name; // Size, Color, Brand
+	private String name;
 
-	private Boolean filterable = true; // show in filters
+	private Boolean filterable = true; 
 
-	private Boolean required = false; // mandatory for product
+	private Boolean required = false; 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "category_id", nullable = false)
 	private Category category;

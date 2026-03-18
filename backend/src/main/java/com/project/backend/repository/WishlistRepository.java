@@ -42,10 +42,8 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
     Optional<Wishlist> findByUserWithItems(@Param("user") User user);
     
     
-    // Get wishlist with item count
     @Query("SELECT w, SIZE(w.items) as itemCount FROM Wishlist w WHERE w.user.id = :userId")
     Optional<Object[]> findWithItemCount(@Param("userId") Long userId);
     
-    // Delete wishlist by user
     void deleteByUser(User user);
 }

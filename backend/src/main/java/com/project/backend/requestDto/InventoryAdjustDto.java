@@ -6,5 +6,5 @@ import lombok.Data;
 public class InventoryAdjustDto {
 	  private Long productId;
 	    private Long locationId;
-	    private int delta; // +5 or -3
+	    private int delta;
 }

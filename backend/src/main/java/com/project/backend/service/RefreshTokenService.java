@@ -21,7 +21,6 @@ public class RefreshTokenService {
     @Value("${app.jwt.refreshTokenExpirationMs}")
     private long refreshExpiryMs;
 
-    // ✔ THIS METHOD MUST EXIST
     public RefreshToken createRefreshToken(User user) {
         RefreshToken token = RefreshToken.builder()
                 .token(UUID.randomUUID().toString())

@@ -14,7 +14,7 @@ public class Location {
     private Long id;
 
     @Column(nullable = false)
-    private String name; // Example: Gurgaon Warehouse
+    private String name;
 
     @Column(nullable = false)
     private String city;

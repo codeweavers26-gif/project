@@ -18,27 +18,21 @@ public class AdminPaymentTransactionDto {
     private String userEmail;
     private String userName;
     
-    // Razorpay details
     private String razorpayOrderId;
     private String razorpayPaymentId;
     private String razorpaySignature;
     
-    // Payment details
     private BigDecimal amount;
     private String currency;
     private String paymentMethod;
-    private String status; // CREATED, PENDING, SUCCESS, FAILED, REFUNDED
-    
-    // Timestamps
+    private String status; 
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
     private LocalDateTime updatedAt;
     
-    // Additional info
     private String failureReason;
     private String gatewayResponse;
     
-    // Refund info
     private BigDecimal refundedAmount;
     private LocalDateTime refundedAt;
     private String refundId;

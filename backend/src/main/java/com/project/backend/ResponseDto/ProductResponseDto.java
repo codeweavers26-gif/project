@@ -128,7 +128,7 @@ public class ProductResponseDto {
 		 private BigDecimal costPrice;
 		private BigDecimal sellingPrice;
 		private Boolean isActive;
-		private Integer availableStock; // From warehouse_inventory
+		private Integer availableStock; 
 	}
 
 	@Data

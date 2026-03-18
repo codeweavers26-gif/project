@@ -8,5 +8,5 @@ public class UserProfileDto {
     private String fullName;
     private String phone;
     private String gender;
-    private String dob; // yyyy-mm-dd
+    private String dob;
 }

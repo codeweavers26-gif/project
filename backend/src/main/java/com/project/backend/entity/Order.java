@@ -62,7 +62,7 @@ public class Order {
     private Double totalAmount;  
 
     @Column(name = "tax_amount", nullable = false)
-    private Double taxAmount;       // Tax portion only
+    private Double taxAmount;      
 
     @Column(name = "shipping_charges")
     private Double shippingCharges;
@@ -98,9 +98,6 @@ public class Order {
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Shipment shipment;
-//    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @Builder.Default
-//    private List<OrderItem> items = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

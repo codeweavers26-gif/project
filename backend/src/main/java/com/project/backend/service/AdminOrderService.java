@@ -1,11 +1,12 @@
 package com.project.backend.service;
 
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -35,316 +36,329 @@ import com.project.backend.repository.WarehouseInventoryRepository;
 import com.project.backend.requestDto.PageResponseDto;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AdminOrderService {
 
 	private final OrderRepository orderRepository;
 	private final UserRepository userRepository;
 	private final WarehouseInventoryRepository warehouseInventoryRepository;
+	private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
+	private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
 	public OrderResponseDto getOrderById(Long orderId) {
 		return OrderMapper.toDto(getOrder(orderId));
 	}
 
 	public PageResponseDto<OrderResponseDto> searchOrders(OrderStatus status, Long userId, Long orderId, String email,
-	        String from, String to, int page, int size) {
-		  try {
-	    PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+			String from, String to, int page, int size) {
 
-	    Instant fromDate = from != null ? LocalDate.parse(from).atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
-	    Instant toDate = to != null ? LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-	            : null;
-	    if (email != null && !email.trim().isEmpty()) {
-            if (!isValidEmail(email)) {
-                throw new BadRequestException("Invalid email format");
-            }
-        }
-	    Page<Order> orders = orderRepository.searchOrders(status, userId, orderId, email, fromDate, toDate, pageable);
+		PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-	    return PageResponseDto.<OrderResponseDto>builder()
-	            .content(orders.getContent().stream()
-	                    .map(order -> {
-	                        OrderResponseDto dto = OrderMapper.toDto(order);
-	                        
-	                        return dto;
-	                    })
-	                    .collect(Collectors.toList()))
-	            .page(orders.getNumber())
-	            .size(orders.getSize())
-	            .totalElements(orders.getTotalElements())
-	            .totalPages(orders.getTotalPages())
-	            .last(orders.isLast())
-	            .build();
-	    
-		  } catch (BadRequestException e) {
-		        throw e;
-		    } catch (Exception e) {
-
-		        throw new RuntimeException("Failed to search orders", e);
-		    }
-	}
-		  
-		  private boolean isValidEmail(String email) {
-			    if (email == null || email.trim().isEmpty()) {
-			        return false;
-			    }
-			    String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
-			    Pattern pattern = Pattern.compile(emailRegex);
-			    return pattern.matcher(email).matches();
+		Instant fromDate = from != null ? LocalDate.parse(from).atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
+		Instant toDate = to != null ? LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+				: null;
+		if (email != null && !email.trim().isEmpty()) {
+			if (!isValidEmail(email)) {
+				throw new BadRequestException("Invalid email format");
 			}
-		  
+		}
+		Page<Order> orders = orderRepository.searchOrders(status, userId, orderId, email, fromDate, toDate, pageable);
+
+		List<OrderResponseDto> content = orders.getContent().stream()
+				.map(OrderMapper::toDto)
+				.toList();
+
+		return buildOrderPageResponse(orders, content);
+
+	}
+
+	private <T> PageResponseDto<T> buildOrderPageResponse(Page<?> page, List<T> content) {
+		return PageResponseDto.<T>builder()
+				.content(content)
+				.page(page.getNumber())
+				.size(page.getSize())
+				.totalElements(page.getTotalElements())
+				.totalPages(page.getTotalPages())
+				.last(page.isLast())
+				.build();
+	}
+
+	private boolean isValidEmail(String email) {
+		return email != null && !email.trim().isEmpty() &&
+				EMAIL_PATTERN.matcher(email).matches();
+	}
+
 	@Transactional
 	public OrderResponseDto updateStatus(Long orderId, OrderStatus newStatus) {
-		
-		try {
-		  if (orderId == null) {
-	            throw new BadRequestException("Order ID cannot be null");
-	        }
-	        if (newStatus == null) {
-	            throw new BadRequestException("Order status cannot be null");
-	        }
+
+		if (orderId == null) {
+			throw new BadRequestException("Order ID cannot be null");
+		}
+		if (newStatus == null) {
+			throw new BadRequestException("Order status cannot be null");
+		}
 
 		Order order = getOrder(orderId);
-		
-		
-		 if (order.getStatus() == newStatus) {
-	            throw new BadRequestException("Order is already in " + newStatus + " status");
-	        }
+
+		if (order.getStatus() == newStatus) {
+			throw new BadRequestException("Order is already in " + newStatus + " status");
+		}
 		validateStatusTransition(order.getStatus(), newStatus);
 
- if (newStatus == OrderStatus.DELIVERED && order.getStatus() != OrderStatus.DELIVERED) {
-            updateInventoryOnDelivery(order);
-        }
+		if (newStatus == OrderStatus.DELIVERED && order.getStatus() != OrderStatus.DELIVERED) {
+			updateInventoryOnDelivery(order);
+		}
 
-		 if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.CANCELLED) {
-            releaseReservedStock(order);
-        }
-
+		if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.CANCELLED) {
+			releaseReservedStock(order);
+		}
 
 		order.setStatus(newStatus);
-		return OrderMapper.toDto(orderRepository.save(order)); } catch (NotFoundException | BadRequestException e) 
-		{
-	        throw e;
-	    } catch (Exception e) {
-	        throw new RuntimeException("Failed to update order status", e);
-	    }
-	}
+		return OrderMapper.toDto(orderRepository.save(order));
+	
 
-	@Transactional
+	}
+@Transactional
 protected void releaseReservedStock(Order order) {
-    
-    for (OrderItem item : order.getItems()) {
+
+    List<OrderItem> items = order.getItems();
+
+    Set<Long> variantIds = items.stream()
+            .map(OrderItem::getVariantId)
+            .collect(Collectors.toSet());
+
+    Map<Long, List<WarehouseInventory>> inventoryMap =
+            warehouseInventoryRepository.findByVariant_IdIn(new ArrayList<>(variantIds))
+                    .stream()
+                    .collect(Collectors.groupingBy(
+                            inv -> Optional.ofNullable(inv.getVariant())
+                                    .map(v -> v.getId())
+                                    .orElseThrow(() -> new BadRequestException("Variant missing in inventory"))
+                    ));
+
+    for (OrderItem item : items) {
+
         Long variantId = item.getVariantId();
-        Integer quantity = item.getQuantity();
-        
-        List<WarehouseInventory> inventories = warehouseInventoryRepository
-                .findByVariantId(variantId);
-        
+        int quantity = Optional.ofNullable(item.getQuantity()).orElse(0);
+
+        List<WarehouseInventory> inventories =
+                inventoryMap.getOrDefault(variantId, List.of());
+
         int remainingToRelease = quantity;
-        
+
         for (WarehouseInventory inventory : inventories) {
+
             if (remainingToRelease <= 0) break;
-            
-            int reserved = inventory.getReservedQuantity();
+
+            int reserved = Optional.ofNullable(inventory.getReservedQuantity()).orElse(0);
+
             if (reserved > 0) {
                 int releaseFromThis = Math.min(reserved, remainingToRelease);
-                
+
                 inventory.setReservedQuantity(reserved - releaseFromThis);
-                
                 remainingToRelease -= releaseFromThis;
-                
-               
             }
         }
-    }
-    
-    warehouseInventoryRepository.flush();
-}
 
-@Transactional
-protected void updateInventoryOnDelivery(Order order) {
-     
-    for (OrderItem item : order.getItems()) {
-        Long variantId = item.getVariantId();
-        Integer quantity = item.getQuantity();
-        
-        List<WarehouseInventory> inventories = warehouseInventoryRepository
-                .findByVariantId(variantId);
-        
-        if (inventories.isEmpty()) {
-            throw new BadRequestException("Inventory not found for product: " + item.getProductName());
-        }
-        
-        int remainingToDeduct = quantity;
-        
-        for (WarehouseInventory inventory : inventories) {
-            if (remainingToDeduct <= 0) break;
-            
-            int reserved = inventory.getReservedQuantity();
-            if (reserved > 0) {
-                int deductFromThis = Math.min(reserved, remainingToDeduct);
-                
-                inventory.setAvailableQuantity(
-                    inventory.getAvailableQuantity() - deductFromThis
-                );
-                
-                inventory.setReservedQuantity(reserved - deductFromThis);
-                
-                remainingToDeduct -= deductFromThis;
-                
-			}
-        }
-        
-        if (remainingToDeduct > 0) {
-           
+        if (remainingToRelease > 0) {
+            log.error("Stock inconsistency while releasing for variantId={}", variantId);
             throw new BadRequestException(
-                "Inventory inconsistency: Not enough reserved stock for " + item.getProductName()
+                    "Inventory inconsistency: Not enough reserved stock for variantId " + variantId
             );
         }
     }
-    
+
+    warehouseInventoryRepository.flush();
+}	
+
+@Transactional
+protected void updateInventoryOnDelivery(Order order) {
+
+    List<OrderItem> items = order.getItems();
+
+    Set<Long> variantIds = items.stream()
+            .map(OrderItem::getVariantId)
+            .collect(Collectors.toSet());
+
+    Map<Long, List<WarehouseInventory>> inventoryMap =
+            warehouseInventoryRepository.findByVariant_IdIn(new ArrayList<>(variantIds))
+                    .stream()
+                    .collect(Collectors.groupingBy(
+                            inv -> Optional.ofNullable(inv.getVariant())
+                                    .map(v -> v.getId())
+                                    .orElseThrow(() -> new BadRequestException("Variant missing in inventory"))
+                    ));
+
+    for (OrderItem item : items) {
+
+        Long variantId = item.getVariantId();
+        int quantity = Optional.ofNullable(item.getQuantity()).orElse(0);
+
+        List<WarehouseInventory> inventories =
+                inventoryMap.getOrDefault(variantId, List.of());
+
+        if (inventories.isEmpty()) {
+            throw new BadRequestException("Inventory not found for product: " + item.getProductName());
+        }
+
+        int remainingToDeduct = quantity;
+
+        for (WarehouseInventory inventory : inventories) {
+
+            if (remainingToDeduct <= 0) break;
+
+            int reserved = Optional.ofNullable(inventory.getReservedQuantity()).orElse(0);
+            int available = Optional.ofNullable(inventory.getAvailableQuantity()).orElse(0);
+
+            if (reserved > 0) {
+                int deductFromThis = Math.min(reserved, remainingToDeduct);
+
+                inventory.setAvailableQuantity(available - deductFromThis);
+                inventory.setReservedQuantity(reserved - deductFromThis);
+
+                remainingToDeduct -= deductFromThis;
+            }
+        }
+
+        if (remainingToDeduct > 0) {
+            log.error("Inventory inconsistency for variantId={}", variantId);
+            throw new BadRequestException(
+                    "Inventory inconsistency: Not enough reserved stock for " + item.getProductName()
+            );
+        }
+    }
+
     warehouseInventoryRepository.flush();
 }
 
-
 	@Transactional
-	public void cancelOrder(Long orderId) {
-		
-	    try {
-	        if (orderId == null) {
-	            throw new BadRequestException("Order ID cannot be null");
-	        }
-		Order order = getOrder(orderId);
+public void cancelOrder(Long orderId) {
+    Order order = getOrder(orderId); 
+    
+    validateCancellation(order);
+    
+    releaseReservedStock(order);
+    
+    order.setStatus(OrderStatus.CANCELLED);
+    orderRepository.save(order);
+    
+    log.info("Order {} cancelled successfully", orderId);
+}
 
-		 validateCancellation(order);
-		
-
-		order.setStatus(OrderStatus.CANCELLED);
-		orderRepository.save(order);
-	    } catch (NotFoundException | BadRequestException e) {
-	        throw e;
-	    } catch (Exception e) {
-	        throw new RuntimeException("Failed to cancel order", e);
-	    }
-	}
-
-	
 	private void validateCancellation(Order order) {
-	    if (order.getStatus() == OrderStatus.CANCELLED) {
-	        throw new BadRequestException("Order is already cancelled");
-	    }
-	    
-	    if (order.getStatus() == OrderStatus.DELIVERED) {
-	        throw new BadRequestException("Delivered order cannot be cancelled");
-	    }
-	    
-	    if (order.getStatus() == OrderStatus.SHIPPED) {
-	        throw new BadRequestException("Shipped order cannot be cancelled. Please request return instead.");
-	    }
-	    if (order.getStatus() == OrderStatus.RETURN_REQUESTED) {
-	        throw new BadRequestException("Order with return request cannot be cancelled. Please process return first.");
-	    }
-	    
-	
+		if (order.getStatus() == OrderStatus.CANCELLED) {
+			throw new BadRequestException("Order is already cancelled");
+		}
+
+		if (order.getStatus() == OrderStatus.DELIVERED) {
+			throw new BadRequestException("Delivered order cannot be cancelled");
+		}
+
+		if (order.getStatus() == OrderStatus.SHIPPED) {
+			throw new BadRequestException("Shipped order cannot be cancelled. Please request return instead.");
+		}
+		if (order.getStatus() == OrderStatus.RETURN_REQUESTED) {
+			throw new BadRequestException(
+					"Order with return request cannot be cancelled. Please process return first.");
+		}
+
 	}
-	
+
 	private Order getOrder(Long id) {
 		return orderRepository.findById(id)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+				.orElseThrow(() -> new NotFoundException( "Order not found"));
 	}
 
 	private void validateStatusTransition(OrderStatus current, OrderStatus next) {
 
-	    if (current == OrderStatus.CANCELLED || current == OrderStatus.DELIVERED) {
-	        throw new BadRequestException(
-	            "Cannot change status of a " + current + " order");
-	    }
-	    
-	    Map<OrderStatus, Set<OrderStatus>> validTransitions = Map.of(
-	        OrderStatus.PENDING, Set.of(OrderStatus.PAID, OrderStatus.PLACED, OrderStatus.CANCELLED),
-	        OrderStatus.PENDING_PAYMENT, Set.of(OrderStatus.PAID, OrderStatus.PLACED, OrderStatus.CANCELLED),
-	        OrderStatus.PLACED, Set.of(OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.CANCELLED),
-	        OrderStatus.PAID, Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
-	        OrderStatus.SHIPPED, Set.of(OrderStatus.DELIVERED, OrderStatus.RETURN_REQUESTED),
-	        OrderStatus.RETURN_REQUESTED, Set.of(OrderStatus.CANCELLED)
-	    );
-	    
-	    Set<OrderStatus> allowedNext = validTransitions.get(current);
-	    if (allowedNext == null) {
-	        throw new BadRequestException(
-	            "Unknown order status: " + current);
-	    }
-	    
-	    if (!allowedNext.contains(next)) {
-	        throw new BadRequestException(
-	            "Invalid transition from " + current + " to " + next);
-	    }
-	}
-	public PageResponseDto<AdminUserOrderResponseDto> getOrdersOfUser(Long userId, int page, int size) {
-try {
-		Page<Order> orders = orderRepository.findByUserId(userId,
-				PageRequest.of(page, size, Sort.by("createdAt").descending()));
+		if (current == OrderStatus.CANCELLED || current == OrderStatus.DELIVERED) {
+			throw new BadRequestException(
+					"Cannot change status of a " + current + " order");
+		}
 
-		return PageResponseDto.<AdminUserOrderResponseDto>builder()
-				.content(orders.getContent().stream().map(this::map).toList()).page(orders.getNumber())
-				.size(orders.getSize()).totalElements(orders.getTotalElements()).totalPages(orders.getTotalPages())
-				.last(orders.isLast()).build();
-		
-	   } catch (BadRequestException e) {
-	        throw e;
-	    } catch (Exception e) {
-	        throw new RuntimeException("Failed to fetch user orders", e);
-	    }
+		Map<OrderStatus, Set<OrderStatus>> validTransitions = Map.of(
+				OrderStatus.PENDING, Set.of(OrderStatus.PAID, OrderStatus.PLACED, OrderStatus.CANCELLED),
+				OrderStatus.PENDING_PAYMENT, Set.of(OrderStatus.PAID, OrderStatus.PLACED, OrderStatus.CANCELLED),
+				OrderStatus.PLACED, Set.of(OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+				OrderStatus.PAID, Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+				OrderStatus.SHIPPED, Set.of(OrderStatus.DELIVERED, OrderStatus.RETURN_REQUESTED),
+				OrderStatus.RETURN_REQUESTED, Set.of(OrderStatus.CANCELLED));
+
+		Set<OrderStatus> allowedNext = validTransitions.get(current);
+		if (allowedNext == null) {
+			throw new BadRequestException(
+					"Unknown order status: " + current);
+		}
+
+		if (!allowedNext.contains(next)) {
+			throw new BadRequestException(
+					"Invalid transition from " + current + " to " + next);
+		}
+	}
+
+	public PageResponseDto<AdminUserOrderResponseDto> getOrdersOfUser(Long userId, int page, int size) {
+	
+			Page<Order> orders = orderRepository.findByUserId(userId,
+					PageRequest.of(page, size, Sort.by("createdAt").descending()));
+
+			return PageResponseDto.<AdminUserOrderResponseDto>builder()
+					.content(orders.getContent().stream().map(this::map).toList()).page(orders.getNumber())
+					.size(orders.getSize()).totalElements(orders.getTotalElements()).totalPages(orders.getTotalPages())
+					.last(orders.isLast()).build();
+
+	
 	}
 
 	private AdminUserOrderResponseDto map(Order order) {
 
-	    double subtotal = order.getItems()
-	            .stream()
-	            .mapToDouble(i -> i.getPrice() * i.getQuantity())
-	            .sum();
+		double subtotal = order.getItems()
+				.stream()
+				.mapToDouble(i -> i.getPrice() * i.getQuantity())
+				.sum();
 
-	    return AdminUserOrderResponseDto.builder()
-	            .orderId(order.getId())
-	            .status(order.getStatus())
-	            .paymentStatus(order.getPaymentStatus())
-	            .paymentMethod(order.getPaymentMethod())
-	            .subtotal(subtotal)
-	            .taxAmount(order.getTaxAmount())
-	            .shippingCharges(order.getShippingCharges())
-	            .discountAmount(order.getDiscountAmount())
-	            .totalAmount(order.getTotalAmount())
+		return AdminUserOrderResponseDto.builder()
+				.orderId(order.getId())
+				.status(order.getStatus())
+				.paymentStatus(order.getPaymentStatus())
+				.paymentMethod(order.getPaymentMethod())
+				.subtotal(subtotal)
+				.taxAmount(order.getTaxAmount())
+				.shippingCharges(order.getShippingCharges())
+				.discountAmount(order.getDiscountAmount())
+				.totalAmount(order.getTotalAmount())
 
-	            .deliveryAddress(OrderAddressDto.builder()
-	                    .line1(order.getDeliveryAddressLine1())
-	                    .line2(order.getDeliveryAddressLine2())
-	                    .city(order.getDeliveryCity())
-	                    .state(order.getDeliveryState())
-	                    .postalCode(order.getDeliveryPostalCode())
-	                    .country(order.getDeliveryCountry())
-	                    .build())
+				.deliveryAddress(OrderAddressDto.builder()
+						.line1(order.getDeliveryAddressLine1())
+						.line2(order.getDeliveryAddressLine2())
+						.city(order.getDeliveryCity())
+						.state(order.getDeliveryState())
+						.postalCode(order.getDeliveryPostalCode())
+						.country(order.getDeliveryCountry())
+						.build())
 
-	            .items(order.getItems().stream()
-	                    .map(this::mapToAdminItem)
-	                    .toList())
+				.items(order.getItems().stream()
+						.map(this::mapToAdminItem)
+						.toList())
 
-	            .createdAt(order.getCreatedAt())
-	            .build();
+				.createdAt(order.getCreatedAt())
+				.build();
 	}
+
 	private OrderItemAdminDto mapToAdminItem(OrderItem i) {
-	    return OrderItemAdminDto.builder()
-	            .productId(i.getProductId())
-	            .variantId(i.getVariantId())
-	            .productName(i.getProductName())
-	            .price(i.getPrice())
-	            .quantity(i.getQuantity())
-	         //   .size(i.getSize())
-	         //   .color(i.getColor())
-	            .total(i.getPrice() * i.getQuantity())
-	            .build();
+		return OrderItemAdminDto.builder()
+				.productId(i.getProductId())
+				.variantId(i.getVariantId())
+				.productName(i.getProductName())
+				.price(i.getPrice())
+				.quantity(i.getQuantity())
+				// .size(i.getSize())
+				// .color(i.getColor())
+				.total(i.getPrice() * i.getQuantity())
+				.build();
 	}
-	
-	
+
 }

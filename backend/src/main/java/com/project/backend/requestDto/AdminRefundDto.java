@@ -15,7 +15,7 @@ public class AdminRefundDto {
     private Long transactionId;
     private String razorpayRefundId;
     private BigDecimal amount;
-    private String status; // PENDING, PROCESSED, FAILED
+    private String status;
     private String reason;
     private LocalDateTime requestedAt;
     private LocalDateTime processedAt;

@@ -183,7 +183,6 @@ public class ProductFilterService {
 		String sortBy = filter.getSortBy();
 
 		if (sortBy == null || sortBy.isEmpty()) {
-			// Default sort - use correct column name
 			return PageRequest.of(page, size, Sort.by("created_at").descending());
 		}
 

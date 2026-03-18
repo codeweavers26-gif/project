@@ -19,7 +19,6 @@ import com.project.backend.entity.ReturnTimeline;
 @Repository
 public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, Long> {
 
-    // ==================== BASIC QUERIES ====================
 
     List<ReturnTimeline> findByReturnRecordIdOrderByCreatedAtDesc(Long returnId);
 
@@ -33,7 +32,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
 
     List<ReturnTimeline> findByStatus(ReturnStatus status);
 
-    // ==================== ADVANCED QUERIES ====================
 
     @Query("SELECT rt FROM ReturnTimeline rt WHERE " +
            "rt.returnRecord.id = :returnId AND " +
@@ -57,7 +55,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
             @Param("status") ReturnStatus status,
             Pageable pageable);
 
-    // ==================== LATEST EVENTS ====================
 
     @Query("SELECT rt FROM ReturnTimeline rt WHERE " +
            "rt.returnRecord.id = :returnId " +
@@ -69,7 +66,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
            "rt.createdAt = (SELECT MAX(t.createdAt) FROM ReturnTimeline t WHERE t.returnRecord.id = :returnId)")
     ReturnTimeline findLastEvent(@Param("returnId") Long returnId);
 
-    // ==================== DATE RANGE QUERIES ====================
 
     List<ReturnTimeline> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 
@@ -81,7 +77,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
            "rt.createdAt >= :since")
     List<ReturnTimeline> findRecentTimeline(@Param("since") LocalDateTime since);
 
-    // ==================== AGGREGATION QUERIES ====================
 
     @Query("SELECT rt.status as status, COUNT(rt) as count " +
            "FROM ReturnTimeline rt " +
@@ -102,7 +97,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
            "GROUP BY rt.createdBy")
     List<Map<String, Object>> getTimelineByUser(@Param("returnId") Long returnId);
 
-    // ==================== ROLE-BASED QUERIES ====================
 
     @Query("SELECT rt FROM ReturnTimeline rt WHERE " +
            "rt.returnRecord.id = :returnId AND " +
@@ -116,7 +110,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
            "ORDER BY rt.createdAt DESC")
     List<ReturnTimeline> findAdminVisibleTimeline(@Param("returnId") Long returnId);
 
-    // ==================== SEARCH QUERIES ====================
 
     @Query("SELECT rt FROM ReturnTimeline rt WHERE " +
            "rt.returnRecord.id = :returnId AND " +
@@ -126,7 +119,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
             @Param("returnId") Long returnId,
             @Param("searchTerm") String searchTerm);
 
-    // ==================== BULK OPERATIONS ====================
 
     @Modifying
     @Transactional
@@ -142,7 +134,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
             @Param("status") ReturnStatus status,
             @Param("visible") Boolean visible);
 
-    // ==================== METADATA QUERIES ====================
 
     @Query("SELECT rt FROM ReturnTimeline rt WHERE " +
            "rt.returnRecord.id = :returnId AND " +
@@ -153,7 +144,6 @@ public interface ReturnTimelineRepository extends JpaRepository<ReturnTimeline, 
            "rt.metadata LIKE %:keyword%")
     List<ReturnTimeline> findByMetadataKeyword(@Param("keyword") String keyword);
 
-    // ==================== STATISTICS ====================
 
     @Query("SELECT COUNT(rt) FROM ReturnTimeline rt WHERE rt.returnRecord.id = :returnId")
     Long countTimelineEntries(@Param("returnId") Long returnId);

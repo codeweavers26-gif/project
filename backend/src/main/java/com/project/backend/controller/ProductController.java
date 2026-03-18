@@ -21,15 +21,8 @@ import com.project.backend.service.ProductFilterService;
 import com.project.backend.service.ProductService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-//
-//GET    /products (with filters, pagination)
-//GET    /products/{slug}
-//GET    /products/{id}/variants (availability)
-//GET    /categories
-//GET    /categories/{slug}/products
 
 @RestController
 @RequestMapping("/api/products")
@@ -59,9 +52,7 @@ public class ProductController {
 		return ResponseEntity.ok(productService.getActiveProductById(id));
 	}
 
-	/**
-	 * Get products available at a location
-	 */
+	
 	@Operation(summary = "Get products by location")
 	@GetMapping(params = { "locationId" })
 	public ResponseEntity<PageResponseDto<ProductResponseDto>> getProductsByLocation(@RequestParam Long locationId,

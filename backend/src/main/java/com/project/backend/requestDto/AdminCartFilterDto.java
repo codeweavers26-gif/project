@@ -15,5 +15,5 @@ public class AdminCartFilterDto {
     private Double maxTotal;
     private Instant fromDate;
     private Instant toDate;
-    private Boolean abandonedOnly; // Carts older than 24 hours with items
+    private Boolean abandonedOnly;
 }

@@ -127,14 +127,12 @@ public class RazorpayService {
     @Transactional
     public PaymentResponse verifyPayment(VerifyPaymentRequest request, User user) {
         try {
-            // Fetch transaction
             PaymentTransaction transaction = paymentTransactionRepository
                 .findByRazorpayOrderId(request.getRazorpayOrderId())
                 .orElseThrow(() -> new RuntimeException("Transaction not found"));
             
             com.project.backend.entity.Order order = transaction.getOrder();
             
-            // Verify order belongs to user
             if (!order.getUser().getId().equals(user.getId())) {
                 throw new RuntimeException("Unauthorized access");
             }
@@ -142,7 +140,6 @@ public class RazorpayService {
             System.err.println(request.getRazorpayPaymentId());
             System.err.println(request.getRazorpayOrderId());
 
-            // Verify signature
             JSONObject options = new JSONObject();
             options.put("razorpay_order_id", request.getRazorpayOrderId());
             options.put("razorpay_payment_id", request.getRazorpayPaymentId());
@@ -151,13 +148,11 @@ public class RazorpayService {
             boolean isValid = Utils.verifyPaymentSignature(options, razorpayKeySecret);
             
             if (isValid) {
-                // Update transaction
                 transaction.setRazorpayPaymentId(request.getRazorpayPaymentId());
                 transaction.setRazorpaySignature(request.getRazorpaySignature());
                 transaction.setStatus("PAID");
                 transaction.setCompletedAt(Instant.now());
                 
-                // Fetch payment details from Razorpay
                 com.razorpay.Payment payment = razorpayClient.payments.fetch(request.getRazorpayPaymentId());
                 JSONObject paymentJson = payment.toJson();
                 
@@ -167,9 +162,8 @@ public class RazorpayService {
                 
                 paymentTransactionRepository.save(transaction);
                 
-                // Update order - using your existing enums
-                order.setPaymentStatus(PaymentStatus.SUCCESS); // Using SUCCESS from your enum
-                order.setStatus(OrderStatus.PLACED); // Move to PLACED after payment
+                order.setPaymentStatus(PaymentStatus.SUCCESS); 
+                order.setStatus(OrderStatus.PLACED);
                 orderRepository.save(order);
                 
                 log.info("Payment verified successfully for order: {}", order.getId());
@@ -183,13 +177,11 @@ public class RazorpayService {
                     .paymentStatus(order.getPaymentStatus().name())
                     .build();
             } else {
-                // Failed verification
                 transaction.setStatus("FAILED");
                 transaction.setFailureReason("Signature verification failed");
                 paymentTransactionRepository.save(transaction);
                 
-                // Update order status using your enum
-                order.setPaymentStatus(PaymentStatus.FAILED); // Using FAILED from your enum
+                order.setPaymentStatus(PaymentStatus.FAILED); 
                 orderRepository.save(order);
                 
                 log.warn("Payment signature verification failed for order: {}", request.getOrderId());
@@ -217,8 +209,6 @@ public class RazorpayService {
     @Transactional
     public void handleWebhook(String payload, String signature) {
         try {
-            // Verify webhook signature
-            // TODO: Implement webhook signature verification using razorpay.webhook.secret
             
             JSONObject webhookData = new JSONObject(payload);
             String event = webhookData.getString("event");

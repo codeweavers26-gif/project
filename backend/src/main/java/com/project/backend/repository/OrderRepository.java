@@ -35,7 +35,6 @@ Long countByUserId(Long userId);
 	        String email,
 	        Pageable pageable);
 
-	// For orderId search with pagination
 	@Query("SELECT o FROM Order o WHERE o.id = :orderId")
 	Page<Order> findById(@Param("orderId") Long orderId, Pageable pageable);
 	

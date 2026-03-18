@@ -57,7 +57,7 @@ public class ProductVariant {
     @Column(name = "mrp", precision = 10, scale = 2)
     private BigDecimal mrp;
 
-    @Column(name = "selling_price", precision = 10, scale = 2)  // 🔥 This field
+    @Column(name = "selling_price", precision = 10, scale = 2)  
     private BigDecimal sellingPrice;
 
     @Column(name = "cost_price", precision = 10, scale = 2)

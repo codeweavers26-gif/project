@@ -46,31 +46,24 @@ public class SecurityConfig {
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 
-						// Preflight requests
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-						// Swagger
 						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
 
-						// Auth APIs (login/register/refresh)
 						.requestMatchers("/api/auth/**").permitAll()
 
-						// Admin APIs
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-						// Customer APIs
 						.requestMatchers("/api/customer/**").hasRole("CUSTOMER")
 
-						// Orders require any logged-in user
 						.requestMatchers("/api/orders/**").authenticated()
 						.requestMatchers("/api/locations/**", "/api/products/**", "/api/categories/**",
 								"/api/sections/**", "/api/catalog/**")
 						.permitAll()
 
-						// Everything else
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-				//.httpBasic(Customizer.withDefaults());
+			
 
 		return http.build();
 	}
@@ -89,25 +82,22 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource(
 	        @Value("${app.cors.allowedOrigins}") String allowedOriginsString) {
 	    
-	    // Split by comma and trim
 	    List<String> allowedOrigins = Arrays.stream(allowedOriginsString.split(","))
 	            .map(String::trim)
 	            .collect(Collectors.toList());
 	    
 	    CorsConfiguration configuration = new CorsConfiguration();
 	    
-	    // Allow all your domains AND Render's internal domains
 	    configuration.setAllowedOriginPatterns(Arrays.asList(
 	        "https://richfrontend.vercel.app",
 	        "https://www.richnretired.in",
 	        "https://www.richnretired.com",
 	        "http://localhost:3000",
 	        "http://localhost:3001",
-	        "https://project-fnwy.onrender.com",  // Your own Render URL
-	        "http://project-fnwy.onrender.com"   // HTTP version
+	        "https://project-fnwy.onrender.com", 
+	        "http://project-fnwy.onrender.com"  
 	    ));
 	    
-	    // OR use patterns for flexibility:
 	    configuration.setAllowedOriginPatterns(Arrays.asList(
 	        "*richfrontend*",
 	        "*richnretired*",
@@ -122,7 +112,6 @@ public class SecurityConfig {
 	    configuration.setAllowCredentials(true);
 	    configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
 	    
-	    // Important for Render
 	    configuration.setMaxAge(3600L);
 	    
 	    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

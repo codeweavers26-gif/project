@@ -75,11 +75,7 @@ public class CartService {
 	    }
 	    Integer availableStock = getAvailableStock(variant); 
 	    
-//	    
-//	    if (availableStock < qty) {
-//	        throw new BadRequestException(
-//	                String.format("Only %d units available for %s", availableStock, product.getName()));
-//	    }
+
 	    if (qty > 10) {
 	        throw new BadRequestException("Maximum purchase quantity is 10 units");
 	    }
@@ -87,7 +83,6 @@ public class CartService {
 	        .orElse(null);
 
 	    if (existingItem != null) {
-	        // Update existing item
 	        int newQuantity = existingItem.getQuantity() + qty;
 	        
 	        if (availableStock < newQuantity) {
@@ -104,7 +99,6 @@ public class CartService {
 	            user.getId(), productId, newQuantity);
 	        
 	    } else {
-	        // Create new cart item
 	        CartItem cartItem = CartItem.builder()
 	            .cart(cart)
 	            .product(product)

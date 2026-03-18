@@ -42,12 +42,11 @@ public class AuthService {
 		}
 
 		User user = User.builder().email(req.getEmail()).password(passwordEncoder.encode(req.getPassword()))
-				.name(req.getName()).role(Role.CUSTOMER).createdAt(Instant.now()) // customer always
+				.name(req.getName()).role(Role.CUSTOMER).createdAt(Instant.now()) 
 				.build();
 
 		userRepository.save(user);
 
-		// 🔥 PASS USER OBJECT
 		String accessToken = jwtUtils.generateAccessToken(user);
 
 		RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
@@ -62,7 +61,6 @@ public class AuthService {
 		User user = userRepository.findByEmail(req.getEmail())
 				.orElseThrow(() -> new NotFoundException("User not found"));
 
-		// 🔥 Portal restriction happens HERE
 		if (user.getRole() != expectedRole) {
 			throw new UnauthorizedException("Access denied for this portal");
 		}
@@ -84,7 +82,6 @@ public class AuthService {
 
 		User user = rt.getUser();
 
-		// ✅ PASS FULL USER
 		String accessToken = jwtUtils.generateAccessToken(user);
 
 		return new AuthResponse(accessToken, rt.getToken());

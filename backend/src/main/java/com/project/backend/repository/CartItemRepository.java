@@ -79,26 +79,19 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     """)
     List<Object[]> findTopProducts(@Param("limit") int limit);
     
-    
-    
-    
-    // Get items added in date range
     @Query("SELECT ci FROM CartItem ci WHERE ci.addedAt BETWEEN :startDate AND :endDate")
     List<CartItem> findByDateRange(@Param("startDate") Instant startDate, 
                                    @Param("endDate") Instant endDate);
     
-    // Get most popular products (by cart additions)
     @Query("SELECT p.id, p.name, COUNT(ci) as addCount " +
            "FROM CartItem ci JOIN ci.product p " +
            "GROUP BY p.id, p.name " +
            "ORDER BY addCount DESC")
     List<Object[]> findMostPopularProducts(Pageable pageable);
     
-    // Get total items sold (quantity sum)
     @Query("SELECT COALESCE(SUM(ci.quantity), 0) FROM CartItem ci")
     Long getTotalItemsInCarts();
     
-    // Get average quantity per item
     @Query("SELECT COALESCE(AVG(ci.quantity), 0) FROM CartItem ci")
     Double getAverageQuantity();
     

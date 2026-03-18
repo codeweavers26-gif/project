@@ -52,7 +52,6 @@ public class AdminReturnController {
 		return userRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
 	}
 	
-	//return
 	@Operation(summary = "Get all returns", security = @SecurityRequirement(name = "Bearer Authentication"))
 	  @GetMapping("/returns")
 	    public ResponseEntity<PageResponseDto<ReturnDto>> getAllReturns(
@@ -149,44 +148,6 @@ public class AdminReturnController {
 User user = getCurrentUser(auth);
 	     return ResponseEntity.ok(service.getReturnsByUser(user.getId(),page, size));
 	 }
-	 
-//
-//	    @PostMapping("/returns/{returnId}/images")
-//	    public ResponseEntity<List<String>> uploadReturnImages(
-//	            @PathVariable Long returnId,
-//	            @RequestParam("images") List<MultipartFile> images) {
-//	        return ResponseEntity.ok(service.uploadReturnImages(returnId, images));
-//	    }
-
 	
-	
-	
-	
-	
-	
-	
-
-//	@Operation(summary = "Get all returns", security = @SecurityRequirement(name = "Bearer Authentication"))
-//	@GetMapping
-//	public ResponseEntity<?> getAll(@RequestParam int page, @RequestParam int size) {
-//
-//		return ResponseEntity.ok(service.getAllReturns(page, size));
-//	}
-//
-//	@Operation(summary = "Update return status", security = @SecurityRequirement(name = "Bearer Authentication"))
-//	@PutMapping("/{returnId}")
-//	public ResponseEntity<Void> update(@PathVariable Long returnId, @RequestBody UpdateReturnStatusDto dto) {
-//
-//		service.updateReturnStatus(returnId, dto);
-//		return ResponseEntity.ok().build();
-//	}
-//
-//	@Operation(summary = "Get all returns of a user", security = @SecurityRequirement(name = "Bearer Authentication"))
-//	@GetMapping("/user/{userId}")
-//	public ResponseEntity<PageResponseDto<AdminUserReturnResponseDto>> getUserReturns(@PathVariable Long userId,
-//			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-//
-//		return ResponseEntity.ok(service.getReturnsByUser(userId, page, size));
-//	}
 
 }

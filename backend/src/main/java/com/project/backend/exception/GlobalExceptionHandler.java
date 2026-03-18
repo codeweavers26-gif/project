@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
                         .timestamp(Instant.now())
                         .status(400)
                         .error("Bad Request")
-                        .message(ex.getMessage())  // This will show "Maximum purchase quantity is 10 units"
+                        .message(ex.getMessage())   
                         .path(request.getRequestURI())
                         .build()
         );

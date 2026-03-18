@@ -25,8 +25,6 @@ import com.project.backend.entity.ReturnStatus;
 @Repository
 public interface ReturnRepository extends JpaRepository<Return, Long> {
 
-    // ==================== BASIC QUERIES ====================
-
     Optional<Return> findByReturnNumber(String returnNumber);
 
     Optional<Return> findByOrderItemId(Long orderItemId);
@@ -48,7 +46,6 @@ Map<ReturnStatus, Long> countByStatusGrouped();
 
     Long countByUserIdAndStatusIn(Long userId, List<ReturnStatus> statuses);
 
-    // ==================== ADVANCED FILTERING ====================
 
     @Query("SELECT r FROM Return r WHERE " +
     	       "(:status IS NULL OR r.status = :status) AND " +
@@ -73,7 +70,6 @@ Map<ReturnStatus, Long> countByStatusGrouped();
             @Param("statuses") List<ReturnStatus> statuses,
             @Param("cutoffDate") LocalDateTime cutoffDate);
 
-    // ==================== DATE RANGE QUERIES ====================
 
     List<Return> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 
@@ -95,7 +91,6 @@ Map<ReturnStatus, Long> countByStatusGrouped();
            "YEAR(r.createdAt) = YEAR(CURRENT_DATE)")
     List<Return> findThisMonthsReturns();
 
-    // ==================== AGGREGATION QUERIES ====================
 
     @Query("SELECT COUNT(r) FROM Return r WHERE " +
            "r.createdAt BETWEEN :startDate AND :endDate")
@@ -169,7 +164,6 @@ Map<ReturnStatus, Long> countByStatusGrouped();
            "WHERE r.user.id = :userId")
     Long getUserReturnCount(@Param("userId") Long userId);
 
-    // ==================== DAILY TRENDS ====================
 
     @Query("SELECT DATE(r.createdAt) as date, " +
            "COUNT(r) as count, " +
@@ -192,7 +186,6 @@ Map<ReturnStatus, Long> countByStatusGrouped();
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
 
-    // ==================== STATUS UPDATE QUERIES ====================
 
     @Modifying
     @Transactional
@@ -224,7 +217,6 @@ Map<ReturnStatus, Long> countByStatusGrouped();
             @Param("returnId") Long returnId,
             @Param("reason") String reason);
 
-    // ==================== PICKUP RELATED ====================
 
     @Query("SELECT r FROM Return r WHERE " +
            "r.status = 'PICKUP_SCHEDULED' AND " +
@@ -237,8 +229,6 @@ Map<ReturnStatus, Long> countByStatusGrouped();
            "r.status = 'PICKUP_SCHEDULED' AND " +
            "r.pickupScheduledDate < :currentDate")
     List<Return> findOverduePickups(@Param("currentDate") LocalDateTime currentDate);
-
-    // ==================== BULK OPERATIONS ====================
 
     @Query("SELECT r.id FROM Return r WHERE " +
            "r.status = :status AND " +

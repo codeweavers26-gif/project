@@ -25,7 +25,6 @@ public class WishlistResponseDto {
     private Instant createdAt;
     private Instant updatedAt;
     
-    // Statistics
-    private Long totalWishlists; // For admin
-    private Double averageItemsPerWishlist; // For admin
+    private Long totalWishlists; 
+    private Double averageItemsPerWishlist; 
 }

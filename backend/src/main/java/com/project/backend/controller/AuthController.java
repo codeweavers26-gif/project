@@ -30,9 +30,6 @@ public class AuthController {
     private final AuthService authService;
     private final UserRepository userRepository;
 
-    // ==========================
-    // REGISTER
-    // ==========================
     @Operation(summary = "Register a new account")
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
@@ -42,9 +39,6 @@ public class AuthController {
         return ResponseEntity.ok(resp);
     }
 
-    // ==========================
-    // LOGIN
-    // ==========================
     @Operation(summary = "Login user and generate JWT tokens")
     @PostMapping("/admin/login")
     public ResponseEntity<AuthResponse> adminLogin(@RequestBody AuthRequest req) {
@@ -55,9 +49,6 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(req, Role.CUSTOMER));
     }
 
-    // ==========================
-    // REFRESH TOKEN
-    // ==========================
     @Operation(summary = "Refresh JWT access token using refresh token")
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(
@@ -67,15 +58,11 @@ public class AuthController {
         return ResponseEntity.ok(resp);
     }
 
-    // ==========================
-    // LOGOUT
-    // ==========================
     @Operation(summary = "Logout user (invalidate refresh tokens)")
     @PostMapping("/logout")
     public ResponseEntity<MessageResponse> logout(Authentication authentication) {
 
         if (authentication == null) {
-            // Idempotent logout
             return ResponseEntity.ok(
                 new MessageResponse("Logged out successfully")
             );

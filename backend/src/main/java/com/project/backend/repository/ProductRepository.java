@@ -14,7 +14,6 @@ import com.project.backend.entity.Product;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-	// ============= BASIC QUERIES =============
 
 	Page<Product> findByIsActiveTrue(Pageable pageable);
 
@@ -33,7 +32,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	boolean existsBySlug(String slug);
 
-	// ============= STOCK AVAILABILITY QUERIES =============
 
 	@Query("""
 			    SELECT DISTINCT p FROM Product p

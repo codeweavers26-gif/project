@@ -79,12 +79,6 @@ public class OrderService {
 			throw new BadRequestException("Address does not belong to user");
 		}
 
-		// Location location =
-		// locationRepository.findFirstByPincodeAndIsActiveTrue(address.getPostalCode())
-		// .orElseThrow(() -> new BadRequestException("Delivery not available at this
-		// postal code"));
-
-		// Integer deliveryDays = location.getDeliveryDays();
 		Double extraShippingCharge = null;
 		if (extraShippingCharge == null) {
 			extraShippingCharge = 0.0;
@@ -132,7 +126,6 @@ public class OrderService {
 			int totalAvailable = inventories.stream().mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
 					.sum();
 
-			// Stock validation
 			boolean inStock = totalAvailable >= qty;
 			if (!inStock) {
 				isValidForCheckout = false;
@@ -156,7 +149,6 @@ public class OrderService {
 						.divide(mrp, 0, RoundingMode.HALF_UP).intValue();
 			}
 
-			// Build item DTO
 			itemDtos.add(CheckoutResponseDto.CheckoutItemDto.builder().productId(product.getId())
 					.productName(product.getName()).productImage(getProductImage(product)).variantId(variant.getId())
 					.size(variant.getSize()).color(variant.getColor()).sku(variant.getSku()).quantity(qty).price(price)
@@ -164,7 +156,6 @@ public class OrderService {
 					.availableStock(totalAvailable).build());
 		}
 
-		// Calculate shipping
 		BigDecimal shipping;
 		if (subtotal.compareTo(BigDecimal.valueOf(999)) > 0) {
 			shipping = BigDecimal.ZERO;
@@ -175,7 +166,6 @@ public class OrderService {
 		BigDecimal grandTotal = subtotal.add(taxTotal).add(shipping);
 		LocalDate expectedDelivery = LocalDate.now().plusDays(maxDeliveryDays);
 
-		// Build address DTO
 		CheckoutResponseDto.AddressDto addressDto = CheckoutResponseDto.AddressDto.builder()
 
 				.addressLine1(address.getAddressLine1()).addressLine2(address.getAddressLine2()).city(address.getCity())
@@ -191,7 +181,7 @@ public class OrderService {
 	}
 
 	private BigDecimal calculateGST(BigDecimal amount, ProductVariant variant) {
-	    BigDecimal gstPercent = getGSTPercentage(variant); // Should come from product/service
+	    BigDecimal gstPercent = getGSTPercentage(variant);
 	    return amount.multiply(gstPercent).divide(BigDecimal.valueOf(100));
 	}
 
@@ -204,7 +194,6 @@ public class OrderService {
 	        location.getExtraShippingCharge() != null ? location.getExtraShippingCharge() : 0.0
 	    );
 	    
-	    // Make threshold configurable
 	    BigDecimal freeShippingThreshold = BigDecimal.valueOf(999);
 	    
 	    if (subtotal.compareTo(freeShippingThreshold) > 0) {
@@ -317,7 +306,7 @@ public class OrderService {
 	                int available = inventories.stream()
 	                        .mapToInt(i -> {
 	                            int availableQty = i.getAvailableQuantity() - i.getReservedQuantity();
-	                            return Math.max(availableQty, 0); // Ensure non-negative
+	                            return Math.max(availableQty, 0); 
 	                        })
 	                        .sum();
 
@@ -372,7 +361,7 @@ public class OrderService {
 	                }
 
 	            } catch (BadRequestException e) {
-	                throw e; // Re-throw BadRequestException
+	                throw e;
 	            } catch (Exception e) {
 	                log.error("Unexpected error processing cart item: {}", item.getId(), e);
 	                throw new BadRequestException("Error processing cart item: " + e.getMessage());
@@ -462,27 +451,6 @@ public class OrderService {
 
 	@Transactional
 	public void updateOrderAfterSuccessfulPayment(Long orderId, String razorpayPaymentId) {
-//		Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));
-//
-//		// Update order status
-//		order.setPaymentStatus(PaymentStatus.SUCCESS);
-//		order.setStatus(OrderStatus.PLACED);
-//		orderRepository.save(order);
-//
-//		// Deduct inventory (was reserved, now actually deduct)
-//		for (OrderItem item : order.getItems()) {
-//			ProductInventory inventory = inventoryRepository
-//					.findByProductAndLocation(item.getProduct(), order.getLocation())
-//					.orElseThrow(() -> new RuntimeException("Inventory not found"));
-//
-//			inventory.setStock(inventory.getStock() - item.getQuantity());
-//			inventoryRepository.save(inventory);
-//		}
-//
-//		// Clear user's cart
-//		cartRepository.deleteByUser(order.getUser());
-//
-//		log.info("Order {} updated after successful payment: {}", orderId, razorpayPaymentId);
 	}
 
 	@Transactional
@@ -510,79 +478,9 @@ public class OrderService {
 
 	@Transactional
 	public void cancelOrder(Long orderId, User user) {
-//
-//		Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));
-//
-//		if (!order.getUser().getId().equals(user.getId())) {
-//			throw new UnauthorizedException("Not your order");
-//		}
-//
-//		if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED) {
-//			throw new BadRequestException("Order cannot be cancelled now");
-//		}
-//
-//		// 🔴 CHANGE: Only restore inventory if it was deducted
-//		if (order.getPaymentMethod() == PaymentMethod.COD || order.getPaymentStatus() == PaymentStatus.SUCCESS) {
-//			// Restore inventory
-//			for (OrderItem item : order.getItems()) {
-//				ProductInventory inventory = inventoryRepository
-//						.findByProductAndLocation(item.getProduct(), order.getLocation())
-//						.orElseThrow(() -> new RuntimeException("Inventory not found"));
-//
-//				inventory.setStock(inventory.getStock() + item.getQuantity());
-//				inventoryRepository.save(inventory);
-//			}
-//		}
-//
-//		order.setStatus(OrderStatus.CANCELLED);
-//		order.setPaymentStatus(
-//				order.getPaymentMethod() == PaymentMethod.PREPAID && order.getPaymentStatus() == PaymentStatus.SUCCESS
-//						? PaymentStatus.REFUND_PENDING
-//						: PaymentStatus.CANCELLED);
-//
-//		orderRepository.save(order);
+
 	}
 
-//	private CheckoutResponseDto mapToCheckoutResponse(Order order, double subtotal) {
-//
-//	    return CheckoutResponseDto.builder()
-//	            .orderId(order.getId())
-//	            .status(order.getStatus().name())
-//	            .paymentMethod(order.getPaymentMethod().name())
-//	            .paymentStatus(order.getPaymentStatus().name())
-//	            .subtotal(subtotal)
-//	            .taxAmount(order.getTaxAmount())
-//	            .shippingCharges(order.getShippingCharges())
-//	            .discountAmount(order.getDiscountAmount())
-//	            .totalAmount(order.getTotalAmount())
-//	            .createdAt(order.getCreatedAt())
-//
-//	            .deliveryAddress(
-//	                    DeliveryAddressDto.builder()
-//	                            .addressLine1(order.getDeliveryAddressLine1())
-//	                            .addressLine2(order.getDeliveryAddressLine2())
-//	                            .city(order.getDeliveryCity())
-//	                            .state(order.getDeliveryState())
-//	                            .postalCode(order.getDeliveryPostalCode())
-//	                            .country(order.getDeliveryCountry())
-//	                            .build()
-//	            )
-//
-//	            .items(order.getItems().stream()
-//	                    .map(item -> OrderItemDto.builder()
-//	                            .productId(item.getProductId())
-//	                            .variantId(item.getVariantId())
-//	                            .productName(item.getProductName())
-//	                            .price(item.getPrice())
-//	                            .quantity(item.getQuantity())
-//	                            .size(item.getSize())
-//	                            .color(item.getColor())
-//	                            .total(item.getPrice() * item.getQuantity())
-//	                            .build())
-//	                    .toList()
-//	            )
-//	            .build();
-//	}
 	public OrderResponseDto getOrderById(Long orderId, User user) {
 
 		Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));

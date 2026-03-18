@@ -37,52 +37,58 @@ public class CouponService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final com.project.backend.config.CouponCodeGenerator codeGenerator;
-    @Transactional(readOnly = true)
-    public CouponDto getCouponById(Long id) {
-        log.info("Fetching coupon by ID: {}", id);
-        
-        try {
-            Coupon coupon = couponRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
-            
-            return mapToDto(coupon);
-            
-        } catch (NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error fetching coupon by ID: {}", id, e);
-            throw new BusinessException("Failed to fetch coupon", "COUPON_FETCH_ERROR");
-        }
+
+
+private static final int DEFAULT_PAGE_SIZE = 20;
+private static final int MAX_BULK_CREATE_LIMIT = 100;
+private static final int NEW_USER_DAYS = 30;
+private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+private static final String COUPON_ALREADY_USED = "Cannot edit coupon that has already been used";
+
+
+@Transactional(readOnly = true)
+public CouponDto getCouponById(Long id) {
+    log.info("Fetching coupon by ID: {}", id);
+    
+    return couponRepository.findById(id)
+        .map(this::mapToDto)
+        .orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
+}
+
+
+
+@Transactional(readOnly = true)
+public PageResponseDto<CouponUsageDto> getCouponUsage(Long couponId, Pageable pageable) {
+    log.info("Fetching usage history for coupon ID: {}", couponId);
+    
+    if (!couponRepository.existsById(couponId)) {
+        throw new NotFoundException("Coupon not found with ID: " + couponId);
     }
- @Transactional(readOnly = true)
-    public PageResponseDto<CouponUsageDto> getCouponUsage(Long couponId, Pageable pageable) {
-        log.info("Fetching usage history for coupon ID: {}", couponId);
-        
-        try {
-            if (!couponRepository.existsById(couponId)) {
-                throw new NotFoundException("Coupon not found with ID: " + couponId);
-            }
-            
-            Page<CouponUsage> usages = usageRepository.findByCouponId(couponId, pageable);
-            
-            return PageResponseDto.<CouponUsageDto>builder()
-                    .content(usages.getContent().stream()
-                            .map(this::mapToUsageDto)
-                            .collect(Collectors.toList()))
-                    .page(usages.getNumber())
-                    .size(usages.getSize())
-                    .totalElements(usages.getTotalElements())
-                    .totalPages(usages.getTotalPages())
-                    .last(usages.isLast())
-                    .build();
-                    
-        } catch (NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error fetching coupon usage for ID: {}", couponId, e);
-            throw new BusinessException("Failed to fetch coupon usage", "USAGE_FETCH_ERROR");
-        }
-    }
+    
+    Page<CouponUsage> usages = usageRepository.findByCouponId(couponId, pageable);
+    
+    return buildPageResponse(usages, this::mapToUsageDto);
+}
+
+
+
+
+private <T, R> PageResponseDto<R> buildPageResponse(Page<T> page, java.util.function.Function<T, R> mapper) {
+    List<R> content = page.getContent().stream()
+            .map(mapper)
+            .toList();
+    
+    return PageResponseDto.<R>builder()
+            .content(content)
+            .page(page.getNumber())
+            .size(page.getSize())
+            .totalElements(page.getTotalElements())
+            .totalPages(page.getTotalPages())
+            .last(page.isLast())
+            .build();
+}
+
+
    @Transactional(readOnly = true)
     public PageResponseDto<CouponDto> getAllCoupons(
             String search,
@@ -95,42 +101,25 @@ public class CouponService {
         log.info("Fetching coupons with filters - search: {}, type: {}, status: {}", 
                  search, type, status);
         
-        try {
+    
             Page<Coupon> coupons = couponRepository.findByFilters(
+
                 search, type, status, fromDate, toDate, pageable);
             
-            return PageResponseDto.<CouponDto>builder()
-                    .content(coupons.getContent().stream()
-                            .map(this::mapToDto)
-                            .collect(Collectors.toList()))
-                    .page(coupons.getNumber())
-                    .size(coupons.getSize())
-                    .totalElements(coupons.getTotalElements())
-                    .totalPages(coupons.getTotalPages())
-                    .last(coupons.isLast())
-                    .build();
+            return buildPageResponse(coupons, this::mapToDto);
                     
-        } catch (Exception e) {
-            log.error("Error fetching coupons", e);
-            throw new BusinessException("Failed to fetch coupons", "COUPON_FETCH_ERROR");
-        }
+       
     }
     @Transactional(readOnly = true)
     public CouponDto getCouponByCode(String code) {
         log.info("Fetching coupon by code: {}", code);
         
-        try {
             Coupon coupon = couponRepository.findByCode(code.toUpperCase())
                 .orElseThrow(() -> new NotFoundException("Coupon not found with code: " + code));
             
             return mapToDto(coupon);
             
-        } catch (NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error fetching coupon by code: {}", code, e);
-            throw new BusinessException("Failed to fetch coupon", "COUPON_FETCH_ERROR");
-        }
+     
     }
 
     @Transactional
@@ -208,48 +197,44 @@ public class CouponService {
 
         return createdCoupons;
     }
+@Transactional
+public CouponDto updateCoupon(Long id, CouponDto couponDto, Long adminId) {
+    log.info("Updating coupon ID: {} by admin: {}", id, adminId);
 
-    @Transactional
-    public CouponDto updateCoupon(Long id, CouponDto couponDto, Long adminId) {
-        log.info("Updating coupon ID: {} by admin: {}", id, adminId);
+    Coupon coupon = couponRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
 
-        try {
-            Coupon coupon = couponRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
-
-            if (coupon.getTotalUsedCount() > 0) {
-                throw new BadRequestException("Cannot edit coupon that has already been used");
-            }
-
-            if (couponDto.getValidFrom().isAfter(couponDto.getValidTo())) {
-                throw new BadRequestException("Valid from date must be before valid to date");
-            }
-
-            validateDiscountValue(couponDto);
-
-            updateEntity(coupon, couponDto);
-            coupon.setUpdatedBy(adminId);
-            
-            updateCouponStatus(coupon);
-
-            coupon = couponRepository.save(coupon);
-
-            log.info("Coupon updated successfully: {}", coupon.getCode());
-            return mapToDto(coupon);
-
-        } catch (NotFoundException | BadRequestException  e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error updating coupon", e);
-            throw new BusinessException("Failed to update coupon", "COUPON_UPDATE_ERROR");
-        }
+    if (coupon.getTotalUsedCount() > 0) {
+        throw new BadRequestException(COUPON_ALREADY_USED);
     }
+
+    validateDates(couponDto.getValidFrom(), couponDto.getValidTo());
+    validateDiscountValue(couponDto);
+
+    updateEntity(coupon, couponDto);
+    coupon.setUpdatedBy(adminId);
+    updateCouponStatus(coupon);
+
+    coupon = couponRepository.save(coupon);
+
+    log.info("Coupon updated successfully: {}", coupon.getCode());
+    return mapToDto(coupon);
+}
+
+
+private void validateDates(LocalDateTime from, LocalDateTime to) {
+    if (from.isAfter(to)) {
+        throw new BadRequestException("Valid from date must be before valid to date");
+    }
+    if (to.isBefore(LocalDateTime.now())) {
+        throw new BadRequestException("Valid to date cannot be in the past");
+    }
+}
 
     @Transactional
     public void deleteCoupon(Long id) {
         log.info("Deleting coupon ID: {}", id);
 
-        try {
             Coupon coupon = couponRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
 
@@ -261,19 +246,13 @@ public class CouponService {
             couponRepository.delete(coupon);
             log.info("Coupon deleted successfully: {}", coupon.getCode());
 
-        } catch (NotFoundException | BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error deleting coupon", e);
-            throw new BusinessException("Failed to delete coupon", "COUPON_DELETE_ERROR");
-        }
+       
     }
 
     @Transactional
     public CouponDto changeCouponStatus(Long id, CouponStatus newStatus, Long adminId) {
         log.info("Changing coupon {} status to: {} by admin: {}", id, newStatus, adminId);
 
-        try {
             Coupon coupon = couponRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
 
@@ -286,19 +265,13 @@ public class CouponService {
             log.info("Coupon status changed to: {}", newStatus);
             return mapToDto(coupon);
 
-        } catch (NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error changing coupon status", e);
-            throw new BusinessException("Failed to change coupon status", "COUPON_STATUS_ERROR");
-        }
+       
     }
 
     @Transactional(readOnly = true)
     public CouponValidationResult validateAndApplyCoupon(ApplyCouponRequest request) {
         log.info("Validating coupon: {} for user: {}", request.getCouponCode(), request.getUserId());
 
-        try {
             Coupon coupon = couponRepository.findByCode(request.getCouponCode().toUpperCase())
                 .orElseThrow(() -> new NotFoundException("Invalid coupon code"));
 
@@ -334,29 +307,13 @@ public class CouponService {
                 .warnings(warnings)
                 .build();
 
-        } catch (NotFoundException e) {
-            return CouponValidationResult.builder()
-                .valid(false)
-                .message(e.getMessage())
-                .discountAmount(BigDecimal.ZERO)
-                .finalAmount(request.getOrderAmount())
-                .build();
-        } catch (Exception e) {
-            log.error("Error validating coupon", e);
-            return CouponValidationResult.builder()
-                .valid(false)
-                .message("Error validating coupon: " + e.getMessage())
-                .discountAmount(BigDecimal.ZERO)
-                .finalAmount(request.getOrderAmount())
-                .build();
-        }
+     
     }
 
     @Transactional
     public CouponUsage applyCouponToOrder(ApplyCouponRequest request, Long orderId) {
         log.info("Applying coupon {} to order: {}", request.getCouponCode(), orderId);
 
-        try {
             CouponValidationResult validation = validateAndApplyCoupon(request);
             if (!validation.isValid()) {
                 throw new BadRequestException(validation.getMessage());
@@ -397,19 +354,12 @@ public class CouponService {
             log.info("Coupon applied successfully to order: {}", orderId);
             return usage;
 
-        } catch (NotFoundException | BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error applying coupon to order", e);
-            throw new BusinessException("Failed to apply coupon", "COUPON_APPLY_ERROR");
-        }
     }
 
     @Transactional
     public void removeCouponFromOrder(Long orderId) {
         log.info("Removing coupon from order: {}", orderId);
 
-        try {
             Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Order not found"));
 
@@ -429,12 +379,6 @@ public class CouponService {
 
             log.info("Coupon removed from order: {}", orderId);
 
-        } catch (NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error removing coupon from order", e);
-            throw new BusinessException("Failed to remove coupon", "COUPON_REMOVE_ERROR");
-        }
     }
 
 

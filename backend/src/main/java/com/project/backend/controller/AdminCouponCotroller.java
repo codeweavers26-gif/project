@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/admin/coupon")
 @RequiredArgsConstructor
 @Slf4j
 @PreAuthorize("hasRole('ADMIN')")
@@ -52,14 +52,14 @@ public class AdminCouponCotroller {
     @PostMapping
     public ResponseEntity<CouponDto> createCoupon(
             @Valid @RequestBody CouponDto couponDto,
-            Authentication authentication) {  // ← Use Authentication, not @AuthenticationPrincipal
+            Authentication authentication) {  
         
         User admin = getCurrentUser(authentication);
         return ResponseEntity.ok(couponService.createCoupon(couponDto, admin.getId()));
     }
 
     @Operation(summary = "Bulk create coupons", security = @SecurityRequirement(name = "Bearer Authentication"))
-    @PostMapping("/admin/coupons/bulk")
+    @PostMapping("/bulk")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<CouponDto>> bulkCreateCoupons(
             @Valid @RequestBody BulkCouponCreateRequest request,
@@ -68,7 +68,7 @@ public class AdminCouponCotroller {
     }
 
     @Operation(summary = "Get all coupons with filters", security = @SecurityRequirement(name = "Bearer Authentication"))
-    @GetMapping("/admin/coupons")
+    @GetMapping("coupons")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PageResponseDto<CouponDto>> getAllCoupons(
             @RequestParam(required = false) String search,

@@ -77,7 +77,6 @@ public class AdminUserController {
     public ResponseEntity<PageResponseDto<OrderResponseDto>> getUserOrders(
             @PathVariable Long userId,
             
-            // Order filters
             @Parameter(description = "Filter by order status") 
             @RequestParam(required = false) String status,
             
@@ -93,25 +92,20 @@ public class AdminUserController {
             @Parameter(description = "Filter by maximum amount") 
             @RequestParam(required = false) Double maxAmount,
             
-            // Date filters
             @Parameter(description = "Orders from date (yyyy-MM-dd)") 
             @RequestParam(required = false) String fromDate,
             
             @Parameter(description = "Orders to date (yyyy-MM-dd)") 
             @RequestParam(required = false) String toDate,
             
-            // Search
             @Parameter(description = "Search in order ID or items") 
             @RequestParam(required = false) String search,
             
-            // Sorting
             @Parameter(description = "Sort by field (createdAt, totalAmount, status)") 
             @RequestParam(defaultValue = "createdAt") String sortBy,
             
             @Parameter(description = "Sort direction (asc or desc)") 
             @RequestParam(defaultValue = "desc") String sortDirection,
-            
-            // Pagination
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         

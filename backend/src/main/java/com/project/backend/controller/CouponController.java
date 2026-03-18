@@ -48,25 +48,6 @@ public class CouponController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-  
-
-  
-
-    // @Operation(summary = "Get user's coupon history", security = @SecurityRequirement(name = "Bearer Authentication"))
-    // @GetMapping("/user/coupons/history")
-
-    // public ResponseEntity<PageResponseDto<CouponUsageDto>> getUserCouponHistory(
-    //         @AuthenticationPrincipal User user,
-    //         @PageableDefault(size = 10) Pageable pageable) {
-    //     return ResponseEntity.ok(couponService.getUserCouponHistory(user.getId(), pageable));
-    // }
-
-
-
-
-
-
-
       @Operation(summary = "Validate and apply coupon", security = @SecurityRequirement(name = "Bearer Authentication"))
     @PostMapping("/user/coupons/validate")
     public ResponseEntity<CouponValidationResult> validateCoupon(

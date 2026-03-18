@@ -1,20 +1,13 @@
 package com.project.backend.controller;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -89,59 +82,4 @@ public class AdminCartController {
         return ResponseEntity.ok(adminCartService.getCartStatistics());
     }
 
-////    @Operation(summary = "Remove specific cart item", security = @SecurityRequirement(name = "Bearer Authentication"))
-////    @DeleteMapping("/items/{cartId}")
-////    public ResponseEntity<Void> removeCartItem(@PathVariable Long cartId) {
-////        adminCartService.removeCartItem(cartId);
-////        return ResponseEntity.ok().build();
-////    }
-//
-//    @Operation(summary = "Clear entire user cart", security = @SecurityRequirement(name = "Bearer Authentication"))
-//    @DeleteMapping("/users/{userId}/clear")
-//    public ResponseEntity<Void> clearUserCart(@PathVariable Long userId) {
-//        adminCartService.clearUserCart(userId);
-//        return ResponseEntity.ok().build();
-//    }
-//
-////    @Operation(summary = "Update cart item quantity", security = @SecurityRequirement(name = "Bearer Authentication"))
-////    @PatchMapping("/items/{cartId}")
-////    public ResponseEntity<AdminCartItemDto> updateCartItemQuantity(
-////            @PathVariable Long cartId,
-////            @RequestParam Integer quantity) {
-////        return ResponseEntity.ok(adminCartService.updateCartItemQuantity(cartId, quantity));
-////    }
-//
-////    @Operation(summary = "Export cart data to CSV")
-////    @GetMapping("/export")
-////    public ResponseEntity<byte[]> exportCartData() {
-////        List<List<String>> csvData = adminCartService.exportCartData();
-////        
-////        // Convert to CSV
-////        StringBuilder csv = new StringBuilder();
-////        for (List<String> row : csvData) {
-////            csv.append(String.join(",", row)).append("\n");
-////        }
-////        
-////        HttpHeaders headers = new HttpHeaders();
-////        headers.setContentType(MediaType.TEXT_PLAIN);
-////        headers.setContentDisposition(ContentDisposition.builder("attachment")
-////                .filename("cart-export-" + LocalDate.now() + ".csv").build());
-////        
-////        return new ResponseEntity<>(csv.toString().getBytes(), headers, HttpStatus.OK);
-////    }
-//
-//    @Operation(summary = "Bulk delete abandoned carts", security = @SecurityRequirement(name = "Bearer Authentication"))
-//    @DeleteMapping("/abandoned/clear")
-//    public ResponseEntity<Map<String, Object>> clearAbandonedCarts() {
-//        List<AdminCartSummaryDto> abandoned = adminCartService.getAbandonedCarts();
-//        
-//        for (AdminCartSummaryDto cart : abandoned) {
-//            adminCartService.clearUserCart(cart.getUserId());
-//        }
-//        
-//        return ResponseEntity.ok(Map.of(
-//                "message", "Abandoned carts cleared",
-//                "count", abandoned.size()
-//        ));
-//    }
 }
