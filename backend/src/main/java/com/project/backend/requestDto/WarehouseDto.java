@@ -63,7 +63,6 @@ public class WarehouseDto {
 		private LocalDateTime createdAt;
 		private LocalDateTime updatedAt;
 
-		// Inventory summary
 		private Integer totalVariants;
 		private Integer totalStock;
 	}

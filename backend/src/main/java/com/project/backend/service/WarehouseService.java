@@ -1,6 +1,7 @@
 package com.project.backend.service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
@@ -30,77 +31,126 @@ public class WarehouseService {
 	private final WarehouseRepository warehouseRepository;
 	private final WarehouseInventoryRepository inventoryRepository;
 
-	// ============= ADMIN APIs =============
+private static final int LOW_STOCK_THRESHOLD = 5;
+private static final int DEFAULT_NEAREST_WAREHOUSE_LIMIT = 5;
+private static final String CACHE_WAREHOUSES = "warehouses";
+private static final String CACHE_DEFAULT_WAREHOUSE = "defaultWarehouse";
+private static final String CACHE_INVENTORY_SUMMARY = "warehouseInventorySummary";
+	@Transactional
+@CacheEvict(value = {CACHE_WAREHOUSES, CACHE_DEFAULT_WAREHOUSE}, allEntries = true)
+public WarehouseDto.Response createWarehouse(WarehouseDto.Request request) {
+    
+    validateWarehouseRequest(request);
+    
+    if (Boolean.TRUE.equals(request.getIsDefault())) {
+        clearExistingDefault();
+    }
+
+    Warehouse warehouse = buildWarehouseFromRequest(request);
+    Warehouse savedWarehouse = warehouseRepository.save(warehouse);
+    
+    log.info("Warehouse created: {} - {}", savedWarehouse.getCode(), savedWarehouse.getName());
+    return mapToResponse(savedWarehouse);
+}
+
+private void validateWarehouseRequest(WarehouseDto.Request request) {
+    if (request.getName() == null || request.getName().trim().isEmpty()) {
+        throw new BadRequestException("Warehouse name is required");
+    }
+    if (request.getCode() == null || request.getCode().trim().isEmpty()) {
+        throw new BadRequestException("Warehouse code is required");
+    }
+    if (request.getPincode() == null || request.getPincode().trim().isEmpty()) {
+        throw new BadRequestException("Pincode is required");
+    }
+    
+    if (warehouseRepository.existsByCode(request.getCode())) {
+        throw new BadRequestException("Warehouse code already exists: " + request.getCode());
+    }
+}
+private Warehouse buildWarehouseFromRequest(WarehouseDto.Request request) {
+    return Warehouse.builder()
+            .name(request.getName())
+            .code(request.getCode())
+            .locationId(request.getLocationId())
+            .address(request.getAddress())
+            .city(request.getCity())
+            .state(request.getState())
+            .pincode(request.getPincode())
+            .contactPerson(request.getContactPerson())
+            .contactPhone(request.getContactPhone())
+            .contactEmail(request.getContactEmail())
+            .isDefault(request.getIsDefault())
+            .isActive(request.getIsActive())
+            .latitude(request.getLatitude())
+            .longitude(request.getLongitude())
+            .build();
+}
+
+ private Warehouse getWarehouseByIdOrThrow(Long id) {
+        return warehouseRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
+    }
+
 
 	@Transactional
-	@CacheEvict(value = { "warehouses", "defaultWarehouse" }, allEntries = true)
-	public WarehouseDto.Response createWarehouse(WarehouseDto.Request request) {
+@CacheEvict(value = {CACHE_WAREHOUSES, CACHE_DEFAULT_WAREHOUSE}, allEntries = true)
+public WarehouseDto.Response updateWarehouse(Long id, WarehouseDto.Request request) {
 
-		// Check if only one default warehouse
-		if (Boolean.TRUE.equals(request.getIsDefault())) {
-			clearExistingDefault();
-		}
+    Warehouse warehouse = getWarehouseByIdOrThrow(id);
+    
+    validateWarehouseUpdate(request, warehouse);
+    
+    if (Boolean.TRUE.equals(request.getIsDefault()) && !Boolean.TRUE.equals(warehouse.getIsDefault())) {
+        clearExistingDefault();
+    }
 
-		Warehouse warehouse = Warehouse.builder().name(request.getName()).code(request.getCode())
-				.locationId(request.getLocationId()).address(request.getAddress()).city(request.getCity())
-				.state(request.getState()).pincode(request.getPincode()).contactPerson(request.getContactPerson())
-				.contactPhone(request.getContactPhone()).contactEmail(request.getContactEmail())
-				.isDefault(request.getIsDefault()).isActive(request.getIsActive()).latitude(request.getLatitude())
-				.longitude(request.getLongitude()).build();
+    updateWarehouseFromRequest(warehouse, request);
+    
+    Warehouse updatedWarehouse = warehouseRepository.save(warehouse);
+    log.info("Warehouse updated: {} - {}", updatedWarehouse.getCode(), updatedWarehouse.getName());
 
-		Warehouse savedWarehouse = warehouseRepository.save(warehouse);
-		log.info("Warehouse created: {} - {}", savedWarehouse.getCode(), savedWarehouse.getName());
+    return mapToResponse(updatedWarehouse);
+}
 
-		return mapToResponse(savedWarehouse);
-	}
+private void validateWarehouseUpdate(WarehouseDto.Request request, Warehouse existingWarehouse) {
+    if (request.getCode() != null && !request.getCode().equals(existingWarehouse.getCode()) &&
+        warehouseRepository.existsByCode(request.getCode())) {
+        throw new BadRequestException("Warehouse code already exists: " + request.getCode());
+    }
+}
 
-	@Transactional
-	@CacheEvict(value = { "warehouses", "defaultWarehouse" }, allEntries = true)
-	public WarehouseDto.Response updateWarehouse(Long id, WarehouseDto.Request request) {
-
-		Warehouse warehouse = warehouseRepository.findById(id)
-				.orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
-
-		// Handle default flag change
-		if (Boolean.TRUE.equals(request.getIsDefault()) && !Boolean.TRUE.equals(warehouse.getIsDefault())) {
-			clearExistingDefault();
-		}
-
-		warehouse.setName(request.getName());
-		warehouse.setCode(request.getCode());
-		warehouse.setLocationId(request.getLocationId());
-		warehouse.setAddress(request.getAddress());
-		warehouse.setCity(request.getCity());
-		warehouse.setState(request.getState());
-		warehouse.setPincode(request.getPincode());
-		warehouse.setContactPerson(request.getContactPerson());
-		warehouse.setContactPhone(request.getContactPhone());
-		warehouse.setContactEmail(request.getContactEmail());
-		warehouse.setIsDefault(request.getIsDefault());
-		warehouse.setIsActive(request.getIsActive());
-		warehouse.setLatitude(request.getLatitude());
-		warehouse.setLongitude(request.getLongitude());
-
-		Warehouse updatedWarehouse = warehouseRepository.save(warehouse);
-		log.info("Warehouse updated: {} - {}", updatedWarehouse.getCode(), updatedWarehouse.getName());
-
-		return mapToResponse(updatedWarehouse);
-	}
+private void updateWarehouseFromRequest(Warehouse warehouse, WarehouseDto.Request request) {
+    Optional.ofNullable(request.getName()).ifPresent(warehouse::setName);
+    Optional.ofNullable(request.getCode()).ifPresent(warehouse::setCode);
+    Optional.ofNullable(request.getLocationId()).ifPresent(warehouse::setLocationId);
+    Optional.ofNullable(request.getAddress()).ifPresent(warehouse::setAddress);
+    Optional.ofNullable(request.getCity()).ifPresent(warehouse::setCity);
+    Optional.ofNullable(request.getState()).ifPresent(warehouse::setState);
+    Optional.ofNullable(request.getPincode()).ifPresent(warehouse::setPincode);
+    Optional.ofNullable(request.getContactPerson()).ifPresent(warehouse::setContactPerson);
+    Optional.ofNullable(request.getContactPhone()).ifPresent(warehouse::setContactPhone);
+    Optional.ofNullable(request.getContactEmail()).ifPresent(warehouse::setContactEmail);
+    Optional.ofNullable(request.getIsDefault()).ifPresent(warehouse::setIsDefault);
+    Optional.ofNullable(request.getIsActive()).ifPresent(warehouse::setIsActive);
+    Optional.ofNullable(request.getLatitude()).ifPresent(warehouse::setLatitude);
+    Optional.ofNullable(request.getLongitude()).ifPresent(warehouse::setLongitude);
+}
 
 	@Transactional
-	@CacheEvict(value = { "warehouses", "defaultWarehouse" }, allEntries = true)
-	public void deleteWarehouse(Long id) {
-		Warehouse warehouse = warehouseRepository.findById(id)
-				.orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
+@CacheEvict(value = {CACHE_WAREHOUSES, CACHE_DEFAULT_WAREHOUSE}, allEntries = true)
+public void deleteWarehouse(Long id) {
+    if (!warehouseRepository.existsById(id)) {
+        throw new NotFoundException("Warehouse not found with id: " + id);
+    }
 
-		// Check if warehouse has inventory
-		if (!warehouse.getInventories().isEmpty()) {
-			throw new BadRequestException("Cannot delete warehouse with existing inventory. Deactivate it instead.");
-		}
+    if (inventoryRepository.countByWarehouseId(id) > 0) {
+        throw new BadRequestException("Cannot delete warehouse with existing inventory. Deactivate it instead.");
+    }
 
-		warehouseRepository.delete(warehouse);
-		log.info("Warehouse deleted: {}", id);
-	}
+    warehouseRepository.deleteById(id);
+    log.info("Warehouse deleted: {}", id);
+}
 
 	@Transactional
 	@CacheEvict(value = { "warehouses", "defaultWarehouse" }, allEntries = true)
@@ -110,7 +160,6 @@ public class WarehouseService {
 
 		warehouse.setIsActive(false);
 
-		// If this was default, clear default flag
 		if (Boolean.TRUE.equals(warehouse.getIsDefault())) {
 			warehouse.setIsDefault(false);
 		}
@@ -132,7 +181,6 @@ public class WarehouseService {
 		log.info("Default warehouse set: {}", id);
 	}
 
-	// ============= PUBLIC APIs =============
 
 	@Cacheable(value = "defaultWarehouse")
 	public WarehouseDto.Response getDefaultWarehouse() {
@@ -181,18 +229,15 @@ public class WarehouseService {
 				.outOfStockCount(outOfStockCount).build();
 	}
 
-	// ============= WAREHOUSE SELECTION LOGIC =============
 
 	@Transactional(readOnly = true)
 	public Warehouse selectWarehouseForOrder(String customerState, String customerCity, Long variantId) {
 
-		// For Delhi launch: just return default warehouse
 		if (isDelhiOnlyMode()) {
 			return warehouseRepository.findDefaultWarehouse()
 					.orElseThrow(() -> new NotFoundException("No default warehouse available"));
 		}
 
-		// For multi-warehouse: find nearest with stock
 		List<Warehouse> nearestWarehouses = warehouseRepository.findNearestWarehouses(customerState, customerCity,
 				PageRequest.of(0, 5));
 
@@ -205,8 +250,6 @@ public class WarehouseService {
 		throw new NotFoundException("No warehouse with stock found for variant: " + variantId);
 	}
 
-	// ============= PRIVATE HELPER METHODS =============
-
 	private void clearExistingDefault() {
 		warehouseRepository.findDefaultWarehouse().ifPresent(existingDefault -> {
 			existingDefault.setIsDefault(false);
@@ -215,8 +258,6 @@ public class WarehouseService {
 	}
 
 	private boolean isDelhiOnlyMode() {
-		// For launch: return true
-		// Later: make this configurable
 		return true;
 	}
 

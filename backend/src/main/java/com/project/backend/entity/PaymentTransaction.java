@@ -31,7 +31,7 @@ public class PaymentTransaction {
     
     @OneToOne
     @JoinColumn(name = "order_id", nullable = false)
-    private Order order;  // Link to your existing Order
+    private Order order;  
     
     @Column(name = "razorpay_order_id", unique = true)
     private String razorpayOrderId;
@@ -49,10 +49,10 @@ public class PaymentTransaction {
     private String currency = "INR";
     
     @Column(length = 20)
-    private String status; // CREATED, ATTEMPTED, PAID, FAILED
+    private String status;
     
     @Column(name = "payment_method", length = 30)
-    private String razorpayPaymentMethod; // card, upi, netbanking
+    private String razorpayPaymentMethod; 
 
     @Column(name = "failure_reason")
     private String failureReason;

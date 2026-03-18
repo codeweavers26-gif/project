@@ -223,9 +223,7 @@ public class WishlistService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
 
-        double totalValue = 100; // itemDtos.stream()
-//                .mapToDouble(i -> i.getPrice() * i.getQuantity())
-//                .sum();
+        double totalValue = 100; 
 
         long outOfStockCount = itemDtos.stream()
                 .filter(i -> !i.getInStock())
@@ -271,7 +269,6 @@ public class WishlistService {
             throw new BadRequestException("No items selected to move");
         }
 
-        // Fetch all items
         List<WishlistItems> items = wishlistItemRepo.findAllById(req.getItemIds());
 
         if (items.size() != req.getItemIds().size()) {
@@ -282,31 +279,25 @@ public class WishlistService {
             throw new NotFoundException("Items not found with ids: " + missingIds);
         }
 
-        // Track wishlists that will become empty
         Wishlist affectedWishlist = null;
         boolean allFromSameWishlist = true;
 
-        // Verify all items belong to the user and check stock
         for (WishlistItems item : items) {
-            // Verify ownership
             if (!item.getWishlist().getUser().getId().equals(user.getId())) {
                 throw new UnauthorizedException("Item " + item.getId() + " does not belong to you");
             }
 
-            // Track wishlist (all items should be from same wishlist in your design)
             if (affectedWishlist == null) {
                 affectedWishlist = item.getWishlist();
             } else if (!affectedWishlist.getId().equals(item.getWishlist().getId())) {
                 allFromSameWishlist = false;
             }
 
-            // Check if variant exists and is active
             ProductVariant variant = item.getVariant();
             if (variant == null || !variant.getIsActive()) {
                 throw new BadRequestException("Product variant is no longer available for item: " + item.getId());
             }
 
-            // Check stock availability
             int availableStock = getAvailableStock(variant);
             if (availableStock < item.getQuantity()) {
                 throw new InsufficientStockException(
@@ -317,15 +308,11 @@ public class WishlistService {
             }
         }
 
-      //   cartService.addItems(user.getId(), items);
         log.info("Successfully moved {} items to cart", items.size());
 
-        // Remove from wishlist if requested
         if (req.getRemoveFromWishlist()) {
-            // Delete all items
             wishlistItemRepo.deleteAllByIds(req.getItemIds());
             
-            // If all items were from same wishlist, check if it's empty
             if (allFromSameWishlist && affectedWishlist != null) {
                 long remainingItems = wishlistItemRepo.countByWishlistId(affectedWishlist.getId());
                 if (remainingItems == 0) {
@@ -336,7 +323,6 @@ public class WishlistService {
         }
     }
 
-    // Helper method
     private int getAvailableStock(ProductVariant variant) {
         if (variant.getInventories() != null && !variant.getInventories().isEmpty()) {
             return variant.getInventories().stream()

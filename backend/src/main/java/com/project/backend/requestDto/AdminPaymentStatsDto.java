@@ -27,7 +27,7 @@ public class AdminPaymentStatsDto {
     private BigDecimal totalRefundedAmount;
     private Double averageTransactionValue;
     
-    private Map<String, Long> paymentsByMethod; // UPI, CARD, NETBANKING
+    private Map<String, Long> paymentsByMethod; 
     private Map<String, Long> paymentsByStatus;
     private Map<String, BigDecimal> revenueByMethod;
     

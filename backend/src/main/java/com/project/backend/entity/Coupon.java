@@ -37,16 +37,16 @@ public class Coupon {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private CouponType type; // PERCENTAGE, FIXED, FREE_SHIPPING
+    private CouponType type; 
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal discountValue; // Percentage value or fixed amount
+    private BigDecimal discountValue; 
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal minOrderAmount; // Minimum order amount to apply coupon
+    private BigDecimal minOrderAmount; 
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal maxDiscountAmount; // Maximum discount for percentage coupons
+    private BigDecimal maxDiscountAmount;
 
     @Column(nullable = false)
     private LocalDateTime validFrom;
@@ -55,17 +55,17 @@ public class Coupon {
     private LocalDateTime validTo;
 
     @Column(nullable = false)
-    private Integer usageLimit; // Total number of times coupon can be used
+    private Integer usageLimit; 
 
     @Column(nullable = false)
-    private Integer usagePerUser; // How many times a single user can use
+    private Integer usagePerUser; 
 
     @Column(nullable = false)
     private Integer totalUsedCount = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private CouponStatus status; // ACTIVE, EXPIRED, DISABLED
+    private CouponStatus status; 
 
     @ElementCollection
     @CollectionTable(name = "coupon_applicable_categories", 
@@ -98,10 +98,10 @@ public class Coupon {
     private Boolean isNewUserOnly = false;
 
     @Column(name = "applicable_payment_methods")
-    private String applicablePaymentMethods; // Comma-separated: CARD,UPI,COD
+    private String applicablePaymentMethods; 
 
     @Column(name = "applicable_user_tiers")
-    private String applicableUserTiers; // Comma-separated: BRONZE,SILVER,GOLD,PLATINUM
+    private String applicableUserTiers; 
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -118,7 +118,7 @@ public class Coupon {
     private Long updatedBy;
 
     @Version
-    private Long version; // Optimistic locking
+    private Long version; 
 
     @PrePersist
     @PreUpdate

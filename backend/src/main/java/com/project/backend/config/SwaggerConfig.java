@@ -29,7 +29,6 @@ public class SwaggerConfig {
                                         .bearerFormat("JWT")));
     }
 
-    // 🔥 THIS FIXES multipart + JSON
     @Bean
     public OpenApiCustomizer multipartJsonCustomizer() {
         return openApi -> openApi.getPaths().values().forEach(pathItem ->

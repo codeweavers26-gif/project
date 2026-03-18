@@ -11,6 +11,6 @@ public class PaymentResponse {
     private Long orderId;
     private String paymentId;
     private String orderStatus;
-    private String paymentStatus; // Will be SUCCESS, PENDING, or FAILED (matches your enum)
+    private String paymentStatus;  
     private boolean cartCleared;
 }

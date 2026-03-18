@@ -87,16 +87,7 @@ public class OrderController {
 		User user = getCurrentUser(auth);
 		return ResponseEntity.ok(orderService.getOrderById(orderId, user));
 	}
-//
-//	@PostMapping("/{orderId}/reorder")
-//	public ResponseEntity<OrderResponseDto> reorder(
-//			Authentication auth,
-//	        @PathVariable Long orderId) {
-//		User user = getCurrentUser(auth);
-//	    OrderResponseDto response = orderService.reorder(user, orderId);
-//	    return ResponseEntity.ok(response);
-//	}
-	
+
 	@PostMapping("/{orderId}/payment/initiate")
 	@Operation(summary = "Initiate payment for prepaid order", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
@@ -159,23 +150,6 @@ public class OrderController {
 	        return ResponseEntity.ok(response);
 	    }
 
-//	@PostMapping("/items/{orderItemId}/return")
-//	@Operation(summary = "Request return for order item", security = {
-//			@SecurityRequirement(name = "Bearer Authentication") })
-//	public ResponseEntity<Void> requestReturn(Authentication auth, @PathVariable Long orderItemId,
-//			@RequestBody ReturnRequestDto dto) {
-//
-//		orderReturnService.requestReturn(getCurrentUser(auth), orderItemId, dto);
-//		return ResponseEntity.ok().build();
-//	}
-//
-//	@GetMapping("/returns")
-//	@Operation(summary = "Get my returns", security = { @SecurityRequirement(name = "Bearer Authentication") })
-//	public ResponseEntity<PageResponseDto<ReturnResponseDto>> myReturns(Authentication auth,
-//			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-//
-//		return ResponseEntity.ok(orderReturnService.getUserReturns(getCurrentUser(auth).getId(), page, size));
-//	}
 
 	
 }

@@ -22,16 +22,3 @@ public class ReturnReasonStatsDto {
     private Double percentage;
     private BigDecimal totalRefundAmount;
 }
-
-//@Data
-//@Builder
-//@NoArgsConstructor
-//@AllArgsConstructor
-//public class UserReturnSummaryDto {
-//    private Long totalReturns;
-//    private Long activeReturns;
-//    private Long completedReturns;
-//    private Long rejectedReturns;
-//    private BigDecimal totalRefundReceived;
-//    private List<RecentReturnDto> recentReturns;
-//}

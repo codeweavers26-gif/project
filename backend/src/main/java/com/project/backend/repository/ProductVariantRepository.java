@@ -16,16 +16,12 @@ import com.project.backend.requestDto.VariantAvailabilityDto;
 @Repository
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
     
-    // Find variant by SKU
     Optional<ProductVariant> findBySku(String sku);
     
-    // Find all variants for a product
     List<ProductVariant> findByProductId(Long productId);
     
-    // Check if variant exists with same size/color
     boolean existsByProductIdAndSizeAndColor(Long productId, String size, String color);
     
-    // Check if variant exists with same size/color excluding a specific variant ID
     @Query("SELECT COUNT(v) > 0 FROM ProductVariant v WHERE v.product.id = :productId AND v.size = :size AND v.color = :color AND v.id != :excludeId")
     boolean existsByProductIdAndSizeAndColorAndIdNot(
         @Param("productId") Long productId, 

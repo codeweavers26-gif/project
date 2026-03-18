@@ -52,7 +52,6 @@ public class AdminDashboardService {
                 .totalSales(totalSales != null ? totalSales : 0)
                 .totalOrders(totalOrders != null ? totalOrders : 0)
                 .totalItemsSold(totalItemsSold != null ? totalItemsSold : 0)
-            //    .totalInventoryLeft(totalInventoryLeft != null ? totalInventoryLeft : 0)
                 .totalUsers(totalUsers != null ? totalUsers : 0)
                 .usersWithCart(usersWithCart != null ? usersWithCart : 0)
                 .totalCartValue(totalCartValue != null ? totalCartValue : 0)

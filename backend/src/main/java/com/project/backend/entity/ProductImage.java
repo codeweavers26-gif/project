@@ -31,7 +31,7 @@ public class ProductImage {
     @Column(name = "image_url", length = 500, nullable = false)
     private String imageUrl;
 
-    private Integer position; // 1 to 6
+    private Integer position; 
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")

@@ -17,7 +17,6 @@ import lombok.NoArgsConstructor;
 public class WishlistItemDto {
 	private Long id;
 
-	// Product Info
 	private Long productId;
 	private String productName;
 	private String productSlug;
@@ -27,7 +26,6 @@ public class WishlistItemDto {
 	private Double productMrp;
 	private Integer discountPercentage;
 
-	// Variant Info (if applicable)
 	private Long variantId;
 	private String variantSku;
 	private String size;
@@ -35,16 +33,13 @@ public class WishlistItemDto {
 	private Double variantPrice;
 	private Integer availableStock;
 
-	// Item Status
 	private Boolean inStock;
 	private Boolean isActive;
 	private String note;
 	private Integer priority;
 
-	// Timestamps
 	private Instant addedAt;
 
-	// Computed fields
 	@Builder.Default
 	private Boolean priceChanged = false;
 	private Double oldPrice;

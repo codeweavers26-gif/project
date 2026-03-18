@@ -55,10 +55,10 @@ public class ReturnTimeline {
     private LocalDateTime createdAt;
 
     @Column(name = "created_by", length = 100)
-    private String createdBy;  // Email or ID of who created this entry (USER/ADMIN/SYSTEM)
+    private String createdBy; 
 
     @Column(name = "created_by_role", length = 20)
-    private String createdByRole;  // USER, ADMIN, SYSTEM, BOT
+    private String createdByRole;  
 
     @Column(name = "is_customer_visible")
     private Boolean isCustomerVisible = true;
@@ -67,7 +67,7 @@ public class ReturnTimeline {
     private Boolean isAdminVisible = true;
 
     @Column(name = "metadata", columnDefinition = "TEXT")
-    private String metadata;  // JSON string for additional data
+    private String metadata;  
 
     @Column(name = "ip_address", length = 45)
     private String ipAddress;

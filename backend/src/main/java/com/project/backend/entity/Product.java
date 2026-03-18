@@ -189,7 +189,6 @@ public class Product {
             .max(Double::compareTo)
             .orElse(price != null ? price : 0.0);
     }
- // Add to Product.java
     public Integer getTotalStock() {
         if (variants == null || variants.isEmpty()) {
             return 0;

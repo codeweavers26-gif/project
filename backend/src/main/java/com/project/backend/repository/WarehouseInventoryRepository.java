@@ -17,7 +17,7 @@ import jakarta.persistence.QueryHint;
 
 @Repository
 public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInventory, Long> {
-
+ Long countByWarehouseId(Long warehouseId);
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("SELECT wi FROM WarehouseInventory wi WHERE wi.variant.id = :variantId AND wi.warehouse.id = :warehouseId")
 	Optional<WarehouseInventory> findByVariantAndWarehouseForUpdate(@Param("variantId") Long variantId,
@@ -52,7 +52,6 @@ public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInv
 			    AND wi.availableQuantity > 0
 			""")
 	boolean existsByProductAndAvailableQuantityGreaterThan(@Param("productId") Long productId);
-	// Simple method to check if product has ANY stock
 	@Query("""
 	    SELECT COUNT(wi) > 0 FROM WarehouseInventory wi
 	    WHERE wi.variant.product.id = :productId
@@ -93,5 +92,5 @@ public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInv
 
 	    @Query("SELECT wi FROM WarehouseInventory wi WHERE wi.variant.id = :variantId")
     List<WarehouseInventory> c(@Param("variantId") Long variantId);
-    
+    List<WarehouseInventory> findByVariant_IdIn(List<Long> variantIds);
 }

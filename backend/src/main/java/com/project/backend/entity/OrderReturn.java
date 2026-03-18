@@ -17,7 +17,6 @@ public class OrderReturn {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔗 Relations
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
@@ -30,7 +29,6 @@ public class OrderReturn {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // 📦 Return Details
     private Integer returnQuantity;
 
     @Enumerated(EnumType.STRING)

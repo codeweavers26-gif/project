@@ -78,15 +78,6 @@ public class AdminProductController {
 		return ResponseEntity.ok().build();
 	}
 
-//	/**
-//	 * GET ALL products (admin view - includes inactive)
-//	 */
-//	@Operation(summary = "Get all products", security = { @SecurityRequirement(name = "Bearer Authentication") })
-//	@GetMapping("/all")
-//	public ResponseEntity<List<ProductResponseDto>> getAllProducts() {
-//		log.info("Fetching all products");
-//		return ResponseEntity.ok(productService.getAll());
-//	}
 
 
 	@Operation(summary = "List products with pagination", security = {
@@ -102,9 +93,7 @@ public class AdminProductController {
 		return ResponseEntity.ok(products);
 	}
 
-	/**
-	 * GET product by ID
-	 */
+	
 	@Operation(summary = "Get product by ID", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@GetMapping("/{id}")
 	public ResponseEntity<ProductResponseDto> getProduct(@PathVariable Long id) {
@@ -113,11 +102,6 @@ public class AdminProductController {
 		return ResponseEntity.ok(response);
 	}
 
-	// ============= VARIANT MANAGEMENT =============
-
-	/**
-	 * ADD variant to product
-	 */
 	@Operation(summary = "Add variant to product", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@PostMapping("/{id}/variants")
 	public ResponseEntity<ProductResponseDto> addVariant(@PathVariable Long id,
@@ -128,9 +112,7 @@ public class AdminProductController {
 		return new ResponseEntity<>(response, HttpStatus.CREATED);
 	}
 
-	/**
-	 * UPDATE variant
-	 */
+
 	@Operation(summary = "Update variant", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@PutMapping("/variants/{variantId}")
 	public ResponseEntity<ProductResponseDto> updateVariant(@PathVariable Long variantId,
@@ -141,9 +123,7 @@ public class AdminProductController {
 		return ResponseEntity.ok(response);
 	}
 
-	/**
-	 * DEACTIVATE variant (soft delete)
-	 */
+	
 	@Operation(summary = "Deactivate variant", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@DeleteMapping("/variants/{variantId}")
 	public ResponseEntity<Void> deactivateVariant(@PathVariable Long variantId) {
@@ -152,11 +132,6 @@ public class AdminProductController {
 		return ResponseEntity.noContent().build();
 	}
 
-	// ============= IMAGE MANAGEMENT =============
-
-	/**
-	 * UPLOAD images directly
-	 */
 	@Operation(summary = "Upload product images", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@PostMapping(value = "/{id}/upload-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ProductResponseDto> uploadImages(@PathVariable Long id,
@@ -167,9 +142,7 @@ public class AdminProductController {
 		return ResponseEntity.ok(response);
 	}
 
-	/**
-	 * DELETE image
-	 */
+
 	@Operation(summary = "Delete image", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@DeleteMapping("/images/{imageId}")
 	public ResponseEntity<Void> deleteImage(@PathVariable Long imageId) {
@@ -178,9 +151,7 @@ public class AdminProductController {
 		return ResponseEntity.noContent().build();
 	}
 
-	/**
-	 * SET primary image
-	 */
+	
 	@Operation(summary = "Set primary image", security = { @SecurityRequirement(name = "Bearer Authentication") })
 	@PutMapping("/images/{imageId}/set-primary")
 	public ResponseEntity<ProductResponseDto> setPrimaryImage(@PathVariable Long imageId) {

@@ -24,7 +24,7 @@ public class Section {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String name; // MEN, WOMEN, KIDS
+    private String name;  
 
     private String imageUrl;
 

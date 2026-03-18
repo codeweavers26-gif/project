@@ -46,20 +46,7 @@ public class ReturnController {
 	private User getCurrentUser(Authentication auth) {
 		return userRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
 	}
-//
-//    @PostMapping
-//    @Operation(summary = "Request product return",
-//        security = @SecurityRequirement(name = "Bearer Authentication"))
-//    public ResponseEntity<ReturnResponseDto> requestReturn(
-//            Authentication auth,
-//            @RequestBody ReturnRequestDto dto) {
-//
-//        return ResponseEntity.ok(
-//            returnService.requestReturn(getUser(auth), dto)
-//        );
-//    }
-    
-    
+
 	@GetMapping("/returns")
   @Operation(summary = "Request product return",
   security = @SecurityRequirement(name = "Bearer Authentication"))

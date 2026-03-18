@@ -19,7 +19,7 @@ public class AttributeOption {
     private Long id;
 
     @Column(nullable = false)
-    private String value; // XL, Red, Nike
+    private String value; 
 
     private Boolean active = true;
 

@@ -17,33 +17,27 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CheckoutResponseDto {
     
-    // Pricing
     private BigDecimal subtotal;
     private BigDecimal taxAmount;
     private BigDecimal shippingCharges;
     private BigDecimal discountAmount;
     private BigDecimal totalAmount;
     
-    // Items
     private List<CheckoutItemDto> items;
     private Integer totalItems;
     
-    // Delivery
     private AddressDto deliveryAddress;
     private Integer deliveryDays;
     private LocalDate expectedDelivery;
     private Boolean isDeliveryAvailable;
     
-    // Payment
     private PaymentMethod paymentMethod;
     private Boolean requiresPayment;
     private String paymentMessage;
     private Boolean isCodAvailable;
     
-    // Cart Info
     private Long cartId;
     
-    // Validation
     private Boolean isValidForCheckout;
     private List<String> validationErrors;
     

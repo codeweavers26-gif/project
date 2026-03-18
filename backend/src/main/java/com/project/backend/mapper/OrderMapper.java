@@ -20,7 +20,6 @@ import com.project.backend.entity.User;
 
 		    return OrderResponseDto.builder()
 
-		            // Order Info
 		            .orderId(order.getId())
 		            .totalAmount(order.getTotalAmount())
 		            .taxAmount(order.getTaxAmount())
@@ -31,12 +30,10 @@ import com.project.backend.entity.User;
 		            .status(order.getStatus())
 		            .createdAt(order.getCreatedAt())
 
-		            // User Info
 		            .userId(user != null ? user.getId() : null)
 		            .userName(user != null ? user.getName() : null)
 		            .userEmail(user != null ? user.getEmail() : null)
 
-		            // Delivery Address Snapshot
 		            .deliveryAddressLine1(order.getDeliveryAddressLine1())
 		            .deliveryAddressLine2(order.getDeliveryAddressLine2())
 		            .deliveryCity(order.getDeliveryCity())
@@ -44,7 +41,6 @@ import com.project.backend.entity.User;
 		            .deliveryPostalCode(order.getDeliveryPostalCode())
 		            .deliveryCountry(order.getDeliveryCountry())
 
-		            // Order Items
 		            .items(order.getItems() != null
 		                    ? order.getItems().stream()
 		                        .map(OrderMapper::mapItemToResponse)

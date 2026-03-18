@@ -70,22 +70,6 @@ public class AdminDashboardController {
 		return dashboardService.getNewCustomers();
 	}
 
-//	@Operation(summary = "Get admin alerts", description = "Returns alerts such as low stock products, failed payments, and return requests", security = {
-//			@SecurityRequirement(name = "Bearer Authentication") })
-//	@ApiResponses({ @ApiResponse(responseCode = "200", description = "Alerts fetched successfully") })
-//	@GetMapping("/alerts")
-//	public AlertSummaryDto getAlerts() {
-//		return dashboardService.getAlerts();
-//	}
-//
-//	@Operation(summary = "Get shipping and logistics summary", description = "Returns shipment counts like ready to ship, in transit, and delivered today", security = {
-//			@SecurityRequirement(name = "Bearer Authentication") })
-//	@ApiResponses({ @ApiResponse(responseCode = "200", description = "Shipping summary fetched successfully") })
-//	@GetMapping("/shipping-summary")
-//	public ShippingSummaryDto getShippingSummary() {
-//		return dashboardService.getShippingSummary();
-//	}
-
 	@Operation(summary = "Get revenue and tax summary", description = "Returns revenue metrics including today/month revenue, tax collected, COD vs prepaid orders", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
 	@ApiResponses({ @ApiResponse(responseCode = "200", description = "Revenue summary fetched successfully") })

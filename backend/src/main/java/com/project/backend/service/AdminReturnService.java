@@ -65,203 +65,6 @@ public class AdminReturnService {
 	private final OrderReturnRepository orderReturnRepository;
 	private final ReturnTimelineRepository timelineRepository;
 	private final RefundRepository refundRepository;
-//	public PageResponseDto<AdminReturnResponseDto> getAllReturns(int page, int size) {
-//
-//		Page<OrderReturn> returns = returnRepo.findAll(PageRequest.of(page, size, Sort.by("requestedAt").descending()));
-//
-//		return PageResponseDto.<AdminReturnResponseDto>builder()
-//				.content(returns.getContent().stream().map(this::mapToAdminDto).toList()).page(returns.getNumber())
-//				.size(returns.getSize()).totalElements(returns.getTotalElements()).totalPages(returns.getTotalPages())
-//				.last(returns.isLast()).build();
-//	}
-//
-//	private AdminReturnResponseDto mapToAdminDto(OrderReturn r) {
-//
-//		return AdminReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
-//				.userId(r.getOrderItem().getOrder().getUser().getId())
-//				.userEmail(r.getOrderItem().getOrder().getUser().getEmail())
-//				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
-//				.reason(r.getReason().name()).status(r.getStatus().name()).refundAmount(r.getRefundAmount())
-//				.requestedAt(r.getRequestedAt()).build();
-//	}
-//
-//	@Transactional
-//	public void updateReturnStatus(Long returnId, UpdateReturnStatusDto dto) {
-//
-//		OrderReturn r = returnRepo.findById(returnId).orElseThrow(() -> new NotFoundException("Return not found"));
-//
-//		r.setStatus(ReturnStatus.valueOf(dto.getStatus()));
-//		r.setRefundAmount(dto.getRefundAmount());
-//		r.setAdminComment(dto.getAdminComment());
-//
-//		returnRepo.save(r);
-//	}
-//
-//	public PageResponseDto<AdminUserReturnResponseDto> getReturnsByUser(Long userId, int page, int size) {
-//
-//		userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
-//
-//		Page<OrderReturn> returns = returnRepo.findByOrderItem_Order_User_Id(userId,
-//				PageRequest.of(page, size, Sort.by("requestedAt").descending()));
-//
-//		return PageResponseDto.<AdminUserReturnResponseDto>builder()
-//				.content(returns.getContent().stream().map(this::mapToUserReturnDto).toList()).page(returns.getNumber())
-//				.size(returns.getSize()).totalElements(returns.getTotalElements()).totalPages(returns.getTotalPages())
-//				.last(returns.isLast()).build();
-//	}
-//
-//	private AdminUserReturnResponseDto mapToUserReturnDto(OrderReturn r) {
-//
-//		return AdminUserReturnResponseDto.builder().returnId(r.getId())
-//				.userId(r.getOrderItem().getOrder().getUser().getId())
-//				.userEmail(r.getOrderItem().getOrder().getUser().getEmail())
-//				.orderId(r.getOrderItem().getOrder().getId()).orderItemId(r.getOrderItem().getId())
-//				.productId(r.getOrderItem().getProduct().getId()).productName(r.getOrderItem().getProduct().getName())
-//				.quantity(r.getReturnQuantity()).reason(r.getReason().name()).status(r.getStatus().name())
-//				.refundAmount(r.getRefundAmount()).requestedAt(r.getRequestedAt()).build();
-//	}
-//
-//	private ReturnResponseDto mapToReturnDto(OrderReturn r) {
-//
-//		return ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
-//				.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
-//				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
-//				.status(r.getStatus()).reason(r.getReason()) // ✅ FIXED
-//				.refundAmount(r.getRefundAmount()).requestedAt(r.getRequestedAt()).build();
-//	}
-////
-////	private AdminUserReturnResponseDto mapToDto(OrderReturn r) {
-////
-////		return AdminUserReturnResponseDto.builder().returnId(r.getId())
-////				.userId(r.getOrderItem().getOrder().getUser().getId())
-////				.userEmail(r.getOrderItem().getOrder().getUser().getEmail())
-////				.orderId(r.getOrderItem().getOrder().getId()).orderItemId(r.getOrderItem().getId())
-////				.productId(r.getOrderItem().getProduct().getId()).productName(r.getOrderItem().getProduct().getName())
-////				.quantity(r.getReturnQuantity()).reason(r.getReason().name()).status(r.getStatus().name())
-////				.refundAmount(r.getRefundAmount()).requestedAt(r.getRequestedAt()).build();
-////	}
-//
-//	public List<ReturnByReasonDto> getReturnsByReason() {
-//
-//		return returnRepo.countByReason().stream()
-//				.map(r -> ReturnByReasonDto.builder().reason(r[0].toString()).count((Long) r[1]).build()).toList();
-//	}
-//
-//	public PageResponseDto<ReturnResponseDto> getUserReturns(Long userId, int page, int size) {
-//
-//		Page<OrderReturn> returns = returnRepo.findByOrderItem_Order_User_Id(userId,
-//				PageRequest.of(page, size, Sort.by("createdAt").descending()));
-//
-//		return mapToPageDto(returns);
-//	}
-//
-//	public PageResponseDto<ReturnResponseDto> adminSearchReturns(Long userId, ReturnStatus status, int page, int size) {
-//
-//		Page<OrderReturn> returns = returnRepo.search(userId, status,
-//				PageRequest.of(page, size, Sort.by("createdAt").descending()));
-//
-//		return mapToPageDto(returns);
-//	}
-//
-//	private PageResponseDto<ReturnResponseDto> mapToPageDto(Page<OrderReturn> page) {
-//
-//		List<ReturnResponseDto> content = page.getContent().stream().map(this::mapToReturnDto).toList();
-//
-//		return PageResponseDto.<ReturnResponseDto>builder().content(content).page(page.getNumber()).size(page.getSize())
-//				.totalElements(page.getTotalElements()).totalPages(page.getTotalPages()).last(page.isLast()).build();
-//	}
-//
-//	public PageResponseDto<ReturnResponseDto> getReturnsByStatus(ReturnStatus status, int page, int size) {
-//
-//		Page<OrderReturn> returns = returnRepo.findByStatus(status,
-//				PageRequest.of(page, size, Sort.by("requestedAt").descending()));
-//
-//	return null;
-//		//PageResponseDto.<ReturnResponseDto>builder().content(returns.getContent().stream()
-////				.map(r -> ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
-////						.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
-////						.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
-////						.status(r.getStatus()).reason(r.getReason()).refundAmount(r.getRefundAmount())
-////						.requestedAt(r.getRequestedAt()).build())
-////				.toList()).page(returns.getNumber()).size(returns.getSize()).totalElements(returns.getTotalElements())
-////				.totalPages(returns.getTotalPages()).last(returns.isLast()).build();
-//	}
-//
-//	@Transactional
-//	public ReorderResponseDto reorder(User user, Long orderId) {
-//
-//		Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));
-//
-//		if (!order.getUser().getId().equals(user.getId())) {
-//			throw new UnauthorizedException("Not your order");
-//		}
-//
-//		List<ReorderItemSuccessDto> success = new ArrayList<>();
-//		List<ReorderItemFailureDto> failed = new ArrayList<>();
-//
-//		for (OrderItem item : order.getItems()) {
-//
-//			ProductInventory inventory = inventoryRepository
-//					.findByProductAndLocation(item.getProduct(), order.getLocation()).orElse(null);
-//
-//			if (inventory == null || inventory.getStock() <= 0) {
-//
-//				failed.add(ReorderItemFailureDto.builder().productId(item.getProduct().getId())
-//						.productName(item.getProduct().getName()).requestedQty(item.getQuantity()).availableQty(0)
-//						.reason("Out of stock").build());
-//				continue;
-//			}
-//
-//			int qtyToAdd = Math.min(item.getQuantity(), inventory.getStock());
-//
-//		//	cartService.addOrUpdate(user, item.getProduct(), qtyToAdd);
-//
-//			success.add(ReorderItemSuccessDto.builder().productId(item.getProduct().getId())
-//					.productName(item.getProduct().getName()).quantityAdded(qtyToAdd).build());
-//
-//			if (qtyToAdd < item.getQuantity()) {
-//				failed.add(ReorderItemFailureDto.builder().productId(item.getProduct().getId())
-//						.productName(item.getProduct().getName()).requestedQty(item.getQuantity())
-//						.availableQty(inventory.getStock()).reason("Partial stock available").build());
-//			}
-//		}
-//
-//		return ReorderResponseDto.builder().success(!success.isEmpty())
-//				.message(failed.isEmpty() ? "Reorder completed" : "Reorder partially completed").addedItems(success)
-//				.failedItems(failed).build();
-//	}
-//
-//	@Transactional
-//	public ReturnResponseDto requestReturn(User user, ReturnRequestDto dto) {
-//
-//		OrderItem orderItem = orderItemRepository.findById(dto.getOrderItemId())
-//				.orElseThrow(() -> new NotFoundException("Order item not found"));
-//
-//		if (!orderItem.getOrder().getUser().getId().equals(user.getId())) {
-//			throw new UnauthorizedException("Not your order");
-//		}
-//
-//		if (dto.getQuantity() <= 0 || dto.getQuantity() > orderItem.getQuantity()) {
-//			throw new BadRequestException("Invalid return quantity");
-//		}
-//
-//		OrderReturn orderReturn = OrderReturn.builder().orderItem(orderItem).user(user)
-//				.returnQuantity(dto.getQuantity()).reason(dto.getReason()).status(ReturnStatus.REQUESTED)
-//				.refundAmount(orderItem.getPrice() * dto.getQuantity()).requestedAt(Instant.now()).build();
-//
-//		orderReturnRepository.save(orderReturn);
-//
-//		return mapToDto(orderReturn);
-//	}
-//
-//	private ReturnResponseDto mapToDto(OrderReturn r) {
-//		return ReturnResponseDto.builder().returnId(r.getId()).orderId(r.getOrderItem().getOrder().getId())
-//				.orderItemId(r.getOrderItem().getId()).productId(r.getOrderItem().getProduct().getId())
-//				.productName(r.getOrderItem().getProduct().getName()).quantity(r.getReturnQuantity())
-//				.reason(r.getReason()).status(r.getStatus()).refundAmount(r.getRefundAmount())
-//				.requestedAt(r.getRequestedAt()).build();
-//	}
-
 	public PageResponseDto<ReturnDto> getUserReturns(User user, ReturnStatus status, int page, int size) {
 		try {
 			Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -422,7 +225,6 @@ public class AdminReturnService {
 			returnRecord.setReason(request.getReason());
 			returnRecord.setReasonDescription(request.getReasonDescription());
 			returnRecord.setQuantity(request.getQuantity());
-			// returnRecord.setImageUrls(request.getImageUrls());
 
 			returnRecord = returnRepository.save(returnRecord);
 			return convertToDto(returnRecord);
@@ -560,12 +362,10 @@ public class AdminReturnService {
 			BigDecimal price = BigDecimal.valueOf(itemPrice);
 			BigDecimal refundAmount = price.multiply(BigDecimal.valueOf(request.getQuantity()));
 
-			// ===== DECLARE AND INITIALIZE VARIABLES PROPERLY =====
 			double totalOrderValue = orderItem.getOrder().getTotalAmount() != null ? 
 			                         orderItem.getOrder().getTotalAmount() : 0.0;
 			double itemValue = itemPrice * request.getQuantity();
 
-			// Discount calculation with safety checks
 			BigDecimal discountAmount = BigDecimal.ZERO;
 			if (orderItem.getOrder().getDiscountAmount() != null && 
 			    orderItem.getOrder().getDiscountAmount() > 0 && 
@@ -596,12 +396,12 @@ public class AdminReturnService {
 			
 			
 		        returnRecord.setRefundAmount(refundAmount);
-		        returnRecord.setRestockingFee(BigDecimal.ZERO); // Will be set by admin if applicable
-		        returnRecord.setTotalRefundAmount(refundAmount); // Initially same as refund amount
-		        returnRecord.setShippingCost(BigDecimal.ZERO); // Shipping cost handling
+		        returnRecord.setRestockingFee(BigDecimal.ZERO);
+		        returnRecord.setTotalRefundAmount(refundAmount); 
+		        returnRecord.setShippingCost(BigDecimal.ZERO); 
 
 		        returnRecord.setRefundAmount(refundAmount);
-		        returnRecord.setRestockingFee(BigDecimal.ZERO); // Admin will set if applicable
+		        returnRecord.setRestockingFee(BigDecimal.ZERO); 
 		        returnRecord.setTotalRefundAmount(refundAmount.subtract(discountAmount));
 		        returnRecord.setShippingCost(calculateShippingCost(orderItem.getOrder(), request.getQuantity()));
 		        log.debug("=== SAVING RETURN WITH VALUES ===");
@@ -758,7 +558,6 @@ public class AdminReturnService {
 		}
 	}
 
-// GET RETURN BY ORDER ITEM ID
 	public ReturnDto getReturnByOrderItem(Long orderItemId) {
 		try {
 			Return returnRecord = returnRepository.findByOrderItemId(orderItemId)
@@ -879,7 +678,8 @@ public class AdminReturnService {
 					List.of(ReturnStatus.PENDING_PICKUP, ReturnStatus.PICKUP_SCHEDULED, ReturnStatus.QC_PENDING)));
 			stats.setCompleted(returnRepository.countByStatus(ReturnStatus.REFUND_COMPLETED));
 
-// Get returns by status map
+			
+
 			stats.setReturnsByStatus(returnRepository.countByStatusGrouped());
 
 			return stats;
@@ -909,15 +709,12 @@ public class AdminReturnService {
 	public PageResponseDto<ReturnReasonStatsDto> getReturnReasonAnalytics(
 	        LocalDateTime fromDate, LocalDateTime toDate, int page, int size) {
 	    try {
-	        // Get raw data
 	        List<Object[]> results = returnRepository.getReturnReasonAnalyticsRaw(fromDate, toDate);
 	        
-	        // Calculate total for percentages
 	        Long totalCount = results.stream()
 	                .map(row -> (Long) row[1])
 	                .reduce(0L, Long::sum);
 	        
-	        // Convert to DTOs - FIXED: Use stream() with map() correctly
 	        List<ReturnReasonStatsDto> statsList = results.stream()
 	                .map(row -> {
 	                    ReturnReason reason = (ReturnReason) row[0];
@@ -938,7 +735,6 @@ public class AdminReturnService {
 	                })
 	                .collect(Collectors.toList());
 	        
-	        // Manual pagination
 	        int start = page * size;
 	        int end = Math.min(start + size, statsList.size());
 	        List<ReturnReasonStatsDto> paginatedContent = statsList.subList(start, end);
@@ -998,72 +794,4 @@ public class AdminReturnService {
 	}
 	
 	
-//private ReturnDto convertToDto(Return returnRecord) {
-//ReturnDto dto = new ReturnDto();
-//dto.setId(returnRecord.getId());
-//dto.setReturnNumber(returnRecord.getReturnNumber());
-//dto.setStatus(returnRecord.getStatus());
-//dto.setReason(returnRecord.getReason());
-//dto.setReasonDescription(returnRecord.getReasonDescription());
-//dto.setQuantity(returnRecord.getQuantity());
-//dto.setRefundAmount(returnRecord.getRefundAmount());
-//dto.setRestockingFee(returnRecord.getRestockingFee());
-//dto.setTotalRefundAmount(returnRecord.getTotalRefundAmount());
-//dto.setCreatedAt(returnRecord.getCreatedAt());
-//dto.setUserId(returnRecord.getUser().getId());
-//dto.setUserName(returnRecord.getUser().getUsername());
-//dto.setOrderId(returnRecord.getOrder().getId());
-//dto.setOrderNumber(returnRecord.getOrder().getOrderNumber());
-//dto.setOrderItemId(returnRecord.getOrderItem().getId());
-//dto.setProductName(returnRecord.getOrderItem().getProductName());
-//
-//Double price = returnRecord.getOrderItem().getPrice();
-//if (price != null) {
-//dto.setItemPrice(BigDecimal.valueOf(price));
-//}
-//
-//dto.setImageUrls(returnRecord.getImageUrls());
-//return dto;
-//}
-
-//private ReturnDetailDto convertToReturnDetailDto(Return returnRecord) {
-//ReturnDetailDto dto = new ReturnDetailDto();
-//dto.setReturnInfo(convertToDto(returnRecord));
-//
-//// Add timeline
-//dto.setTimeline(timelineRepository.findByReturnRecordIdOrderByCreatedAtDesc(returnRecord.getId())
-//.stream()
-//.map(timeline -> {
-//com.project.backend.ResponseDto.ReturnTimelineDto timelineDto = 
-//new com.project.backend.ResponseDto.ReturnTimelineDto();
-//timelineDto.setId(timeline.getId());
-//timelineDto.setReturnId(timeline.getReturnRecord().getId());
-//timelineDto.setStatus(timeline.getStatus().toString());
-//timelineDto.setTitle(timeline.getTitle());
-//timelineDto.setDescription(timeline.getDescription());
-//timelineDto.setCreatedAt(timeline.getCreatedAt());
-//timelineDto.setCreatedBy(timeline.getCreatedBy());
-//timelineDto.setCreatedByRole(timeline.getCreatedByRole());
-//return timelineDto;
-//})
-//.collect(Collectors.toList()));
-//
-//dto.setImageUrls(returnRecord.getImageUrls());
-//return dto;
-//}
-
-//private void createTimelineEntry(Return returnRecord, String title, String role, String createdBy) {
-//com.project.backend.entity.ReturnTimeline timeline = 
-//com.project.backend.entity.ReturnTimeline.builder()
-//.returnRecord(returnRecord)
-//.status(returnRecord.getStatus())
-//.title(title)
-//.createdBy(createdBy)
-//.createdByRole(role)
-//.isCustomerVisible(true)
-//.isAdminVisible(true)
-//.build();
-//timelineRepository.save(timeline);
-//}
-
 }
