@@ -2,6 +2,7 @@ package com.project.backend.service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -136,8 +137,13 @@ public class ProductService {
 
 		Product product = Product.builder().name(dto.getName()).brand(dto.getBrand())
 				.shortDescription(dto.getShortDescription()).description(dto.getDescription()).category(category)
-				.isActive(true).isDeleted(false).price(dto.getPrice()).deliveryDays(dto.getDeliveryDays()).mrp(dto.getMrp())
-				.codAvailable(dto.getCodAvailable()).discountPercent(dto.getDiscountPercent()).taxPercent(dto.getTaxPercent())
+				.isActive(true).isDeleted(false)
+				//.price(dto.getPrice())
+				.deliveryDays(dto.getDeliveryDays())
+				//.mrp(dto.getMrp())
+				.codAvailable(dto.getCodAvailable())
+			//	.discountPercent(dto.getDiscountPercent())
+				.taxPercent(dto.getTaxPercent())
 				.weight(dto.getWeight()).length(dto.getLength()).width(dto.getWidth()).height(dto.getHeight())
 				.stock(dto.getStock() != null ? dto.getStock() : 0).build();
 
@@ -150,6 +156,9 @@ public class ProductService {
 			for (ProductRequestDto.VariantRequest vr : dto.getVariants()) {
 				addVariantToProduct(savedProduct, vr);
 			}
+savedProduct.updateLowestPriceFromVariants();
+        productRepository.save(savedProduct);
+
 		}
 
 		if (imageFiles != null && !imageFiles.isEmpty()) {
@@ -512,8 +521,18 @@ Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 					product.getCategory() != null ? product.getCategory().getName() : "GEN", vr.getColor(),
 					vr.getSize());
 
+  BigDecimal sellingPrice = calculateSellingPrice(
+                vr.getCostPrice(),
+                vr.getProfitMargin(),
+                product.getTaxPercent() != null ? product.getTaxPercent() : 0.0
+        );
+
+
+
 			ProductVariant variant = ProductVariant.builder().product(product).sku(sku).size(vr.getSize())
-					.color(vr.getColor()).mrp(vr.getMrp()).sellingPrice(vr.getSellingPrice())
+					.color(vr.getColor()).mrp(vr.getMrp())
+					   .profitMargin(vr.getProfitMargin()) 
+                .sellingPrice(sellingPrice)         
 					.costPrice(vr.getCostPrice()).isActive(true).build();
 
 			ProductVariant savedVariant = variantRepository.save(variant);
@@ -535,6 +554,28 @@ Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 			throw new RuntimeException("Failed to add variant: " + e.getMessage(), e);
 		}
 	}
+
+private BigDecimal calculateSellingPrice(BigDecimal costPrice, BigDecimal profitMargin, Double taxPercent) {
+    if (costPrice == null || profitMargin == null) {
+        throw new BadRequestException("Cost price and profit margin are required");
+    }
+    
+    BigDecimal profitMultiplier = profitMargin
+            .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+    
+    BigDecimal profitAmount = costPrice.multiply(profitMultiplier);
+    BigDecimal priceAfterMargin = costPrice.add(profitAmount);
+    
+    if (taxPercent != null && taxPercent > 0) {
+        BigDecimal taxMultiplier = BigDecimal.valueOf(taxPercent)
+                .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+        BigDecimal taxAmount = priceAfterMargin.multiply(taxMultiplier);
+        priceAfterMargin = priceAfterMargin.add(taxAmount);
+    }
+    
+    return priceAfterMargin.setScale(2, RoundingMode.HALF_UP);
+}
+
 
 	private void uploadProductImages(Product product, List<MultipartFile> imageFiles) {
 		int position = 1;

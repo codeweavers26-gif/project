@@ -6,6 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -33,15 +34,15 @@ public class ProductRequestDto {
     @Schema(description = "Detailed product description", example = "Breathable mesh upper with durable rubber sole.")
     private String description;
 
-    @Schema(description = "Maximum retail price", example = "4999")
-    private Double mrp;
+    // @Schema(description = "Maximum retail price", example = "4999")
+    // private Double mrp;
 
-    @Schema(description = "Selling price", example = "3499")
-    private Double price;
+    // @Schema(description = "Selling price", example = "3499")
+    // private Double price;
 
-    @JsonProperty("discount_percent")
-    @Schema(description = "Discount percentage applied", example = "30")
-    private Double discountPercent;
+    // @JsonProperty("discount_percent")
+    // @Schema(description = "Discount percentage applied", example = "30")
+    // private Double discountPercent;
 
     @JsonProperty("tax_percent")
     @Schema(description = "Tax percentage applied", example = "12")
@@ -90,9 +91,9 @@ public class ProductRequestDto {
         
         @NotNull
         private BigDecimal mrp;
-        @Schema(description = "Product price", example = "3499")
-        @NotNull(message = "Price is required")
-        private Double price;
+        // @Schema(description = "Product price", example = "3499")
+        // // @NotNull(message = "Price is required")
+        // // private Double price;
         @NotNull
         private BigDecimal sellingPrice;
         
@@ -100,6 +101,8 @@ public class ProductRequestDto {
         
         @NotNull
         private Integer initialStock; 
+
+    private BigDecimal profitMargin;
     }
     
     @Data
