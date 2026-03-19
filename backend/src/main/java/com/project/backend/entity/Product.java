@@ -1,8 +1,10 @@
 package com.project.backend.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -206,6 +208,15 @@ public class Product {
             })
             .sum();
     }
-
+public void updateLowestPriceFromVariants() {
+    if (this.variants != null && !this.variants.isEmpty()) {
+        this.price = this.variants.stream()
+            .map(ProductVariant::getSellingPrice)
+            .filter(Objects::nonNull)
+            .min(BigDecimal::compareTo)
+            .map(BigDecimal::doubleValue)
+            .orElse(this.price); 
+    }
+}
    
 }

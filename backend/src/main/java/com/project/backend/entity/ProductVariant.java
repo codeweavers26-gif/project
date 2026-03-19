@@ -63,6 +63,8 @@ public class ProductVariant {
     @Column(name = "cost_price", precision = 10, scale = 2)
     private BigDecimal costPrice;
 
+    private BigDecimal profitMargin;
+
     @Column(name = "weight_grams")
     private Integer weightGrams;
 
