@@ -18,15 +18,20 @@ import com.project.backend.ResponseDto.CreateOrderResponse;
 import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.ResponseDto.PaymentResponse;
 import com.project.backend.ResponseDto.PlaceOrderResponseDto;
+import com.project.backend.ResponseDto.TrackingResponse;
+import com.project.backend.config.ShippingFactory;
 import com.project.backend.entity.PaymentMethod;
+import com.project.backend.entity.ShippingProviderType;
 import com.project.backend.entity.User;
 import com.project.backend.repository.UserRepository;
+import com.project.backend.requestDto.BuyNowRequestDto;
 import com.project.backend.requestDto.CheckoutRequestDto;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.requestDto.PaymentRequest;
 import com.project.backend.requestDto.VerifyPaymentRequest;
 import com.project.backend.service.OrderService;
 import com.project.backend.service.RazorpayService;
+import com.project.backend.service.ShiprocketService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -43,6 +48,9 @@ public class OrderController {
 	private final OrderService orderService;
 	private final UserRepository userRepository;
 	private final RazorpayService razorpayService;
+	private final ShiprocketService shiprocketService;
+	
+	private final ShippingFactory shippingFactory;
 
 	private User getCurrentUser(Authentication auth) {
 		return userRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
@@ -56,6 +64,19 @@ public class OrderController {
 
 		User user = getCurrentUser(auth);
 		CheckoutResponseDto order = orderService.checkout(user, request);
+		return ResponseEntity.ok(order);
+	}
+
+
+
+	@Operation(summary = "buy now", security = {
+			@SecurityRequirement(name = "Bearer Authentication") })
+	@PostMapping("/buyNow")
+	public ResponseEntity<CheckoutResponseDto> buyNow(Authentication auth,
+			@Valid @RequestBody BuyNowRequestDto request) {
+
+		User user = getCurrentUser(auth);
+		CheckoutResponseDto order = orderService.buyNow(user, request);
 		return ResponseEntity.ok(order);
 	}
 
@@ -149,7 +170,15 @@ public class OrderController {
 
 	        return ResponseEntity.ok(response);
 	    }
+@GetMapping("/track/{trackingId}")
+@Operation(summary = "place order", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
+public TrackingResponse trackShipment(@PathVariable String trackingId) {
 
+    return shippingFactory
+            .getProvider(ShippingProviderType.SHIPROCKET)
+            .trackShipment(trackingId);
+}
 
 	
 }

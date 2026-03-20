@@ -99,6 +99,12 @@ public class Order {
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Shipment shipment;
 
+private String shippingProvider;   
+private String shipmentId;
+private String trackingId;
+private String shippingStatus;    
+
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
