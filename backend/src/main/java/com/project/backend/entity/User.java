@@ -33,6 +33,8 @@ public class User {
 
     private String name;
 
+    private Integer phoneNumber;
+
     @Enumerated(EnumType.STRING)
     private Role role = Role.CUSTOMER;
 
