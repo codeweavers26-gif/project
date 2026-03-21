@@ -1,6 +1,7 @@
 package com.project.backend.service;
 
-
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,9 @@ import com.project.backend.ResponseDto.MergeCartResultDto;
 import com.project.backend.ResponseDto.MergeFailedItemDto;
 import com.project.backend.entity.Cart;
 import com.project.backend.entity.CartItem;
+import com.project.backend.entity.Coupon;
+import com.project.backend.entity.CouponStatus;
+import com.project.backend.entity.CouponType;
 import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductImage;
 import com.project.backend.entity.ProductVariant;
@@ -38,141 +42,144 @@ import lombok.extern.slf4j.Slf4j;
 public class CartService {
 
 	private final CartRepository cartRepository;
-	private final  ProductVariantRepository variantRepo;
+	private final ProductVariantRepository variantRepo;
 	private final ProductRepository productRepository;
 	private final CartItemRepository cartItemRepository;
 
 	@Transactional
 	public CartItemResponseDto addToCart(User user, Long productId, Long variantId, Integer qty) {
 
-	    if (qty == null || qty <= 0) {
-	        throw new BadRequestException("Quantity must be greater than 0");
-	    }
-	    
-	    Cart cart = cartRepository.findByUserId(user.getId())
-	            .orElseGet(() -> {
-	                Cart newCart = Cart.builder()
-	                    .user(user)
-	                    .totalQuantity(0)
-	                    .totalAmount(0)
-	                    .createdAt(Instant.now())
-	                    .build();
-	                return cartRepository.save(newCart);
-	            });
-	    
-	    ProductVariant variant = variantRepo.findByIdWithProductAndInventories(variantId)
-	        .orElseThrow(() -> new NotFoundException("Variant not found with id: " + variantId));
-	    
-	    Product product = productRepository.findById(productId)
-	        .orElseThrow(() -> new NotFoundException("Product not found with id: " + productId));
-	    
-	    if (!variant.getProduct().getId().equals(product.getId())) {
-	        throw new BadRequestException("Variant does not belong to the specified product");
-	    }
+		if (qty == null || qty <= 0) {
+			throw new BadRequestException("Quantity must be greater than 0");
+		}
 
-	    if (!Boolean.TRUE.equals(product.getIsActive())) {
-	        throw new BadRequestException("Product is not available: " + product.getName());
-	    }
-	    Integer availableStock = getAvailableStock(variant); 
-	    
+		Cart cart = cartRepository.findByUserId(user.getId())
+				.orElseGet(() -> {
+					Cart newCart = Cart.builder()
+							.user(user)
+							.totalQuantity(0)
 
-	    if (qty > 10) {
-	        throw new BadRequestException("Maximum purchase quantity is 10 units");
-	    }
-	    CartItem existingItem = cartItemRepository.findByCartIdAndVariantId(cart.getId(), variantId)
-	        .orElse(null);
+							.createdAt(Instant.now())
+							.build();
+					return cartRepository.save(newCart);
+				});
 
-	    if (existingItem != null) {
-	        int newQuantity = existingItem.getQuantity() + qty;
-	        
-	        if (availableStock < newQuantity) {
-	            throw new BadRequestException(
-	                String.format("Cannot add %d more. Only %d available in stock", 
-	                    qty, availableStock - existingItem.getQuantity()));
-	        }
-	        
-	        existingItem.setQuantity(newQuantity);
-	        existingItem.setPrice(variant.getSellingPrice().intValue());
-	        cartItemRepository.save(existingItem);
-	        
-	        log.info("Updated cart item - User: {}, Product: {}, New Quantity: {}", 
-	            user.getId(), productId, newQuantity);
-	        
-	    } else {
-	        CartItem cartItem = CartItem.builder()
-	            .cart(cart)
-	            .product(product)
-	            .variant(variant)
-	            .quantity(qty)
-	            .price(variant.getSellingPrice().intValue())
-	            .build();
-	        
-	        cartItemRepository.save(cartItem);
-	        
-	        log.info("Added to cart - User: {}, Product: {}, Quantity: {}", 
-	            user.getId(), productId, qty);
-	    }
-	    
-	    updateCartTotals(cart);
-	    
-	    CartItem savedItem = existingItem != null ? existingItem : 
-	        cartItemRepository.findByCartIdAndVariantId(cart.getId(), variantId).get();
-	    
-	    return mapToCartItemResponse(savedItem);
+		ProductVariant variant = variantRepo.findByIdWithProductAndInventories(variantId)
+				.orElseThrow(() -> new NotFoundException("Variant not found with id: " + variantId));
+
+		Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new NotFoundException("Product not found with id: " + productId));
+
+		if (!variant.getProduct().getId().equals(product.getId())) {
+			throw new BadRequestException("Variant does not belong to the specified product");
+		}
+
+		if (!Boolean.TRUE.equals(product.getIsActive())) {
+			throw new BadRequestException("Product is not available: " + product.getName());
+		}
+		Integer availableStock = getAvailableStock(variant);
+
+		if (qty > 10) {
+			throw new BadRequestException("Maximum purchase quantity is 10 units");
+		}
+		CartItem existingItem = cartItemRepository.findByCartIdAndVariantId(cart.getId(), variantId)
+				.orElse(null);
+
+		if (existingItem != null) {
+			int newQuantity = existingItem.getQuantity() + qty;
+
+			if (availableStock < newQuantity) {
+				throw new BadRequestException(
+						String.format("Cannot add %d more. Only %d available in stock",
+								qty, availableStock - existingItem.getQuantity()));
+			}
+
+			existingItem.setQuantity(newQuantity);
+			existingItem.setPrice(variant.getSellingPrice());
+			cartItemRepository.save(existingItem);
+
+			log.info("Updated cart item - User: {}, Product: {}, New Quantity: {}",
+					user.getId(), productId, newQuantity);
+
+		} else {
+			CartItem cartItem = CartItem.builder()
+					.cart(cart)
+					.product(product)
+					.variant(variant)
+					.quantity(qty)
+					.price(variant.getSellingPrice())
+					.build();
+
+			cartItemRepository.save(cartItem);
+
+			log.info("Added to cart - User: {}, Product: {}, Quantity: {}",
+					user.getId(), productId, qty);
+		}
+
+		updateCartTotals(cart);
+
+		CartItem savedItem = existingItem != null ? existingItem
+				: cartItemRepository.findByCartIdAndVariantId(cart.getId(), variantId).get();
+
+		return mapToCartItemResponse(savedItem);
 	}
 
 	public List<CartItemResponseDto> getCart(User user) {
 
-	    Cart cart = cartRepository.findByUserId(user.getId()).orElse(null);
-	    
-	    if (cart == null || cart.getItems().isEmpty()) {
-	        return new ArrayList<>(); 
-	    }
+		Cart cart = cartRepository.findByUserId(user.getId()).orElse(null);
 
-	    return cart.getItems().stream()
-	        .map(this::mapToCartItemResponse)
-	        .collect(Collectors.toList());
+		if (cart == null || cart.getItems().isEmpty()) {
+			return new ArrayList<>();
+		}
+
+		return cart.getItems().stream()
+				.map(this::mapToCartItemResponse)
+				.collect(Collectors.toList());
 	}
+
 	private void updateCartTotals(Cart cart) {
-	    List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
-	    
-	    int totalQuantity = items.stream()
-	        .mapToInt(CartItem::getQuantity)
-	        .sum();
-	    
-	    int totalAmount = items.stream()
-	        .mapToInt(item -> item.getPrice() * item.getQuantity())
-	        .sum();
-	    
-	    cart.setTotalQuantity(totalQuantity);
-	    cart.setTotalAmount(totalAmount);
-	    cartRepository.save(cart);
+		List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+
+		int totalQuantity = items.stream()
+				.mapToInt(CartItem::getQuantity)
+				.sum();
+
+		BigDecimal totalAmount = items.stream()
+				.map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+		cart.setTotalQuantity(totalQuantity);
+		cart.setTotalAmount(totalAmount);
+		cartRepository.save(cart);
 	}
+
 	private CartItemResponseDto mapToCartItemResponse(CartItem item) {
-	    Product product = item.getProduct();
-	    ProductVariant variant = item.getVariant();
-	    
-	    return CartItemResponseDto.builder()
-	        .cartItemId(item.getId())
-	        .productId(product.getId())
-	        .productName(product.getName())
-	        .variantId(variant.getId())
-	        .size(variant.getSize())
-	        .color(variant.getColor())
-	        .imageUrl(getPrimaryImage(product))
-	        .price((double) item.getPrice())
-	        .quantity(item.getQuantity())
-	        .totalPrice((double) (item.getPrice() * item.getQuantity()))
-	        .build();
+		Product product = item.getProduct();
+		ProductVariant variant = item.getVariant();
+
+		return CartItemResponseDto.builder()
+				.cartItemId(item.getId())
+				.productId(product.getId())
+				.productName(product.getName())
+				.variantId(variant.getId())
+				.size(variant.getSize())
+				.color(variant.getColor())
+				.imageUrl(getPrimaryImage(product))
+				.price((BigDecimal) item.getPrice())
+				.quantity(item.getQuantity())
+				.totalPrice(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+				.build();
 	}
+
 	private Integer getAvailableStock(ProductVariant variant) {
-	    if (variant.getInventories() != null && !variant.getInventories().isEmpty()) {
-	        return variant.getInventories().stream()
-	            .mapToInt(wi -> wi.getAvailableQuantity())
-	            .sum();
-	    }
-	    return 0;
+		if (variant.getInventories() != null && !variant.getInventories().isEmpty()) {
+			return variant.getInventories().stream()
+					.mapToInt(wi -> wi.getAvailableQuantity())
+					.sum();
+		}
+		return 0;
 	}
+
 	private String getPrimaryImage(Product product) {
 		if (product == null || product.getImages() == null || product.getImages().isEmpty()) {
 			return null;
@@ -182,344 +189,336 @@ public class CartService {
 				.map(ProductImage::getImageUrl).orElse(product.getImages().get(0).getImageUrl());
 	}
 
-@Transactional
-public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newVariantId) {
+	@Transactional
+	public void updateCartItem(User user, Long cartItemId, Integer qty, Integer newVariantId) {
 
-    if (qty == null) {
-        throw new BadRequestException("Quantity is required");
-    }
+		if (qty == null) {
+			throw new BadRequestException("Quantity is required");
+		}
 
-    CartItem cartItem = cartItemRepository.findById(cartItemId)
-            .orElseThrow(() -> new NotFoundException("Cart item not found with id: " + cartItemId));
+		CartItem cartItem = cartItemRepository.findById(cartItemId)
+				.orElseThrow(() -> new NotFoundException("Cart item not found with id: " + cartItemId));
 
-    if (!cartItem.getCart().getUser().getId().equals(user.getId())) {
-        throw new UnauthorizedException("Unauthorized to modify this cart item");
-    }
+		if (!cartItem.getCart().getUser().getId().equals(user.getId())) {
+			throw new UnauthorizedException("Unauthorized to modify this cart item");
+		}
 
-    Cart cart = cartItem.getCart();
-    Product currentProduct = cartItem.getProduct();
+		Cart cart = cartItem.getCart();
+		Product currentProduct = cartItem.getProduct();
 
-    if (qty <= 0) {
-        cartItemRepository.delete(cartItem);
-        
-        long remainingItems = cartItemRepository.countByCartId(cart.getId());
-        if (remainingItems == 0) {
-            cartRepository.delete(cart);
-            log.info("Cart {} deleted as it became empty", cart.getId());
-        } else {
-            updateCartTotals(cart);
-        }
-        
-        log.info("Removed cart item - User: {}, CartItem: {}", user.getId(), cartItemId);
-        return;
-    }
+		if (qty <= 0) {
+			cartItemRepository.delete(cartItem);
 
-    if (newVariantId != null && !newVariantId.equals(cartItem.getVariant().getId())) {
-        
-        ProductVariant newVariant = variantRepo.findByIdWithInventories(newVariantId)
-                .orElseThrow(() -> new NotFoundException("Variant not found with id: " + newVariantId));
-        
-        if (!newVariant.getProduct().getId().equals(currentProduct.getId())) {
-            throw new BadRequestException("Variant does not belong to the same product");
-        }
-        
-        boolean variantExists = cart.getItems().stream()
-            .anyMatch(item -> !item.getId().equals(cartItemId) 
-                && item.getVariant().getId().equals(newVariantId));
-        
-        if (variantExists) {
-            CartItem existingItem = cart.getItems().stream()
-                .filter(item -> item.getVariant().getId().equals(newVariantId))
-                .findFirst()
-                .get();
-            
-            int newQuantity = existingItem.getQuantity() + qty;
-            
-            Integer availableStock = getAvailableStock(newVariant);
-            if (availableStock < newQuantity) {
-                throw new BadRequestException(
-                    String.format("Only %d units available for this variant", availableStock));
-            }
-            
-            existingItem.setQuantity(newQuantity);
-            existingItem.setPrice(newVariant.getSellingPrice().intValue());
-            cartItemRepository.save(existingItem);
-            cartItemRepository.delete(cartItem);
-            
-            log.info("Merged cart item - User: {}, Old Variant: {}, New Variant: {}", 
-                     user.getId(), cartItem.getVariant().getId(), newVariantId);
-        } else {
-            Integer availableStock = getAvailableStock(newVariant);
-            if (availableStock < qty) {
-                throw new BadRequestException(
-                    String.format("Only %d units available for this variant", availableStock));
-            }
-            
-            cartItem.setVariant(newVariant);
-            cartItem.setQuantity(qty);
-            cartItem.setPrice(newVariant.getSellingPrice().intValue());
-            cartItemRepository.save(cartItem);
-            
-            log.info("Updated cart item variant - User: {}, CartItem: {}, New Variant: {}", 
-                     user.getId(), cartItemId, newVariantId);
-        }
-    } else {
-        ProductVariant variant = cartItem.getVariant();
-        
-        Integer availableStock = getAvailableStock(variant);
-        if (availableStock < qty) {
-            throw new BadRequestException(
-                    String.format("Only %d units available for %s", availableStock, 
-                                  variant.getProduct().getName()));
-        }
+			long remainingItems = cartItemRepository.countByCartId(cart.getId());
+			if (remainingItems == 0) {
+				cartRepository.delete(cart);
+				log.info("Cart {} deleted as it became empty", cart.getId());
+			} else {
+				updateCartTotals(cart);
+			}
 
-        cartItem.setQuantity(qty);
-        cartItem.setPrice(variant.getSellingPrice().intValue());
-        cartItemRepository.save(cartItem);
-        
-        log.info("Updated cart item quantity - User: {}, CartItem: {}, New Quantity: {}", 
-                 user.getId(), cartItemId, qty);
-    }
-    
-    updateCartTotals(cart);
-}
+			log.info("Removed cart item - User: {}, CartItem: {}", user.getId(), cartItemId);
+			return;
+		}
+
+		if (newVariantId != null && !newVariantId.equals(cartItem.getVariant().getId())) {
+
+			ProductVariant newVariant = variantRepo.findByIdWithInventories(newVariantId)
+					.orElseThrow(() -> new NotFoundException("Variant not found with id: " + newVariantId));
+
+			if (!newVariant.getProduct().getId().equals(currentProduct.getId())) {
+				throw new BadRequestException("Variant does not belong to the same product");
+			}
+
+			boolean variantExists = cart.getItems().stream()
+					.anyMatch(item -> !item.getId().equals(cartItemId)
+							&& item.getVariant().getId().equals(newVariantId));
+
+			if (variantExists) {
+				CartItem existingItem = cart.getItems().stream()
+						.filter(item -> item.getVariant().getId().equals(newVariantId))
+						.findFirst()
+						.get();
+
+				int newQuantity = existingItem.getQuantity() + qty;
+
+				Integer availableStock = getAvailableStock(newVariant);
+				if (availableStock < newQuantity) {
+					throw new BadRequestException(
+							String.format("Only %d units available for this variant", availableStock));
+				}
+
+				existingItem.setQuantity(newQuantity);
+				existingItem.setPrice(newVariant.getSellingPrice());
+				cartItemRepository.save(existingItem);
+				cartItemRepository.delete(cartItem);
+
+				log.info("Merged cart item - User: {}, Old Variant: {}, New Variant: {}",
+						user.getId(), cartItem.getVariant().getId(), newVariantId);
+			} else {
+				Integer availableStock = getAvailableStock(newVariant);
+				if (availableStock < qty) {
+					throw new BadRequestException(
+							String.format("Only %d units available for this variant", availableStock));
+				}
+
+				cartItem.setVariant(newVariant);
+				cartItem.setQuantity(qty);
+				cartItem.setPrice(newVariant.getSellingPrice());
+				cartItemRepository.save(cartItem);
+
+				log.info("Updated cart item variant - User: {}, CartItem: {}, New Variant: {}",
+						user.getId(), cartItemId, newVariantId);
+			}
+		} else {
+			ProductVariant variant = cartItem.getVariant();
+
+			Integer availableStock = getAvailableStock(variant);
+			if (availableStock < qty) {
+				throw new BadRequestException(
+						String.format("Only %d units available for %s", availableStock,
+								variant.getProduct().getName()));
+			}
+
+			cartItem.setQuantity(qty);
+			cartItem.setPrice(variant.getSellingPrice());
+			cartItemRepository.save(cartItem);
+
+			log.info("Updated cart item quantity - User: {}, CartItem: {}, New Quantity: {}",
+					user.getId(), cartItemId, qty);
+		}
+
+		updateCartTotals(cart);
+	}
 
 	@Transactional
 	public void removeCartItem(User user, Long cartItemId) {
 
-	    CartItem cartItem = cartItemRepository.findById(cartItemId)
-	            .orElseThrow(() -> new NotFoundException("Cart item not found with id: " + cartItemId));
-	    if (!cartItem.getCart().getUser().getId().equals(user.getId())) {
-	        throw new UnauthorizedException("You don't have permission to remove this item");
-	    }
+		CartItem cartItem = cartItemRepository.findById(cartItemId)
+				.orElseThrow(() -> new NotFoundException("Cart item not found with id: " + cartItemId));
+		if (!cartItem.getCart().getUser().getId().equals(user.getId())) {
+			throw new UnauthorizedException("You don't have permission to remove this item");
+		}
 
-	    Cart cart = cartItem.getCart();
-	    
-	    cartItemRepository.delete(cartItem);
-	    
-	    long remainingItems = cartItemRepository.countByCartId(cart.getId());
-	    
-	    if (remainingItems == 0) {
-	        cartRepository.delete(cart);
-	        log.info("Cart {} deleted as it became empty", cart.getId());
-	    } else {
-	        updateCartTotals(cart);
-	    }
+		Cart cart = cartItem.getCart();
 
-	    log.info("Removed cart item - User: {}, CartItem: {}", user.getId(), cartItemId);
+		cartItemRepository.delete(cartItem);
+
+		long remainingItems = cartItemRepository.countByCartId(cart.getId());
+
+		if (remainingItems == 0) {
+			cartRepository.delete(cart);
+			log.info("Cart {} deleted as it became empty", cart.getId());
+		} else {
+			updateCartTotals(cart);
+		}
+
+		log.info("Removed cart item - User: {}, CartItem: {}", user.getId(), cartItemId);
 	}
 
 	@Transactional
 	public MergeCartResultDto mergeCart(User user, List<CartMergeDto> items) {
-	    if (items == null || items.isEmpty()) {
-	        return MergeCartResultDto.builder()
-	            .success(true)
-	            .message("No items to merge")
-	            .mergedCount(0)
-	            .failedCount(0)
-	            .build();
-	    }
+		if (items == null || items.isEmpty()) {
+			return MergeCartResultDto.builder()
+					.success(true)
+					.message("No items to merge")
+					.mergedCount(0)
+					.failedCount(0)
+					.build();
+		}
 
-	    int successCount = 0;
-	    int failCount = 0;
-	    List<MergeFailedItemDto> failedItems = new ArrayList<>();
+		int successCount = 0;
+		int failCount = 0;
+		List<MergeFailedItemDto> failedItems = new ArrayList<>();
 
-	    for (CartMergeDto item : items) {
-	        try {
-	            if (item.getVariantId() == null) {
-	                throw new BadRequestException("Variant ID is required");
-	            }
-	            if (item.getQuantity() == null || item.getQuantity() <= 0) {
-	                throw new BadRequestException("Quantity must be greater than 0");
-	            }
+		for (CartMergeDto item : items) {
+			try {
+				if (item.getVariantId() == null) {
+					throw new BadRequestException("Variant ID is required");
+				}
+				if (item.getQuantity() == null || item.getQuantity() <= 0) {
+					throw new BadRequestException("Quantity must be greater than 0");
+				}
 
-	            addToCart(user, item.getProductId(), item.getVariantId(), item.getQuantity());
-	            successCount++;
-	            
-	        } catch (NotFoundException e) {
-	            log.warn("Product/Variant not found during merge - Product: {}, Variant: {}", 
-	                     item.getProductId(), item.getVariantId());
-	            failCount++;
-	            failedItems.add(MergeFailedItemDto.builder()
-	                .productId(item.getProductId())
-	                .variantId(item.getVariantId())
-	                .reason("Product not available")
-	                .build());
-	            
-	        } catch (InsufficientStockException e) {
-	            log.warn("Insufficient stock during merge - Product: {}", item.getProductId());
-	            failCount++;
-	            failedItems.add(MergeFailedItemDto.builder()
-	                .productId(item.getProductId())
-	                .variantId(item.getVariantId())
-	                .reason(e.getMessage())
-	                .build());
-	            
-	        } catch (Exception e) {
-	            log.warn("Failed to merge item - Product: {}, Error: {}", 
-	                     item.getProductId(), e.getMessage());
-	            failCount++;
-	            failedItems.add(MergeFailedItemDto.builder()
-	                .productId(item.getProductId())
-	                .variantId(item.getVariantId())
-	                .reason("Failed to add to cart")
-	                .build());
-	        }
-	    }
+				addToCart(user, item.getProductId(), item.getVariantId(), item.getQuantity());
+				successCount++;
 
-	    log.info("Merged {} items to cart for user: {} ({} succeeded, {} failed)", 
-	             items.size(), user.getId(), successCount, failCount);
+			} catch (NotFoundException e) {
+				log.warn("Product/Variant not found during merge - Product: {}, Variant: {}",
+						item.getProductId(), item.getVariantId());
+				failCount++;
+				failedItems.add(MergeFailedItemDto.builder()
+						.productId(item.getProductId())
+						.variantId(item.getVariantId())
+						.reason("Product not available")
+						.build());
 
-	    return MergeCartResultDto.builder()
-	        .success(failCount == 0)
-	        .message(failCount == 0 ? "All items merged successfully" : 
-	                 String.format("%d items failed to merge", failCount))
-	        .mergedCount(successCount)
-	        .failedCount(failCount)
-	        .failedItems(failedItems)
-	        .build();
+			} catch (InsufficientStockException e) {
+				log.warn("Insufficient stock during merge - Product: {}", item.getProductId());
+				failCount++;
+				failedItems.add(MergeFailedItemDto.builder()
+						.productId(item.getProductId())
+						.variantId(item.getVariantId())
+						.reason(e.getMessage())
+						.build());
+
+			} catch (Exception e) {
+				log.warn("Failed to merge item - Product: {}, Error: {}",
+						item.getProductId(), e.getMessage());
+				failCount++;
+				failedItems.add(MergeFailedItemDto.builder()
+						.productId(item.getProductId())
+						.variantId(item.getVariantId())
+						.reason("Failed to add to cart")
+						.build());
+			}
+		}
+
+		log.info("Merged {} items to cart for user: {} ({} succeeded, {} failed)",
+				items.size(), user.getId(), successCount, failCount);
+
+		return MergeCartResultDto.builder()
+				.success(failCount == 0)
+				.message(failCount == 0 ? "All items merged successfully"
+						: String.format("%d items failed to merge", failCount))
+				.mergedCount(successCount)
+				.failedCount(failCount)
+				.failedItems(failedItems)
+				.build();
 	}
-	public CartPricingResponseDto getCartPricing(User user, String couponCode) {
 
-	    Cart cart = cartRepository.findByUserId(user.getId())
-	        .orElse(null);
-	    
-	    if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
-	        return CartPricingResponseDto.builder()
-	            .items(new ArrayList<>())
-	            .subtotal(0.0)
-	            .taxAmount(0.0)
-	            .shippingCharges(0.0)
-	            .discountAmount(0.0)
-	            .finalAmount(0.0)
-	            .couponApplied(false)
-	            .message("Your cart is empty")
-	            .totalItems(0)
-	            .totalMrp(0.0)
-	            .totalSavings(0.0)
-	            .build();
-	    }
+public CartPricingResponseDto getCartPricing(User user, String couponCode) {
 
-	    double subtotal = 0.0;
-	    double totalMrp = 0.0;
-	    double tax = 0.0;
-	    List<CartItemResponseDto> itemDtos = new ArrayList<>();
+    Cart cart = cartRepository.findByUserId(user.getId())
+            .orElse(null);
 
-	    for (CartItem cartItem : cart.getItems()) {
-	        Product product = cartItem.getProduct();
-	        ProductVariant variant = cartItem.getVariant();
+    if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
+        return CartPricingResponseDto.builder()
+                .items(new ArrayList<>())
+                .subtotal(BigDecimal.ZERO)
+                .taxAmount(BigDecimal.ZERO)
+                .shippingCharges(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.ZERO)
+                .couponApplied(false)
+                .message("Your cart is empty")
+                .totalItems(0)
+                .totalMrp(BigDecimal.ZERO)
+                .totalSavings(BigDecimal.ZERO)
+                .build();
+    }
 
-	        if (product == null) {
-	            log.warn("Cart item {} has null product, skipping", cartItem.getId());
-	            continue;
-	        }
+    BigDecimal subtotal = BigDecimal.ZERO;
+    BigDecimal totalMrp = BigDecimal.ZERO;
+    BigDecimal tax = BigDecimal.ZERO;
+    List<CartItemResponseDto> itemDtos = new ArrayList<>();
 
-	        int qty = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
+    for (CartItem cartItem : cart.getItems()) {
+        Product product = cartItem.getProduct();
+        ProductVariant variant = cartItem.getVariant();
 
-	        if (!Boolean.TRUE.equals(product.getIsActive())) {
-	            throw new BadRequestException(product.getName() + " is not available");
-	        }
+        if (product == null) {
+            log.warn("Cart item {} has null product, skipping", cartItem.getId());
+            continue;
+        }
 
-	        Double price = 0.0;
-	        Double mrp = 0.0;
-	        
-	        if (variant != null) {
-	            price = variant.getSellingPrice() != null ? variant.getSellingPrice().doubleValue() : 0.0;
-	            mrp = variant.getMrp() != null ? variant.getMrp().doubleValue() : price;
-	        } else {
-	            price = product.getMinPrice() != null ? product.getMinPrice() : 0.0;
-	            mrp = product.getPrice() != null ? product.getPrice() : price;
-	        }
-	        
-	        double itemTotal = price * qty;
-	        double itemMrpTotal = mrp * qty;
+        int qty = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
 
-	        double taxPercent = product.getTaxPercent() != null ? product.getTaxPercent() : 0.0;
-	        double itemTax = (taxPercent / 100.0) * itemTotal;
+        if (!Boolean.TRUE.equals(product.getIsActive())) {
+            throw new BadRequestException(product.getName() + " is not available");
+        }
 
-	        subtotal += itemTotal;
-	        totalMrp += itemMrpTotal;
-	        tax += itemTax;
+        BigDecimal price = BigDecimal.ZERO;
+        BigDecimal mrp = BigDecimal.ZERO;
 
-	        int discountPercentage = calculateDiscount(price, mrp);
+        if (variant != null) {
+            price = variant.getSellingPrice() != null ? variant.getSellingPrice() : BigDecimal.ZERO;
+            mrp = variant.getMrp() != null ? variant.getMrp() : price;
+        } else {
+            price = product.getMinPrice() != null ? BigDecimal.valueOf(product.getMinPrice()) : BigDecimal.ZERO;
+            mrp = product.getPrice() != null ? BigDecimal.valueOf(product.getPrice()) : price;
+        }
 
-	        itemDtos.add(CartItemResponseDto.builder()
-	            .cartItemId(cartItem.getId())
-	            .productId(product.getId())
-	            .productName(product.getName())
-	            .imageUrl(getPrimaryImage(product))
-	            .variantId(variant != null ? variant.getId() : null)
-	            .size(variant != null ? variant.getSize() : null)
-	            .color(variant != null ? variant.getColor() : null)
-	            .price(price)
-	            .mrp(mrp)
-	            .quantity(qty)
-	            .totalPrice(itemTotal)
-	            .discountPercentage(discountPercentage)
-	            .build());
-	    }
+        // FIX: Use multiply() method instead of *
+        BigDecimal itemTotal = price.multiply(BigDecimal.valueOf(qty));
+        BigDecimal itemMrpTotal = mrp.multiply(BigDecimal.valueOf(qty));
 
-	    double shipping = calculateShipping(subtotal);
-	    
-	    double discount = 0.0;
-	    boolean couponApplied = false;
-	    String message = null;
-	    
-	    if (couponCode != null && !couponCode.isEmpty()) {
-	        try {
-	            discount = applyCoupon(couponCode, subtotal);
-	            couponApplied = true;
-	            message = "Coupon applied successfully";
-	        } catch (Exception e) {
-	            message = "Invalid coupon code: " + e.getMessage();
-	        }
-	    }
+        double taxPercent = product.getTaxPercent() != null ? product.getTaxPercent() : 0.0;
+        BigDecimal itemTax = BigDecimal.valueOf(taxPercent / 100.0).multiply(itemTotal);
 
-	    double finalAmount = subtotal + tax + shipping - discount;
-	    double totalSavings = totalMrp - (subtotal - discount);
+        subtotal = subtotal.add(itemTotal);
+        totalMrp = totalMrp.add(itemMrpTotal);
+        tax = tax.add(itemTax);
 
-	    return CartPricingResponseDto.builder()
-	        .items(itemDtos)
-	        .totalItems(cart.getItems().size())
-	        .subtotal(round(subtotal))
-	        .totalMrp(round(totalMrp))
-	        .taxAmount(round(tax))
-	        .shippingCharges(shipping)
-	        .discountAmount(round(discount))
-	        .finalAmount(round(finalAmount))
-	        .totalSavings(round(totalSavings))
-	        .appliedCoupon(couponApplied ? couponCode : null)
-	        .couponApplied(couponApplied)
-	        .message(message)
-	        .build();
-	}
+        int discountPercentage = calculateDiscount(price, mrp);
+
+        itemDtos.add(CartItemResponseDto.builder()
+                .cartItemId(cartItem.getId())
+                .productId(product.getId())
+                .productName(product.getName())
+                .imageUrl(getPrimaryImage(product))
+                .variantId(variant != null ? variant.getId() : null)
+                .size(variant != null ? variant.getSize() : null)
+                .color(variant != null ? variant.getColor() : null)
+                .price(price)
+                .mrp(mrp)
+                .quantity(qty)
+                .totalPrice(itemTotal)
+                .discountPercentage(discountPercentage)
+                .build());
+    }
+
+    BigDecimal shipping = calculateShipping(subtotal);
+
+    BigDecimal discount = BigDecimal.ZERO;
+    boolean couponApplied = false;
+    String message = null;
+
+    
+
+    BigDecimal finalAmount = subtotal.add(tax).add(shipping).subtract(discount);
+    BigDecimal totalSavings = totalMrp.subtract(subtotal.subtract(discount));
+
+    return CartPricingResponseDto.builder()
+            .items(itemDtos)
+            .totalItems(cart.getItems().size())
+            .subtotal(subtotal)
+            .totalMrp(totalMrp)
+            .taxAmount(tax)
+            .shippingCharges(shipping)
+            .discountAmount(discount)
+            .finalAmount(finalAmount)
+            .totalSavings(totalSavings)
+            .appliedCoupon(couponApplied ? couponCode : null)
+            .couponApplied(couponApplied)
+            .message(message)
+            .build();
+}
 	private Double round(Double value) {
-	    if (value == null) return 0.0;
-	    return Math.round(value * 100.0) / 100.0;
+		if (value == null)
+			return 0.0;
+		return Math.round(value * 100.0) / 100.0;
 	}
 
-	private Double calculateShipping(Double subtotal) {
-	    double FREE_SHIPPING_THRESHOLD = 999.0;
-	    double STANDARD_SHIPPING = 49.0;
-	    
-	    if (subtotal == null || subtotal >= FREE_SHIPPING_THRESHOLD) {
-	        return 0.0;
-	    }
-	    return STANDARD_SHIPPING;
-	}
 
-	private Double applyCoupon(String couponCode, Double subtotal) {
 
-	    if ("SAVE10".equalsIgnoreCase(couponCode)) {
-	        return subtotal * 0.10;
-	    } else if ("SAVE50".equalsIgnoreCase(couponCode)) {
-	        return 50.0;
-	    }
-	    throw new IllegalArgumentException("Invalid coupon code");
-	}
 
-	private Integer calculateDiscount(Double price, Double mrp) {
-	    if (mrp == null || mrp == 0 || price == null) return 0;
-	    return (int) Math.round(((mrp - price) / mrp) * 100);
-	}
+private BigDecimal calculateShipping(BigDecimal subtotal) {
+    BigDecimal freeShippingThreshold = BigDecimal.valueOf(999);
+    if (subtotal.compareTo(freeShippingThreshold) > 0) {
+        return BigDecimal.ZERO;
+    }
+    return BigDecimal.valueOf(50); // ₹50 shipping
+}
+	
+
+private int calculateDiscount(BigDecimal price, BigDecimal mrp) {
+    if (mrp.compareTo(BigDecimal.ZERO) <= 0 || mrp.compareTo(price) <= 0) {
+        return 0;
+    }
+    return mrp.subtract(price)
+            .multiply(BigDecimal.valueOf(100))
+            .divide(mrp, 0, RoundingMode.HALF_UP)
+            .intValue();
+}
 }

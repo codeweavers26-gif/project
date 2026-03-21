@@ -38,7 +38,7 @@ public class CartItem {
     private Integer quantity;
 
     @Column(nullable = false)
-    private Integer price;
+    private BigDecimal price;
     
     @Column(name = "added_at")
     private LocalDateTime addedAt;
