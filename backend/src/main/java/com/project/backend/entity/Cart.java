@@ -1,5 +1,6 @@
 package com.project.backend.entity;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -46,7 +47,7 @@ public class Cart {
     private Integer totalQuantity;
     
     @Column(nullable = false)
-    private Integer totalAmount;
+    private BigDecimal totalAmount;
     
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CartItem> items;

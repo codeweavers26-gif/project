@@ -43,6 +43,7 @@ import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.exception.UnauthorizedException;
 import com.project.backend.mapper.OrderMapper;
+import com.project.backend.repository.CartItemRepository;
 import com.project.backend.repository.CartRepository;
 import com.project.backend.repository.LocationRepository;
 import com.project.backend.repository.OrderItemRepository;
@@ -53,6 +54,7 @@ import com.project.backend.repository.UserAddressRepository;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.repository.WarehouseInventoryRepository;
 import com.project.backend.repository.WarehouseRepository;
+import com.project.backend.requestDto.BuyNowCheckoutResponseDto;
 import com.project.backend.requestDto.BuyNowRequestDto;
 import com.project.backend.requestDto.CheckoutRequestDto;
 import com.project.backend.requestDto.OrderFilter;
@@ -71,6 +73,7 @@ public class OrderService {
 	private final ProductRepository productRepository;
 	private final ProductVariantRepository productVariantRepository;
 	private final CartRepository cartRepository;
+	private final CartItemRepository cartItemRepository;
 	private final LocationRepository locationRepository;
 	private final WarehouseInventoryRepository inventoryRepository;
 private final ShippingFactory shippingFactory;
@@ -267,6 +270,29 @@ public CheckoutResponseDto buyNow(User user, BuyNowRequestDto request) {
                     .divide(mrp, 0, RoundingMode.HALF_UP).intValue();
         }
         
+
+ Cart tempCart = Cart.builder()
+            .user(user)
+            .totalQuantity(0)
+    .totalAmount(BigDecimal.ZERO)
+            .build();
+    tempCart = cartRepository.save(tempCart);
+
+	  CartItem cartItem = CartItem.builder()
+            .cart(tempCart)
+            .product(product)
+            .variant(variant)
+            .quantity(request.getQuantity())
+            .price(variant.getSellingPrice())
+            .build();
+    cartItemRepository.save(cartItem);
+	 tempCart.setTotalQuantity(request.getQuantity());
+    tempCart.setTotalAmount(variant.getSellingPrice().multiply(BigDecimal.valueOf(request.getQuantity())));
+    cartRepository.save(tempCart);
+
+
+
+
         CheckoutResponseDto.CheckoutItemDto itemDto = CheckoutResponseDto.CheckoutItemDto.builder()
                 .productId(product.getId())
                 .productName(product.getName())
@@ -309,7 +335,7 @@ public CheckoutResponseDto buyNow(User user, BuyNowRequestDto request) {
                 .requiresPayment(request.getPaymentMethod() != PaymentMethod.COD)
                 .paymentMessage(null)
                 .isCodAvailable(isCodAvailable)
-                .cartId(null) 
+                .cartId(tempCart.getId()) 
                 .isValidForCheckout(inStock)
                 .validationErrors(validationErrors)
                 .build();
@@ -484,7 +510,7 @@ public CheckoutResponseDto buyNow(User user, BuyNowRequestDto request) {
         log.warn("Cart cleanup failed for orderId={}", order.getId());
     }
 
-	       // triggerShippingAsync(order);
+	        triggerShippingAsync(order);
 
     return buildResponse(order, subtotal, taxTotal, shipping, maxDeliveryDays, address);
 	}
@@ -729,4 +755,258 @@ private PlaceOrderResponseDto buildResponse(
 		}
 	}
 
+
+
+@Transactional(readOnly = true)
+public BuyNowCheckoutResponseDto buyNowCheckout(User user, BuyNowRequestDto request) {
+    
+    log.info("Buy now checkout for user: {}, product: {}, quantity: {}", 
+             user.getId(), request.getProductId(), request.getQuantity());
+    
+    try {
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        
+        ProductVariant variant = productVariantRepository.findById(request.getVariantId())
+                .orElseThrow(() -> new NotFoundException("Variant not found"));
+        
+        if (!variant.getProduct().getId().equals(product.getId())) {
+            throw new BadRequestException("Variant does not belong to this product");
+        }
+        
+        if (!Boolean.TRUE.equals(product.getIsActive())) {
+            throw new BadRequestException(product.getName() + " is not available");
+        }
+        
+        Integer quantity = request.getQuantity();
+        List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
+        
+        int totalAvailable = inventories.stream()
+                .mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
+                .sum();
+        
+        boolean inStock = totalAvailable >= quantity;
+        List<String> validationErrors = new ArrayList<>();
+        
+        if (!inStock) {
+            validationErrors.add(String.format("Only %d available, you requested %d", totalAvailable, quantity));
+        }
+        
+        UserAddress address = userAddressRepository.findById(request.getAddressId())
+                .orElseThrow(() -> new NotFoundException("Address not found"));
+        
+        if (!address.getUser().getId().equals(user.getId())) {
+            throw new BadRequestException("Address does not belong to user");
+        }
+        
+        BigDecimal price = variant.getSellingPrice();
+        BigDecimal mrp = variant.getMrp() != null ? variant.getMrp() : price;
+        BigDecimal subtotal = price.multiply(BigDecimal.valueOf(quantity));
+        
+        int discountPercentage = 0;
+        if (mrp.compareTo(BigDecimal.ZERO) > 0 && mrp.compareTo(price) > 0) {
+            discountPercentage = mrp.subtract(price)
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(mrp, 0, RoundingMode.HALF_UP)
+                    .intValue();
+        }
+        
+        BigDecimal tax = subtotal.multiply(BigDecimal.valueOf(5))
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        
+        BigDecimal shipping = subtotal.compareTo(BigDecimal.valueOf(999)) > 0 ? 
+                BigDecimal.ZERO : BigDecimal.valueOf(50);
+        
+    
+        
+        BigDecimal total = subtotal.add(tax).add(shipping);
+        
+        Integer deliveryDays = product.getDeliveryDays();
+        if (deliveryDays == null) deliveryDays = 7;
+        LocalDate expectedDelivery = LocalDate.now().plusDays(deliveryDays);
+        
+        Boolean isCodAvailable = product.getCodAvailable() != null ? product.getCodAvailable() : true;
+        
+        BuyNowCheckoutResponseDto.AddressDto addressDto = BuyNowCheckoutResponseDto.AddressDto.builder()
+                .addressId(address.getId())
+                .addressLine1(address.getAddressLine1())
+                .addressLine2(address.getAddressLine2())
+                .city(address.getCity())
+                .state(address.getState())
+                .postalCode(address.getPostalCode())
+                .country(address.getCountry())
+                .build();
+        
+        String productImage = getProductImage(product);
+        
+        return BuyNowCheckoutResponseDto.builder()
+                .productId(product.getId())
+                .productName(product.getName())
+                .productImage(productImage)
+                .variantId(variant.getId())
+                .size(variant.getSize())
+                .color(variant.getColor())
+                .quantity(quantity)
+                .price(price)
+                .mrp(mrp)
+                .discountPercentage(discountPercentage)
+                .subtotal(subtotal)
+                .deliveryAddress(addressDto)
+                .deliveryDays(deliveryDays)
+                .expectedDelivery(expectedDelivery)
+                .taxAmount(tax)
+                .shippingCharges(shipping)
+              
+                .totalAmount(total)
+                .paymentMethod(request.getPaymentMethod())
+                .requiresPayment(request.getPaymentMethod() != PaymentMethod.COD)
+                .isCodAvailable(isCodAvailable)
+                .validationErrors(validationErrors)
+                .isValid(inStock)
+                .build();
+        
+    } catch (NotFoundException | BadRequestException e) {
+        throw e;
+    } catch (Exception e) {
+        log.error("Buy now checkout failed for user: {}", user.getId(), e);
+        throw new RuntimeException("Failed to process buy now checkout", e);
+    }
+}
+
+@Transactional
+public OrderResponseDto buyNowPlaceOrder(User user, BuyNowRequestDto request) {
+    
+    log.info("Buy now place order for user: {}, product: {}, quantity: {}", 
+             user.getId(), request.getProductId(), request.getQuantity());
+    
+    try {
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        
+        ProductVariant variant = productVariantRepository.findById(request.getVariantId())
+                .orElseThrow(() -> new NotFoundException("Variant not found"));
+        
+        if (!variant.getProduct().getId().equals(product.getId())) {
+            throw new BadRequestException("Variant does not belong to this product");
+        }
+        
+        Integer quantity = request.getQuantity();
+        List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
+        
+        int totalAvailable = inventories.stream()
+                .mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
+                .sum();
+        
+        if (totalAvailable < quantity) {
+            throw new BadRequestException(String.format(
+                "Insufficient stock. Only %d available, you requested %d", totalAvailable, quantity));
+        }
+        
+        UserAddress address = userAddressRepository.findById(request.getAddressId())
+                .orElseThrow(() -> new NotFoundException("Address not found"));
+        
+        if (!address.getUser().getId().equals(user.getId())) {
+            throw new BadRequestException("Address does not belong to user");
+        }
+        
+        BigDecimal price = variant.getSellingPrice();
+        BigDecimal subtotal = price.multiply(BigDecimal.valueOf(quantity));
+        BigDecimal tax = subtotal.multiply(BigDecimal.valueOf(5))
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal shipping = subtotal.compareTo(BigDecimal.valueOf(999)) > 0 ? 
+                BigDecimal.ZERO : BigDecimal.valueOf(50);
+        
+    
+        
+        BigDecimal total = subtotal.add(tax).add(shipping);
+        
+        Order order = Order.builder()
+                .user(user)
+                .shippingAddressId(address.getId())
+                .deliveryAddressLine1(address.getAddressLine1())
+                .deliveryAddressLine2(address.getAddressLine2())
+                .deliveryCity(address.getCity())
+                .deliveryState(address.getState())
+                .deliveryPostalCode(address.getPostalCode())
+                .deliveryCountry(address.getCountry())
+                .paymentMethod(request.getPaymentMethod())
+                .status(request.getPaymentMethod() == PaymentMethod.COD ? 
+                        OrderStatus.PENDING : OrderStatus.PENDING_PAYMENT)
+                .paymentStatus(PaymentStatus.PENDING)
+                .paymentExpiry(request.getPaymentMethod() != PaymentMethod.COD ? 
+                        LocalDateTime.now().plusMinutes(15) : null)
+                .totalAmount(total.doubleValue())
+                .taxAmount(tax.doubleValue())
+                .shippingCharges(shipping.doubleValue())
+                .build();
+        
+        order = orderRepository.save(order);
+        
+        OrderItem orderItem = OrderItem.builder()
+                .order(order)
+                .productId(product.getId())
+                .variantId(variant.getId())
+                .productName(product.getName())
+                .price(price.doubleValue())
+                .quantity(quantity)
+                .size(variant.getSize())
+                .color(variant.getColor())
+                .build();
+        
+        orderItemRepository.save(orderItem);
+        
+        reserveStock(variant, quantity);
+        
+        log.info("Buy now order placed successfully: orderId={}", order.getId());
+        
+        return OrderMapper.toDto(order);
+        
+    } catch (NotFoundException | BadRequestException e) {
+        throw e;
+    } catch (Exception e) {
+        log.error("Buy now place order failed for user: {}", user.getId(), e);
+        throw new RuntimeException("Failed to place buy now order", e);
+    }
+}
+
+private void reserveStock(ProductVariant variant, Integer quantity) {
+    List<WarehouseInventory> inventories = inventoryRepository.findByVariantIdWithLock(variant.getId());
+    
+    int remainingToReserve = quantity;
+    
+    for (WarehouseInventory inventory : inventories) {
+        if (remainingToReserve <= 0) break;
+        
+        int available = inventory.getAvailableQuantity() - inventory.getReservedQuantity();
+        if (available > 0) {
+            int reserveFromThis = Math.min(available, remainingToReserve);
+            inventory.setReservedQuantity(inventory.getReservedQuantity() + reserveFromThis);
+            remainingToReserve -= reserveFromThis;
+        }
+    }
+    
+    if (remainingToReserve > 0) {
+        throw new BadRequestException("Failed to reserve stock");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
 }

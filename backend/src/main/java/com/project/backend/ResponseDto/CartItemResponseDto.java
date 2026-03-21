@@ -1,5 +1,7 @@
 package com.project.backend.ResponseDto;
 
+import java.math.BigDecimal;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,9 +20,9 @@ public class CartItemResponseDto {
 	    private String size;
 	    private String productName;
 	    private String imageUrl;
-	    private Double price;
-	    private Double mrp;
+	    private BigDecimal price;
+	    private BigDecimal mrp;
 	    private Integer quantity;
-	    private Double totalPrice; 
+	    private BigDecimal totalPrice; 
 	    private Integer discountPercentage;
 }

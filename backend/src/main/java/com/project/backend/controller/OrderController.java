@@ -24,6 +24,7 @@ import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.ShippingProviderType;
 import com.project.backend.entity.User;
 import com.project.backend.repository.UserRepository;
+import com.project.backend.requestDto.BuyNowCheckoutResponseDto;
 import com.project.backend.requestDto.BuyNowRequestDto;
 import com.project.backend.requestDto.CheckoutRequestDto;
 import com.project.backend.requestDto.PageResponseDto;
@@ -69,16 +70,29 @@ public class OrderController {
 
 
 
-	@Operation(summary = "buy now", security = {
-			@SecurityRequirement(name = "Bearer Authentication") })
-	@PostMapping("/buyNow")
-	public ResponseEntity<CheckoutResponseDto> buyNow(Authentication auth,
-			@Valid @RequestBody BuyNowRequestDto request) {
+ @Operation(summary = "Buy Now - Get checkout details", security = {
+            @SecurityRequirement(name = "Bearer Authentication") })
+    @PostMapping("/buy-now/checkout")
+    public ResponseEntity<BuyNowCheckoutResponseDto> buyNowCheckout(
+            Authentication auth,
+            @Valid @RequestBody BuyNowRequestDto request) {
+        
+        User user = getCurrentUser(auth);
+        BuyNowCheckoutResponseDto response = orderService.buyNowCheckout(user, request);
+        return ResponseEntity.ok(response);
+    }
 
-		User user = getCurrentUser(auth);
-		CheckoutResponseDto order = orderService.buyNow(user, request);
-		return ResponseEntity.ok(order);
-	}
+    @Operation(summary = "Buy Now - Place order", security = {
+            @SecurityRequirement(name = "Bearer Authentication") })
+    @PostMapping("/buy-now/place-order")
+    public ResponseEntity<OrderResponseDto> buyNowPlaceOrder(
+            Authentication auth,
+            @Valid @RequestBody BuyNowRequestDto request) {
+        
+        User user = getCurrentUser(auth);
+        OrderResponseDto response = orderService.buyNowPlaceOrder(user, request);
+        return ResponseEntity.ok(response);
+    }
 
 	@Operation(summary = "Get logged-in user's orders", security = {
 			@SecurityRequirement(name = "Bearer Authentication") })
