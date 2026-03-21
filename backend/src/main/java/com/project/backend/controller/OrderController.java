@@ -2,6 +2,9 @@ package com.project.backend.controller;
 
 import java.util.Map;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import com.project.backend.ResponseDto.CheckoutResponseDto;
 import com.project.backend.ResponseDto.CreateOrderResponse;
@@ -50,7 +54,7 @@ public class OrderController {
 	private final UserRepository userRepository;
 	private final RazorpayService razorpayService;
 	private final ShiprocketService shiprocketService;
-	
+	 private final RestTemplate restTemplate; 
 	private final ShippingFactory shippingFactory;
 
 	private User getCurrentUser(Authentication auth) {
@@ -194,5 +198,28 @@ public TrackingResponse trackShipment(@PathVariable String trackingId) {
             .trackShipment(trackingId);
 }
 
+
+@GetMapping("/shiprocket/pickup-locations")
+@Operation(summary = "place order", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
+public ResponseEntity<?> getPickupLocations() {
+    try {
+        String token = shiprocketService.getValidToken();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<?> entity = new HttpEntity<>(headers);
+        
+        ResponseEntity<Map> response = restTemplate.exchange(
+            "https://apiv2.shiprocket.in/v1/external/settings/company/pickup",
+            HttpMethod.GET,
+            entity,
+            Map.class
+        );
+        
+        return ResponseEntity.ok(response.getBody());
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+    }
+}
 	
 }

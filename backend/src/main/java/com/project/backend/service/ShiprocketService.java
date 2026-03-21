@@ -2,6 +2,8 @@ package com.project.backend.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,8 @@ import com.project.backend.ResponseDto.ShipmentResponse;
 import com.project.backend.ResponseDto.TrackingResponse;
 import com.project.backend.config.ShippingProvider;
 import com.project.backend.entity.Order;
+import com.project.backend.entity.OrderItem;
+import com.project.backend.entity.PaymentMethod;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,10 +65,8 @@ public void authenticate() {
             throw new RuntimeException("Token not found in response");
         }
 
-        // 🔥 SAVE TOKEN
         this.token = newToken;
 
-        // 🔥 SET EXPIRY (safe buffer)
         this.tokenExpiry = LocalDateTime.now().plusHours(9);
 
         log.info("Shiprocket token refreshed");
@@ -75,7 +77,7 @@ public void authenticate() {
     }
 }
 
-private String getValidToken() {
+public String getValidToken() {
 
     if (token == null || tokenExpiry == null || LocalDateTime.now().isAfter(tokenExpiry)) {
         log.info("Token expired or missing, re-authenticating...");
@@ -84,79 +86,115 @@ private String getValidToken() {
 
     return token;
 }
-    // private void authenticate() {
-    //     String url = BASE_URL + "/auth/login";
+@Override
+public ShipmentResponse createShipment(Order order) {
 
-    //     Map<String, String> request = Map.of(
-    //             "email", "yadavpiyush8302@gmail.com",
-    //             "password", "VWzIzOV14xyGhkWSYbHo&LF!bXqaN^D8"
-    //     );
+    String url = BASE_URL + "/orders/create/adhoc";
 
-    //     ResponseEntity<Map> response =
-    //             restTemplate.postForEntity(url, request, Map.class);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(getValidToken());
+    headers.setContentType(MediaType.APPLICATION_JSON);
 
-    //     this.token = (String) ((Map) response.getBody().get("data")).get("token");
-    // }
+    Map<String, Object> body = buildRequest(order);
 
-    @Override
-    public ShipmentResponse createShipment(Order order) {
+    HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        if (token == null) {
-            authenticate();
-        }
+    ResponseEntity<Map> response =
+            restTemplate.postForEntity(url, entity, Map.class);
 
-        String url = BASE_URL + "/orders/create/adhoc";
-
-        HttpHeaders headers = new HttpHeaders();
-          headers.setBearerAuth(getValidToken()); 
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        Map<String, Object> body = buildRequest(order);
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
-        ResponseEntity<Map> response =
-                restTemplate.postForEntity(url, entity, Map.class);
-
-        Map data = (Map) response.getBody().get("data");
-
-        return ShipmentResponse.builder()
-                .shipmentId(String.valueOf(data.get("shipment_id")))
-                .trackingId((String) data.get("awb_code"))
-                .status("CREATED")
-                .courier("SHIPROCKET")
-                .build();
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+        throw new RuntimeException("Shiprocket API failed: " + response.getStatusCode());
     }
-private Map<String, Object> buildRequest(Order order) {
 
+    Map<String, Object> responseBody = response.getBody();
+
+    log.info("Shiprocket createShipment response: {}", responseBody);
+
+    if ("error".equalsIgnoreCase((String) responseBody.get("status"))) {
+        throw new RuntimeException("Shiprocket error: " + responseBody.get("message"));
+    }
+
+    Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
+
+    if (data == null) {
+        throw new RuntimeException("Shiprocket response missing data: " + responseBody);
+    }
+
+    Object shipmentIdObj = data.get("shipment_id");
+
+    String trackingId = null;
+    List<Map<String, Object>> shipments =
+            (List<Map<String, Object>>) data.get("shipments");
+
+    if (shipments != null && !shipments.isEmpty()) {
+        trackingId = (String) shipments.get(0).get("awb_code");
+    }
+
+    return ShipmentResponse.builder()
+            .shipmentId(shipmentIdObj != null ? String.valueOf(shipmentIdObj) : null)
+            .trackingId(trackingId)
+            .status("CREATED")
+            .courier("SHIPROCKET")
+            .build();
+}
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    private Map<String, Object> buildRequest(Order order) {
+       String phoneNumber = getValidPhoneNumber(order.getUser().getPhoneNumber());
     Map<String, Object> request = new HashMap<>();
-
-    request.put("order_id", order.getId());
-    request.put("order_date", LocalDate.now().toString());
-    request.put("billing_customer_name", order.getUser().getName());
-    request.put("billing_address", order.getDeliveryAddressLine1());
-    request.put("billing_city", order.getDeliveryCity());
-    request.put("billing_pincode", order.getDeliveryPostalCode());
-    request.put("billing_state", order.getDeliveryState());
-    request.put("billing_country", "India");
-    request.put("billing_email", order.getUser().getEmail());
-    request.put("billing_phone", "9999999999");
-
-    request.put("order_items", List.of(
-            Map.of(
-                    "name", "Product",
-                    "units", 1,
-                    "selling_price", order.getTotalAmount()
-            )
-    ));
-
-    request.put("payment_method", "Prepaid");
-    request.put("sub_total", order.getTotalAmount());
-    request.put("length", 10);
-    request.put("breadth", 10);
-    request.put("height", 10);
-    request.put("weight", 0.5);
-
+    
+    request.put("order_id", order.getId().toString());                            
+    request.put("order_date", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));  
+    request.put("pickup_location", "Home");                                     
+    request.put("comment", "Order from " + order.getUser().getName());            
+    request.put("billing_customer_name", order.getUser().getName());               
+    request.put("billing_last_name", "");                                          
+    request.put("billing_address", order.getDeliveryAddressLine1());               
+    request.put("billing_address_2", order.getDeliveryAddressLine2() != null ? 
+                                     order.getDeliveryAddressLine2() : "");        
+    request.put("billing_city", order.getDeliveryCity());                        
+    request.put("billing_pincode", Integer.parseInt(order.getDeliveryPostalCode()));  
+    request.put("billing_state", order.getDeliveryState());                        
+    request.put("billing_country", order.getDeliveryCountry() != null ? 
+                                   order.getDeliveryCountry() : "India");          
+    request.put("billing_email", order.getUser().getEmail());                      
+    request.put("billing_phone", phoneNumber); 
+    request.put("billing_isd_code", "+91");                                     
+    
+    request.put("shipping_is_billing", true);                                      
+    List<Map<String, Object>> orderItems = new ArrayList<>();
+    for (OrderItem item : order.getItems()) {
+        Map<String, Object> orderItem = new HashMap<>();
+        orderItem.put("name", item.getProductName());                              
+        orderItem.put("sku", item.getProductId().toString());                     
+        orderItem.put("units", item.getQuantity());                               
+        orderItem.put("selling_price", (int) Math.round(item.getPrice()));        
+        orderItem.put("discount", 0);                                              
+        orderItem.put("tax", 0);                                                   
+        orderItem.put("hsn", 0);                                                   
+        orderItems.add(orderItem);
+    }
+    request.put("order_items", orderItems);                                       
+    request.put("payment_method", order.getPaymentMethod() == PaymentMethod.COD ? "COD" : "Prepaid");  
+    request.put("shipping_charges", (int) Math.round(order.getShippingCharges()));  
+    request.put("giftwrap_charges", 0);                                            
+    request.put("transaction_charges", 0);                                         
+    request.put("total_discount", order.getDiscountAmount() != null ? 
+                                   (int) Math.round(order.getDiscountAmount()) : 0);  
+    request.put("sub_total", (int) Math.round(order.getTotalAmount() - 
+                                  order.getShippingCharges() - order.getTaxAmount()));  
+    request.put("length", 10.0);                                                   
+    request.put("breadth", 10.0);                                                  
+    request.put("height", 10.0);                                                   
+    request.put("weight", 0.5);                                                  
+    
     return request;
 }
 
@@ -205,5 +243,15 @@ public TrackingResponse trackShipment(String trackingId) {
     @Override
     public void cancelShipment(String shipmentId) {
         throw new UnsupportedOperationException("Not implemented yet");
+    }private String getValidPhoneNumber(Integer phone) {
+    if (phone == null) {
+        return "9889808605"; 
     }
+    String phoneStr = String.valueOf(phone);
+    phoneStr = phoneStr.replaceAll("[^0-9]", "");
+    if (phoneStr.length() >= 10) {
+        return phoneStr.substring(phoneStr.length() - 10);
+    }
+    return String.format("%10s", phoneStr).replace(' ', '0');
+}
 }

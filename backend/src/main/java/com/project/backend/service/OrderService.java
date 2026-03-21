@@ -438,6 +438,8 @@ public CheckoutResponseDto buyNow(User user, BuyNowRequestDto request) {
 	                .build();
 
 	        order = orderRepository.save(order);
+
+			  List<OrderItem> savedOrderItems = new ArrayList<>();
   for (CartItem item : cart.getItems()) {
 
         ProductVariant variant = Optional.ofNullable(item.getVariant())
@@ -476,7 +478,7 @@ public CheckoutResponseDto buyNow(User user, BuyNowRequestDto request) {
         subtotal = subtotal.add(itemSubtotal);
         taxTotal = taxTotal.add(itemTax);
 
-        orderItemRepository.save(OrderItem.builder()
+     OrderItem orderItem =   orderItemRepository.save(OrderItem.builder()
                 .order(order)
                 .productId(product.getId())
                 .variantId(variant.getId())
@@ -486,7 +488,7 @@ public CheckoutResponseDto buyNow(User user, BuyNowRequestDto request) {
                 .size(variant.getSize())
                 .color(variant.getColor())
                 .build());
-
+   savedOrderItems.add(orderItem); 
         reserveStock(inventories, quantity);
     }
 
@@ -509,53 +511,14 @@ public CheckoutResponseDto buyNow(User user, BuyNowRequestDto request) {
     } catch (Exception e) {
         log.warn("Cart cleanup failed for orderId={}", order.getId());
     }
+ order.setItems(savedOrderItems);
+    
 
 	        triggerShippingAsync(order);
 
     return buildResponse(order, subtotal, taxTotal, shipping, maxDeliveryDays, address);
 	}
 
-
-// @Async
-// public void triggerShippingAsync(Order order) {
-
-//     ShippingProvider primary = shippingFactory
-//             .getProvider(ShippingProviderType.SHIPROCKET);
-
-
-//     try {
-//         ShipmentResponse shipment = RetryUtil.executeWithRetry(
-//                 () -> primary.createShipment(order),
-//                 3
-//         );
-
-//         updateOrderWithShipment(order, shipment, "SHIPROCKET");
-
-//         return;
-
-//     } catch (Exception e) {
-//         log.error("Shiprocket failed for orderId={}", order.getId(), e);
-//     }
-// try {
-//     final ShippingProvider fallback = shippingFactory
-//             .getProvider(ShippingProviderType.SHIPROCKET);
-
-//     ShipmentResponse shipment = RetryUtil.executeWithRetry(
-//             () -> fallback.createShipment(order),
-//             3
-//     );
-
-//     updateOrderWithShipment(order, shipment, "DELHIVERY");
-
-//     return;
-
-// } catch (Exception e) {
-//     log.error("Fallback provider failed for orderId={}", order.getId(), e);
-// }
-
-//     order.setShippingStatus("FAILED");
-//     orderRepository.save(order);
-// }
 
 @Async
 public void triggerShippingAsync(Order order) {
