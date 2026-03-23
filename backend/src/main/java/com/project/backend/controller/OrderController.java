@@ -227,17 +227,13 @@ public ResponseEntity<?> getPickupLocations() {
 	
 
 @PostMapping("/webhook/shiprocket")
-
-@Operation(summary = "place order", security = {
-				@SecurityRequirement(name = "Bearer Authentication") })
 public ResponseEntity<Void> handleShiprocketWebhook(
-        @RequestBody Map<String, Object> payload, HttpServletRequest request) {
+        @RequestBody Map<String, Object> payload,
+        @RequestParam String secret) {
 
- String token = request.getHeader("X-Shiprocket-Token");
-
-if (!"your-secret".equals(token)) {
-    throw new RuntimeException("Unauthorized webhook");
-}
+    if (!"abc123".equals(secret)) {
+        throw new RuntimeException("Unauthorized webhook");
+    }
 
     shiprocketService.handleWebhook(payload);
 
