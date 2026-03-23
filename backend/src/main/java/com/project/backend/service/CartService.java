@@ -58,7 +58,7 @@ public class CartService {
 					Cart newCart = Cart.builder()
 							.user(user)
 							.totalQuantity(0)
-
+.totalAmount(BigDecimal.ZERO)
 							.createdAt(Instant.now())
 							.build();
 					return cartRepository.save(newCart);
