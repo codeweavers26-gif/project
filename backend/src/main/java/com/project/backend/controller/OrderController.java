@@ -23,6 +23,7 @@ import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.ResponseDto.PaymentResponse;
 import com.project.backend.ResponseDto.PlaceOrderResponseDto;
 import com.project.backend.ResponseDto.TrackingResponse;
+import com.project.backend.ResponseDto.TrackingResponseDto;
 import com.project.backend.config.ShippingFactory;
 import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.ShippingProviderType;
@@ -41,6 +42,7 @@ import com.project.backend.service.ShiprocketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -56,6 +58,7 @@ public class OrderController {
 	private final ShiprocketService shiprocketService;
 	 private final RestTemplate restTemplate; 
 	private final ShippingFactory shippingFactory;
+
 
 	private User getCurrentUser(Authentication auth) {
 		return userRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
@@ -222,4 +225,43 @@ public ResponseEntity<?> getPickupLocations() {
     }
 }
 	
+
+@PostMapping("/webhook/shiprocket")
+
+@Operation(summary = "place order", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
+public ResponseEntity<Void> handleShiprocketWebhook(
+        @RequestBody Map<String, Object> payload, HttpServletRequest request) {
+
+ String token = request.getHeader("X-Shiprocket-Token");
+
+if (!"your-secret".equals(token)) {
+    throw new RuntimeException("Unauthorized webhook");
+}
+
+    shiprocketService.handleWebhook(payload);
+
+    return ResponseEntity.ok().build();
+}
+
+
+@GetMapping("/orders/{orderId}/tracking")
+
+@Operation(summary = "place order", security = {
+				@SecurityRequirement(name = "Bearer Authentication") })
+public ResponseEntity<TrackingResponseDto> getTracking(@PathVariable Long orderId) {
+
+    return ResponseEntity.ok(orderService.getTracking(orderId));
+}
+
+
+
+
+
+
+
+
+
+
+
 }
