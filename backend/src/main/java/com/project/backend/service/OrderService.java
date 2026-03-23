@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -21,6 +22,8 @@ import com.project.backend.ResponseDto.CheckoutResponseDto;
 import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.ResponseDto.PlaceOrderResponseDto;
 import com.project.backend.ResponseDto.ShipmentResponse;
+import com.project.backend.ResponseDto.TrackingResponse;
+import com.project.backend.ResponseDto.TrackingResponseDto;
 import com.project.backend.config.RetryUtil;
 import com.project.backend.config.ShippingFactory;
 import com.project.backend.config.ShippingProvider;
@@ -852,7 +855,9 @@ public OrderResponseDto buyNowPlaceOrder(User user, BuyNowRequestDto request) {
         if (!variant.getProduct().getId().equals(product.getId())) {
             throw new BadRequestException("Variant does not belong to this product");
         }
-        
+               Warehouse defaultWarehouse = warehouseRepository.findById(1L)
+	                .orElseThrow(() -> new NotFoundException("Default warehouse not configured. Please contact support."));
+
         Integer quantity = request.getQuantity();
         List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
         
@@ -901,6 +906,7 @@ public OrderResponseDto buyNowPlaceOrder(User user, BuyNowRequestDto request) {
                 .totalAmount(total.doubleValue())
                 .taxAmount(tax.doubleValue())
                 .shippingCharges(shipping.doubleValue())
+                  .warehouse(defaultWarehouse)
                 .build();
         
         order = orderRepository.save(order);
@@ -922,6 +928,7 @@ public OrderResponseDto buyNowPlaceOrder(User user, BuyNowRequestDto request) {
         
         log.info("Buy now order placed successfully: orderId={}", order.getId());
         
+	        triggerShippingAsync(order);
         return OrderMapper.toDto(order);
         
     } catch (NotFoundException | BadRequestException e) {
@@ -960,10 +967,39 @@ private void reserveStock(ProductVariant variant, Integer quantity) {
 
 
 
+public TrackingResponseDto getTracking(Long orderId) {
 
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new NotFoundException("Order not found"));
 
+    if (order.getTrackingId() == null) {
+        return TrackingResponseDto.builder()
+                .orderId(orderId)
+                .status("CREATED")
+                .trackingId(null)
+                .events(List.of())
+                .build();
+    }
 
+    TrackingResponse tracking =
+            shippingFactory.getProvider(ShippingProviderType.SHIPROCKET)
+                    .trackShipment(order.getTrackingId());
 
+    return TrackingResponseDto.builder()
+            .orderId(orderId)
+            .status(order.getShippingStatus())
+            .trackingId(order.getTrackingId())
+            .events(
+                    tracking.getEvents().stream()
+                            .map(e -> TrackingResponseDto.TrackingEvent.builder()
+                                    .status(e.getStatus())
+                                    .date(e.getDate())
+                                    .location(e.getLocation())
+                                    .build())
+                            .toList()
+            )
+            .build();
+}
 
 
 

@@ -1,26 +1,21 @@
 package com.project.backend.ResponseDto;
 
+import java.util.List;
+
 import lombok.Builder;
 import lombok.Data;
 
-import lombok.*;
-
-import java.util.List;
-
-@Data
 @Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class TrackingResponse {
-
+@Data
+public class TrackingResponseDto {
+    private Long orderId;
+    private String status;
     private String trackingId;
-    private List<Event> events;
+    private List<TrackingEvent> events;
 
     @Data
     @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class Event {
+    public static class TrackingEvent {
         private String status;
         private String date;
         private String location;

@@ -21,8 +21,13 @@ import com.project.backend.ResponseDto.TrackingResponse;
 import com.project.backend.config.ShippingProvider;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
+import com.project.backend.entity.OrderStatus;
 import com.project.backend.entity.PaymentMethod;
+import com.project.backend.entity.PaymentStatus;
+import com.project.backend.exception.NotFoundException;
+import com.project.backend.repository.OrderRepository;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ShiprocketService implements ShippingProvider {
 
+    private final OrderRepository orderRepository;
     private final RestTemplate restTemplate;
 private String token;
 private LocalDateTime tokenExpiry;
@@ -198,45 +204,60 @@ public ShipmentResponse createShipment(Order order) {
     return request;
 }
 
-   @Override
-public TrackingResponse trackShipment(String trackingId) {
 
-    if (token == null) {
-        authenticate();
-    }
+@Override
+public TrackingResponse trackShipment(String trackingId) {
 
     String url = BASE_URL + "/courier/track/awb/" + trackingId;
 
     HttpHeaders headers = new HttpHeaders();
-    headers.setBearerAuth(getValidToken()); 
+    headers.setBearerAuth(getValidToken());
 
     HttpEntity<Void> entity = new HttpEntity<>(headers);
 
     ResponseEntity<Map> response =
             restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
 
-    Map body = response.getBody();
-
-    if (body == null || body.get("data") == null) {
-        throw new RuntimeException("Invalid tracking response");
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+        throw new RuntimeException("Failed to fetch tracking from Shiprocket");
     }
 
-    Map data = (Map) body.get("data");
+    Map<String, Object> body = response.getBody();
 
-    List<Map> tracks = (List<Map>) data.get("shipment_track");
+    log.info("Shiprocket tracking response: {}", body);
 
-    if (tracks == null || tracks.isEmpty()) {
-        throw new RuntimeException("No tracking data found");
+    Map<String, Object> data = (Map<String, Object>) body.get("data");
+
+    if (data == null) {
+        throw new RuntimeException("Invalid tracking response: " + body);
     }
 
-    Map latest = tracks.get(0);
+    List<Map<String, Object>> shipmentTrack =
+            (List<Map<String, Object>>) data.get("shipment_track");
+
+    if (shipmentTrack == null || shipmentTrack.isEmpty()) {
+        return TrackingResponse.builder()
+                .trackingId(trackingId)
+                .events(List.of())
+                .build();
+    }
+
+    List<Map<String, Object>> activities =
+            (List<Map<String, Object>>) shipmentTrack.get(0).get("activities");
+
+    List<TrackingResponse.Event> events = activities == null
+            ? List.of()
+            : activities.stream()
+            .map(a -> TrackingResponse.Event.builder()
+                    .status((String) a.get("activity"))
+                    .date((String) a.get("date"))
+                    .location((String) a.get("location"))
+                    .build())
+            .toList();
 
     return TrackingResponse.builder()
-            .status((String) latest.get("current_status"))
-            .location((String) latest.get("current_location"))
-            .estimatedDeliveryDate(
-                    latest.get("edd") != null ? latest.get("edd").toString() : null
-            )
+            .trackingId(trackingId)
+            .events(events)
             .build();
 }
 
@@ -254,4 +275,99 @@ public TrackingResponse trackShipment(String trackingId) {
     }
     return String.format("%10s", phoneStr).replace(' ', '0');
 }
+
+
+
+@Transactional
+public void handleWebhook(Map<String, Object> payload) {
+
+    try {
+        Map<String, Object> data = (Map<String, Object>) payload.get("data");
+
+        if (data == null) {
+            log.error("Invalid webhook payload: {}", payload);
+            return;
+        }
+
+        String orderIdStr = (String) data.get("order_id");
+        String status = (String) data.get("current_status");
+        String awb = (String) data.get("awb");
+
+        Long orderId = Long.valueOf(orderIdStr);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Order not found"));
+
+        log.info("Updating order {} with status {}", orderId, status);
+
+        updateOrderStatus(order, status, awb);
+
+        orderRepository.save(order);
+
+    } catch (Exception e) {
+        log.error("Error processing webhook", e);
+    }
+}
+
+private void updateOrderStatus(Order order, String shiprocketStatus, String awb) {
+
+    order.setTrackingId(awb);
+
+    switch (shiprocketStatus.toUpperCase()) {
+
+        case "NEW":
+        case "AWB_ASSIGNED":
+            order.setShippingStatus("CREATED");
+            break;
+
+        case "PICKED_UP":
+        case "IN_TRANSIT":
+            order.setShippingStatus("IN_TRANSIT");
+            order.setStatus(OrderStatus.SHIPPED);
+            break;
+
+        case "OUT_FOR_DELIVERY":
+            order.setShippingStatus("OUT_FOR_DELIVERY");
+            break;
+
+        case "DELIVERED":
+            order.setShippingStatus("DELIVERED");
+            order.setStatus(OrderStatus.DELIVERED);
+            order.setPaymentStatus(PaymentStatus.COMPLETED);
+            break;
+
+        case "CANCELLED":
+        case "RTO":
+            order.setShippingStatus("FAILED");
+            order.setStatus(OrderStatus.CANCELLED);
+            break;
+
+        default:
+            log.warn("Unknown Shiprocket status: {}", shiprocketStatus);
+    }
+}
+
+
+
+
+// @Override
+// public Map<String, Object> trackShipment(String trackingId) {
+
+//     String url = BASE_URL + "/courier/track/awb/" + trackingId;
+
+//     HttpHeaders headers = new HttpHeaders();
+//     headers.setBearerAuth(getValidToken());
+
+//     HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+//     ResponseEntity<Map> response =
+//             restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+
+//     Map<String, Object> body = response.getBody();
+
+//     log.info("Tracking response: {}", body);
+
+//     return body;
+// }
+
 }
