@@ -7,29 +7,32 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.project.backend.entity.Order;
+import com.project.backend.entity.OrderItem;
+import com.project.backend.entity.PaymentMethod;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.*;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
+import com.project.backend.ResponseDto.ServiceabilityResponse;
 import com.project.backend.ResponseDto.ShipmentResponse;
 import com.project.backend.ResponseDto.TrackingResponse;
 import com.project.backend.config.ShippingProvider;
-import com.project.backend.entity.Order;
-import com.project.backend.entity.OrderItem;
+
 import com.project.backend.entity.OrderStatus;
-import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.PaymentStatus;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.repository.OrderRepository;
 
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -103,6 +106,8 @@ public ShipmentResponse createShipment(Order order) {
 
     Map<String, Object> body = buildRequest(order);
 
+    log.info("Shiprocket request: {}", body);
+
     HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
     ResponseEntity<Map> response =
@@ -116,34 +121,28 @@ public ShipmentResponse createShipment(Order order) {
 
     log.info("Shiprocket createShipment response: {}", responseBody);
 
-    if ("error".equalsIgnoreCase((String) responseBody.get("status"))) {
-        throw new RuntimeException("Shiprocket error: " + responseBody.get("message"));
+    // ✅ CORRECT SUCCESS CHECK
+    Object statusCode = responseBody.get("status_code");
+
+    if (statusCode == null || Integer.parseInt(statusCode.toString()) != 1) {
+        throw new RuntimeException("Shiprocket error: " + responseBody);
     }
 
-    Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
+    // ✅ CORRECT shipment_id extraction
+    Object shipmentIdObj = responseBody.get("shipment_id");
 
-    if (data == null) {
-        throw new RuntimeException("Shiprocket response missing data: " + responseBody);
+    if (shipmentIdObj == null) {
+        throw new RuntimeException("Shipment ID missing: " + responseBody);
     }
 
-    Object shipmentIdObj = data.get("shipment_id");
-
-    String trackingId = null;
-    List<Map<String, Object>> shipments =
-            (List<Map<String, Object>>) data.get("shipments");
-
-    if (shipments != null && !shipments.isEmpty()) {
-        trackingId = (String) shipments.get(0).get("awb_code");
-    }
-
+    // ❌ DO NOT EXPECT AWB HERE
     return ShipmentResponse.builder()
-            .shipmentId(shipmentIdObj != null ? String.valueOf(shipmentIdObj) : null)
-            .trackingId(trackingId)
+            .shipmentId(String.valueOf(shipmentIdObj))
+            .trackingId(null)
             .status("CREATED")
             .courier("SHIPROCKET")
             .build();
 }
-    
     
     
     
@@ -348,6 +347,134 @@ private void updateOrderStatus(Order order, String shiprocketStatus, String awb)
 }
 
 
+@Override
+public ShipmentResponse assignCourier(String shipmentId) {
+
+    String url = BASE_URL + "/courier/assign/awb";
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(getValidToken());
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    Map<String, Object> body = new HashMap<>();
+    body.put("shipment_id", shipmentId);
+
+    HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+    ResponseEntity<Map> response =
+            restTemplate.postForEntity(url, entity, Map.class);
+
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+        throw new RuntimeException("Failed to assign courier");
+    }
+
+    Map<String, Object> responseBody = response.getBody();
+
+    if (responseBody.containsKey("status") &&
+            "error".equalsIgnoreCase(String.valueOf(responseBody.get("status")))) {
+
+        throw new RuntimeException("Shiprocket error: " + responseBody.get("message"));
+    }
+
+    Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
+
+    if (data == null) {
+        throw new RuntimeException("No data in assign courier response: " + responseBody);
+    }
+
+    String awb = String.valueOf(data.get("awb_code"));
+    String courierName = String.valueOf(data.get("courier_name"));
+
+    return ShipmentResponse.builder()
+            .shipmentId(shipmentId)
+            .trackingId(awb)            
+            .courier(courierName)
+            .status("AWB_ASSIGNED")
+            .build();
+}
+
+    @Override
+    public ServiceabilityResponse checkServiceability(
+            String pickupPincode,
+            String deliveryPincode,
+            double weight,
+            boolean cod) {
+
+        String url = BASE_URL + "/courier/serviceability"
+                + "?pickup_postcode=" + pickupPincode
+                + "&delivery_postcode=" + deliveryPincode
+                + "&weight=" + weight
+                + "&cod=" + (cod ? 1 : 0);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(getValidToken());
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                Map.class
+        );
+
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new RuntimeException("Serviceability API failed");
+        }
+
+        Map<String, Object> body = response.getBody();
+        log.info("Serviceability response: {}", body);
+
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+
+        if (data == null) {
+            return ServiceabilityResponse.builder()
+                    .serviceable(false)
+                    .couriers(List.of())
+                    .build();
+        }
+
+        List<Map<String, Object>> couriers =
+                (List<Map<String, Object>>) data.get("available_courier_companies");
+
+        if (couriers == null || couriers.isEmpty()) {
+            return ServiceabilityResponse.builder()
+                    .serviceable(false)
+                    .couriers(List.of())
+                    .build();
+        }
+
+      List<ServiceabilityResponse.CourierOption> options =
+        couriers.stream()
+        .map(c -> {
+
+            String courierName = (String) c.get("courier_name");
+
+            Double rate = c.get("rate") != null
+                    ? Double.valueOf(c.get("rate").toString())
+                    : 0.0;
+
+            Integer deliveryDays = c.get("estimated_delivery_days") != null
+                    ? Integer.valueOf(c.get("estimated_delivery_days").toString())
+                    : 0;
+
+            Boolean codAvailable = c.get("cod") != null
+                    && Integer.valueOf(c.get("cod").toString()) == 1;
+
+            return ServiceabilityResponse.CourierOption.builder()
+                    .courierName(courierName)
+                    .rate(rate)
+                    .deliveryDays(deliveryDays)
+                    .codAvailable(codAvailable)
+                    .build();
+        })
+        .toList();
+
+        return ServiceabilityResponse.builder()
+                .serviceable(true)
+                .couriers(options)
+                .build();
+    }
 
 
 // @Override

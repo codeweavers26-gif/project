@@ -1,6 +1,7 @@
 package com.project.backend.controller;
 
 import com.project.backend.ResponseDto.LocationResponseDto;
+import com.project.backend.ResponseDto.ServiceabilityResponse;
 import com.project.backend.entity.Location;
 import com.project.backend.service.LocationService;
 
@@ -31,25 +32,14 @@ public class LocationController {
         return ResponseEntity.ok(locationService.getActiveLocations());
     }
 
+    
     @Operation(
             summary = "Check delivery availability by pincode",
             description = "Customer can check if delivery & COD are available for a pincode"
     )
     @GetMapping("/serviceable")
-    public ResponseEntity<LocationResponseDto> checkServiceability(@RequestParam String pincode) {
+    public ResponseEntity<ServiceabilityResponse> checkServiceability(String pincode) {
 
-        Location location = locationService.findServiceableLocation(pincode);
-
-        return ResponseEntity.ok(
-                LocationResponseDto.builder()
-                        .id(location.getId())
-                        .name(location.getName())
-                        .city(location.getCity())
-                        .state(location.getState())
-                        .pincode(location.getPincode())
-                        .deliveryDays(location.getDeliveryDays())
-                        .codAvailable(location.getCodAvailable())
-                        .build()
-        );
+      return  ResponseEntity.ok(locationService.checkServicibility(pincode));
     }
 }

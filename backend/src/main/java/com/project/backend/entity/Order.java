@@ -82,6 +82,7 @@ public class Order {
     @Column(nullable = false)
     private OrderStatus status; 
 
+    private Long cartId;
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

@@ -7,11 +7,14 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.project.backend.entity.Cart;
 import com.project.backend.entity.User;
+
+import jakarta.persistence.LockModeType;
 
 public interface CartRepository extends JpaRepository<Cart, Long> {
 
@@ -23,6 +26,9 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
 	@Query("SELECT COUNT(DISTINCT c.user.id) FROM Cart c")
 	Long countDistinctUsersWithCart();
 
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT c FROM Cart c WHERE c.user.id = :userId")
+Optional<Cart> findByUserIdForUpdate(Long userId);
 	
 
 	void deleteByUserId(Long userId);

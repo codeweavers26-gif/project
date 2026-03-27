@@ -92,12 +92,12 @@ public class OrderController {
     @Operation(summary = "Buy Now - Place order", security = {
             @SecurityRequirement(name = "Bearer Authentication") })
     @PostMapping("/buy-now/place-order")
-    public ResponseEntity<OrderResponseDto> buyNowPlaceOrder(
+    public ResponseEntity<OrderResponseDto> buyNowPlaceOrder( @RequestHeader("Idempotency-Key") String key,
             Authentication auth,
             @Valid @RequestBody BuyNowRequestDto request) {
         
         User user = getCurrentUser(auth);
-        OrderResponseDto response = orderService.buyNowPlaceOrder(user, request);
+        OrderResponseDto response = orderService.buyNowPlaceOrder(user, request,key);
         return ResponseEntity.ok(response);
     }
 
@@ -182,12 +182,12 @@ public class OrderController {
 	 @PostMapping("/place")
 	 @Operation(summary = "place order", security = {
 				@SecurityRequirement(name = "Bearer Authentication") })
-	    public ResponseEntity<PlaceOrderResponseDto> placeOrder(
+	    public ResponseEntity<PlaceOrderResponseDto> placeOrder(  @RequestHeader("Idempotency-Key") String key,
 	    		Authentication auth ,
 	    		@RequestParam Long addressId, 	@RequestParam PaymentMethod paymentMethod
 	         ) {
 		 User user = getCurrentUser(auth);
-		 PlaceOrderResponseDto response = orderService.placeOrder(user, addressId,paymentMethod);
+		 PlaceOrderResponseDto response = orderService.placeOrder(user, addressId,paymentMethod,key );
 
 	        return ResponseEntity.ok(response);
 	    }
@@ -242,7 +242,6 @@ public ResponseEntity<Void> handleShiprocketWebhook(
 
 
 @GetMapping("/orders/{orderId}/tracking")
-
 @Operation(summary = "place order", security = {
 				@SecurityRequirement(name = "Bearer Authentication") })
 public ResponseEntity<TrackingResponseDto> getTracking(@PathVariable Long orderId) {
