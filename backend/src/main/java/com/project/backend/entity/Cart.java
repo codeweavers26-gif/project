@@ -57,4 +57,6 @@ public class Cart {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    private String status;
 }

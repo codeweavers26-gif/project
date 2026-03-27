@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -121,5 +122,6 @@ Long countByUserId(Long userId);
 
     @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
     List<Order> findOrdersBetweenDates(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    Optional<Order> findByCartId(Long id);
 	
 }

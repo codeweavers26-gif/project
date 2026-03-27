@@ -4,12 +4,20 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-
+import org.springframework.web.client.RestTemplate;
+import java.util.Comparator;
 import com.project.backend.ResponseDto.LocationResponseDto;
+import com.project.backend.ResponseDto.ServiceabilityResponse;
+import com.project.backend.config.ShippingFactory;
 import com.project.backend.entity.Location;
+import com.project.backend.entity.PaymentMethod;
+import com.project.backend.entity.ShippingProviderType;
+import com.project.backend.entity.UserAddress;
 import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.repository.LocationRepository;
+import com.project.backend.repository.UserAddressRepository;
+import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.LocationRequestDto;
 
 import java.util.List;
@@ -17,8 +25,14 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class LocationService {
-
+   private final ShippingFactory shippingFactory;
+   
+    private final RestTemplate restTemplate;
+    private final ShiprocketService shiprocketService;
     private final LocationRepository locationRepository;
+    
+	private final UserAddressRepository userAddressRepository;
+	private final UserRepository userRepository;
 
     @CacheEvict(value = "activeLocations", allEntries = true)
     public Location createLocation(LocationRequestDto dto) {
@@ -88,5 +102,34 @@ public class LocationService {
     public Location findServiceableLocation(String pincode) {
         return locationRepository.findFirstByPincodeAndIsActiveTrue(pincode)
                 .orElseThrow(() -> new NotFoundException("Delivery not available at this pincode"));
+    }
+
+    public ServiceabilityResponse checkServicibility( String pincode){
+
+        ServiceabilityResponse serviceability =
+        shippingFactory.getProvider(ShippingProviderType.SHIPROCKET)
+                .checkServiceability(
+                        "110001", 
+                        pincode,
+                        0.5,
+                       true
+                );
+
+if (!serviceability.isServiceable()) {
+    throw new BadRequestException("Delivery not available for this pincode");
+}
+ServiceabilityResponse.CourierOption bestCourier =
+        serviceability.getCouriers().stream()
+                .min(Comparator
+                        .comparingInt(ServiceabilityResponse.CourierOption::getDeliveryDays)
+                        .thenComparingDouble(ServiceabilityResponse.CourierOption::getRate)
+                )
+                .orElseThrow();
+
+    return ServiceabilityResponse.builder()
+            .serviceable(true)
+            .couriers(List.of(bestCourier))
+            .build();
+
     }
 }
