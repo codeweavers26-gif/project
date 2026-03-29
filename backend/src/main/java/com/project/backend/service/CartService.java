@@ -508,7 +508,7 @@ private BigDecimal calculateShipping(BigDecimal subtotal) {
     if (subtotal.compareTo(freeShippingThreshold) > 0) {
         return BigDecimal.ZERO;
     }
-    return BigDecimal.valueOf(50); // ₹50 shipping
+    return BigDecimal.valueOf(50);
 }
 	
 

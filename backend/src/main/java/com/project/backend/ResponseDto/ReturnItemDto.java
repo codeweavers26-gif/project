@@ -1,5 +1,4 @@
 package com.project.backend.ResponseDto;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -10,21 +9,13 @@ import com.project.backend.entity.ReturnStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-@Getter
-@Setter
+@Data
 @Builder
 @AllArgsConstructor
-
 @NoArgsConstructor
-public class ReturnResponseDto {
+public class ReturnItemDto {
 
-    private Long orderId;
-    private String status;
-    private String reason;
-    private String trackingId;
-    private BigDecimal refundAmount;
-    private List<ReturnItemDto> items;
+    private Long orderItemId;
+    private Integer quantity;
 }

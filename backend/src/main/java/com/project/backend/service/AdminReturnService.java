@@ -4,7 +4,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -22,12 +25,16 @@ import com.project.backend.ResponseDto.RefundDto;
 import com.project.backend.ResponseDto.ReturnDashboardStats;
 import com.project.backend.ResponseDto.ReturnDetailDto;
 import com.project.backend.ResponseDto.ReturnDto;
+import com.project.backend.ResponseDto.ReturnItemDto;
 import com.project.backend.ResponseDto.ReturnReasonStatsDto;
+import com.project.backend.ResponseDto.ReturnResponseDto;
 import com.project.backend.ResponseDto.ReturnTimelineDto;
 import com.project.backend.ResponseDto.ReturnTrackingDto;
+import com.project.backend.ResponseDto.ShipmentResponse;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.Return;
+import com.project.backend.entity.ReturnItem;
 import com.project.backend.entity.ReturnReason;
 import com.project.backend.entity.ReturnStatus;
 import com.project.backend.entity.ReturnTimeline;
@@ -37,7 +44,6 @@ import com.project.backend.exception.NotFoundException;
 import com.project.backend.exception.UnauthorizedException;
 import com.project.backend.repository.OrderItemRepository;
 import com.project.backend.repository.OrderRepository;
-import com.project.backend.repository.OrderReturnRepository;
 import com.project.backend.repository.RefundRepository;
 import com.project.backend.repository.ReturnRepository;
 import com.project.backend.repository.ReturnTimelineRepository;
@@ -47,6 +53,8 @@ import com.project.backend.requestDto.CreateReturnRequest;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.requestDto.RejectReturnRequest;
 import com.project.backend.requestDto.ReturnEligibilityRequest;
+import com.project.backend.requestDto.ReturnItemRequestDto;
+import com.project.backend.requestDto.ReturnRequestDto;
 import com.project.backend.requestDto.UpdateReturnStatusRequest;
 
 import jakarta.transaction.Transactional;
@@ -57,37 +65,36 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class AdminReturnService {
 	private final ReturnRepository returnRepository;
-	private final OrderReturnRepository returnRepo;
 	private final UserRepository userRepository;
 	private final CartService cartService;
 	private final OrderRepository orderRepository;
 	private final OrderItemRepository orderItemRepository;
-	private final OrderReturnRepository orderReturnRepository;
 	private final ReturnTimelineRepository timelineRepository;
 	private final RefundRepository refundRepository;
-	public PageResponseDto<ReturnDto> getUserReturns(User user, ReturnStatus status, int page, int size) {
-		try {
-			Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+	private final ShiprocketService shiprocketService;
 
-			Page<Return> returns;
-			if (status != null) {
-				returns = returnRepository.findByStatus(status, pageable);
-			} else {
-				returns = returnRepository.findByUserId(user.getId(), pageable);
-				System.err.println(returns.getNumber());
-				
-			}
+public PageResponseDto<ReturnDto> getUserReturns(User user, ReturnStatus status, int page, int size) {
 
-			return PageResponseDto.<ReturnDto>builder()
-					.content(returns.getContent().stream().map(this::convertToDto).collect(Collectors.toList()))
-					.page(returns.getNumber()).size(returns.getSize()).totalElements(returns.getTotalElements())
-					.totalPages(returns.getTotalPages()).last(returns.isLast()).build();
+    Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to fetch user returns", e);
-		}
-	}
+    Page<Return> returns;
 
+    if (status != null) {
+        String statusString = status.name(); 
+        returns = returnRepository.findByUserIdAndStatus(user.getId(), statusString, pageable);
+    } else {
+        returns = returnRepository.findByUserId(user.getId(), pageable);
+    }
+
+    return PageResponseDto.<ReturnDto>builder()
+            .content(returns.getContent().stream().map(this::convertToDto).toList())
+            .page(returns.getNumber())
+            .size(returns.getSize())
+            .totalElements(returns.getTotalElements())
+            .totalPages(returns.getTotalPages())
+            .last(returns.isLast())
+            .build();
+}
 	public ReturnDetailDto getReturnDetails(User user, Long returnId) {
 		try {
 			Return returnRecord = returnRepository.findById(returnId)
@@ -104,40 +111,54 @@ public class AdminReturnService {
 			throw new RuntimeException("Failed to fetch return details", e);
 		}
 	}
+private ReturnDetailDto convertToReturnDetailDto(Return returnRecord) {
 
-	private ReturnDetailDto convertToReturnDetailDto(Return returnRecord) {
-		ReturnDetailDto dto = new ReturnDetailDto();
+    ReturnDetailDto dto = new ReturnDetailDto();
 
-		ReturnDto returnDto = convertToDto(returnRecord);
-		dto.setReturnInfo(returnDto);
-		Double price = returnRecord.getOrderItem().getPrice();
-		Integer quantity = returnRecord.getOrderItem().getQuantity();
-		Double total = price * quantity;
-		OrderItemDto orderItemDto = OrderItemDto.builder().productId(returnRecord.getOrderItem().getProductId())
-				.variantId(returnRecord.getOrderItem().getVariantId())
-				.productName(returnRecord.getOrderItem().getProductName()).size(returnRecord.getOrderItem().getSize())
-				.color(returnRecord.getOrderItem().getColor())
-				.price(returnRecord.getOrderItem().getPrice().doubleValue())
-				.quantity(returnRecord.getOrderItem().getQuantity()).total(total).build();
-		dto.setOrderItem(orderItemDto);
+    dto.setReturnInfo(convertToDto(returnRecord));
 
-		if (returnRecord.getRefund() != null) {
-			RefundDto refundDto = new RefundDto();
-			refundDto.setId(returnRecord.getRefund().getId());
-			refundDto.setAmount(returnRecord.getRefund().getAmount());
-			refundDto.setStatus(returnRecord.getRefund().getStatus());
-			refundDto.setTransactionId(returnRecord.getRefund().getTransactionId());
-			dto.setRefund(refundDto);
-		}
+    List<OrderItemDto> items = returnRecord.getItems().stream()
+            .map(ri -> {
 
-		List<ReturnTimeline> timeline = timelineRepository
-				.findByReturnRecordIdOrderByCreatedAtDesc(returnRecord.getId());
-		dto.setTimeline(timeline.stream().map(this::convertToTimelineDto).collect(Collectors.toList()));
+                OrderItem oi = orderItemRepository.findById(ri.getOrderItemId())
+                        .orElseThrow();
 
-	
-		return dto;
-	}
+                BigDecimal price = BigDecimal.valueOf(oi.getPrice());
+                BigDecimal total = price.multiply(BigDecimal.valueOf(ri.getQuantity()));
 
+                return OrderItemDto.builder()
+                        .productId(oi.getProductId())
+                        .variantId(oi.getVariantId())
+                        .productName(oi.getProductName())
+                        .size(oi.getSize())
+                        .color(oi.getColor())
+                        .price(price.doubleValue())
+                        .quantity(ri.getQuantity())
+                        .total(total.doubleValue())
+                        .build();
+            })
+            .toList();
+
+    dto.setItems(items);
+
+    if (returnRecord.getRefund() != null) {
+        dto.setRefund(RefundDto.builder()
+                .id(returnRecord.getRefund().getId())
+                .amount(returnRecord.getRefund().getAmount())
+                .status(returnRecord.getRefund().getStatus())
+                .transactionId(returnRecord.getRefund().getTransactionId())
+                .build());
+    }
+
+    dto.setTimeline(
+            timelineRepository.findByReturnRecordIdOrderByCreatedAtDesc(returnRecord.getId())
+                    .stream()
+                    .map(this::convertToTimelineDto)
+                    .toList()
+    );
+
+    return dto;
+}
 	private ReturnTimelineDto convertToTimelineDto(ReturnTimeline timeline) {
 		ReturnTimelineDto dto = new ReturnTimelineDto();
 		dto.setId(timeline.getId());
@@ -200,93 +221,58 @@ public class AdminReturnService {
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to fetch eligible items", e);
 		}
-	}
+	}@Transactional
+public ReturnDto cancelReturnRequest(User user, Long returnId) {
 
-	@Transactional
-	public ReturnDto createReturn(Long userId, CreateReturnRequest request) {
-		try {
+    Return returnRecord = returnRepository.findById(returnId)
+            .orElseThrow(() -> new NotFoundException("Return not found"));
 
-			User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+    if (!returnRecord.getUser().getId().equals(user.getId())) {
+        throw new UnauthorizedException("Access denied");
+    }
 
-			OrderItem orderItem = orderItemRepository.findById(request.getOrderItemId())
-					.orElseThrow(() -> new NotFoundException("Order item not found"));
+    if (!"PENDING_APPROVAL".equals(returnRecord.getStatus())) {
+        throw new IllegalStateException("Cannot cancel now. Current status: " + returnRecord.getStatus());
+    }
 
-			if (!orderItem.getOrder().getUser().getId().equals(userId)) {
-				throw new UnauthorizedException("This item doesn't belong to you");
-			}
-			if (returnRepository.existsByOrderItemId(orderItem.getId())) {
-				throw new IllegalStateException("Return already requested for this item");
-			}
+    returnRecord.setStatus("CANCELLED");
+    returnRecord.setUpdatedAt(LocalDateTime.now());
 
-			Return returnRecord = new Return();
-			returnRecord.setUser(user);
-			returnRecord.setOrder(orderItem.getOrder());
-			returnRecord.setOrderItem(orderItem);
-			returnRecord.setReason(request.getReason());
-			returnRecord.setReasonDescription(request.getReasonDescription());
-			returnRecord.setQuantity(request.getQuantity());
+    returnRecord = returnRepository.save(returnRecord);
 
-			returnRecord = returnRepository.save(returnRecord);
-			return convertToDto(returnRecord);
+    return convertToDto(returnRecord);
+}
 
-		} catch (BadRequestException | NotFoundException | UnauthorizedException | IllegalStateException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to create return request", e);
-		}
-	}
+private ReturnDto convertToDto(Return returnRecord) {
 
-	@Transactional
-	public ReturnDto cancelReturn(Long userId, Long returnId) {
-		try {
-			Return returnRecord = returnRepository.findById(returnId)
-					.orElseThrow(() -> new NotFoundException("Return not found"));
+    ReturnDto dto = new ReturnDto();
 
-			if (!returnRecord.getUser().getId().equals(userId)) {
-				throw new UnauthorizedException("You don't have access to this return");
-			}
+    dto.setId(returnRecord.getId());
+    dto.setReturnNumber(returnRecord.getReturnNumber());
+    dto.setStatus(returnRecord.getStatus());
+    dto.setReason(returnRecord.getReason());
+    dto.setReasonDescription(returnRecord.getReasonDescription());
+    dto.setRefundAmount(returnRecord.getRefundAmount());
+    dto.setRestockingFee(returnRecord.getRestockingFee());
+    dto.setTotalRefundAmount(returnRecord.getTotalRefundAmount());
+    dto.setCreatedAt(returnRecord.getCreatedAt());
+    dto.setUserId(returnRecord.getUser().getId());
+    dto.setOrderId(returnRecord.getOrder().getId());
 
-			if (returnRecord.getStatus() != ReturnStatus.PENDING_APPROVAL) {
-				throw new IllegalStateException("Cannot cancel return after it has been processed");
-			}
+    List<ReturnItemDto> items = returnRecord.getItems().stream()
+            .map(ri -> ReturnItemDto.builder()
+                    .orderItemId(ri.getOrderItemId())
+                    .quantity(ri.getQuantity())
+                    .build())
+            .toList();
 
-			returnRecord.setStatus(ReturnStatus.CANCELLED);
-			return convertToDto(returnRepository.save(returnRecord));
+    dto.setItems(items);
 
-		} catch (NotFoundException | UnauthorizedException | IllegalStateException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to cancel return", e);
-		}
-	}
+    log.info("Converting Return ID: {} to DTO", returnRecord.getId());
 
-	private ReturnDto convertToDto(Return returnRecord) {
-		ReturnDto dto = new ReturnDto();
-		dto.setId(returnRecord.getId());
-		dto.setReturnNumber(returnRecord.getReturnNumber());
-		dto.setStatus(returnRecord.getStatus());
-		dto.setReason(returnRecord.getReason());
-		dto.setReasonDescription(returnRecord.getReasonDescription());
-		dto.setQuantity(returnRecord.getQuantity());
-		dto.setRefundAmount(returnRecord.getRefundAmount());
-		dto.setRestockingFee(returnRecord.getRestockingFee());
-		dto.setTotalRefundAmount(returnRecord.getTotalRefundAmount());
-		dto.setCreatedAt(returnRecord.getCreatedAt());
-		dto.setUserId(returnRecord.getUser().getId());
-		dto.setOrderId(returnRecord.getOrder().getId());
-		dto.setOrderItemId(returnRecord.getOrderItem().getId());
-		dto.setProductName(returnRecord.getOrderItem().getProductName());
-		Double price = returnRecord.getOrderItem().getPrice();
-		if (price != null) {
-			dto.setItemPrice(BigDecimal.valueOf(price));
-		}
-		
-		  log.info("Converting Return ID: {} to DTO", returnRecord.getId());
-		  
-		return dto;
-	}
-
-	public EligibilityCheckDto checkReturnEligibility(Long userId, ReturnEligibilityRequest request) {
+    return dto;
+}
+public EligibilityCheckDto checkReturnEligibility(Long userId, ReturnEligibilityRequest request) {
 		try {
 			EligibilityCheckDto result = new EligibilityCheckDto();
 
@@ -325,108 +311,108 @@ public class AdminReturnService {
 		}
 	}
 
-	@Transactional
-	public ReturnDto createReturnRequest(Long userId, CreateReturnRequest request) {
-		try {
-			User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+	// @Transactional
+	// public ReturnDto createReturnRequest(Long userId, CreateReturnRequest request) {
+	// 	try {
+	// 		User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
 
-			OrderItem orderItem = orderItemRepository.findById(request.getOrderItemId())
-					.orElseThrow(() -> new NotFoundException("Order item not found"));
+	// 		OrderItem orderItem = orderItemRepository.findById(request.getOrderItemId())
+	// 				.orElseThrow(() -> new NotFoundException("Order item not found"));
 
-			if (!orderItem.getOrder().getUser().getId().equals(userId)) {
-				throw new UnauthorizedException("This item doesn't belong to you");
-			}
+	// 		if (!orderItem.getOrder().getUser().getId().equals(userId)) {
+	// 			throw new UnauthorizedException("This item doesn't belong to you");
+	// 		}
 
-			if (returnRepository.existsByOrderItemId(orderItem.getId())) {
-				throw new IllegalStateException("Return already requested for this item");
-			}
+	// 		if (returnRepository.existsByOrderItemId(orderItem.getId())) {
+	// 			throw new IllegalStateException("Return already requested for this item");
+	// 		}
 
-			Instant orderInstant = orderItem.getOrder().getCreatedAt();
-			LocalDateTime orderDate = LocalDateTime.ofInstant(orderInstant, ZoneId.systemDefault());
-			LocalDateTime returnDeadline = orderDate.plusDays(30);
-			if (LocalDateTime.now().isAfter(returnDeadline)) {
-				throw new IllegalStateException("Return window has expired");
-			}
+	// 		Instant orderInstant = orderItem.getOrder().getCreatedAt();
+	// 		LocalDateTime orderDate = LocalDateTime.ofInstant(orderInstant, ZoneId.systemDefault());
+	// 		LocalDateTime returnDeadline = orderDate.plusDays(30);
+	// 		if (LocalDateTime.now().isAfter(returnDeadline)) {
+	// 			throw new IllegalStateException("Return window has expired");
+	// 		}
 
-			if (request.getQuantity() > orderItem.getQuantity()) {
-			    throw new BadRequestException(String.format(
-			        "Cannot return %d items. You only purchased %d of this item",
-			        request.getQuantity(), orderItem.getQuantity()));
-			}
+	// 		if (request.getQuantity() > orderItem.getQuantity()) {
+	// 		    throw new BadRequestException(String.format(
+	// 		        "Cannot return %d items. You only purchased %d of this item",
+	// 		        request.getQuantity(), orderItem.getQuantity()));
+	// 		}
 
-			Double itemPrice = orderItem.getPrice();
-			if (itemPrice == null || itemPrice <= 0) {
-			    throw new IllegalStateException("Invalid item price");
-			}
+	// 		Double itemPrice = orderItem.getPrice();
+	// 		if (itemPrice == null || itemPrice <= 0) {
+	// 		    throw new IllegalStateException("Invalid item price");
+	// 		}
 
-			BigDecimal price = BigDecimal.valueOf(itemPrice);
-			BigDecimal refundAmount = price.multiply(BigDecimal.valueOf(request.getQuantity()));
+	// 		BigDecimal price = BigDecimal.valueOf(itemPrice);
+	// 		BigDecimal refundAmount = price.multiply(BigDecimal.valueOf(request.getQuantity()));
 
-			double totalOrderValue = orderItem.getOrder().getTotalAmount() != null ? 
-			                         orderItem.getOrder().getTotalAmount() : 0.0;
-			double itemValue = itemPrice * request.getQuantity();
+	// 		double totalOrderValue = orderItem.getOrder().getTotalAmount() != null ? 
+	// 		                         orderItem.getOrder().getTotalAmount() : 0.0;
+	// 		double itemValue = itemPrice * request.getQuantity();
 
-			BigDecimal discountAmount = BigDecimal.ZERO;
-			if (orderItem.getOrder().getDiscountAmount() != null && 
-			    orderItem.getOrder().getDiscountAmount() > 0 && 
-			    totalOrderValue > 0) {
+	// 		BigDecimal discountAmount = BigDecimal.ZERO;
+	// 		if (orderItem.getOrder().getDiscountAmount() != null && 
+	// 		    orderItem.getOrder().getDiscountAmount() > 0 && 
+	// 		    totalOrderValue > 0) {
 			    
-			    double discountRatio = itemValue / totalOrderValue;
-			    discountAmount = BigDecimal.valueOf(orderItem.getOrder().getDiscountAmount() * discountRatio);
-			}
+	// 		    double discountRatio = itemValue / totalOrderValue;
+	// 		    discountAmount = BigDecimal.valueOf(orderItem.getOrder().getDiscountAmount() * discountRatio);
+	// 		}
 
-			BigDecimal taxAmount = BigDecimal.ZERO;
-			if (orderItem.getOrder().getTaxAmount() != null && 
-			    orderItem.getOrder().getTaxAmount() > 0 && 
-			    totalOrderValue > 0) {
+	// 		BigDecimal taxAmount = BigDecimal.ZERO;
+	// 		if (orderItem.getOrder().getTaxAmount() != null && 
+	// 		    orderItem.getOrder().getTaxAmount() > 0 && 
+	// 		    totalOrderValue > 0) {
 
-			    double taxRatio = itemValue / totalOrderValue;
-			    taxAmount = BigDecimal.valueOf(orderItem.getOrder().getTaxAmount() * taxRatio);
-			}
-			Return returnRecord = new Return();
-			returnRecord.setUser(user);
-			returnRecord.setOrder(orderItem.getOrder());
-			returnRecord.setOrderItem(orderItem);
-			returnRecord.setReason(request.getReason());
-			returnRecord.setReasonDescription(request.getReasonDescription());
-			returnRecord.setQuantity(request.getQuantity());
-			// returnRecord.setImageUrls(request.getImageUrls());
-			returnRecord.setStatus(ReturnStatus.PENDING_APPROVAL);
+	// 		    double taxRatio = itemValue / totalOrderValue;
+	// 		    taxAmount = BigDecimal.valueOf(orderItem.getOrder().getTaxAmount() * taxRatio);
+	// 		}
+	// 		Return returnRecord = new Return();
+	// 		returnRecord.setUser(user);
+	// 		returnRecord.setOrder(orderItem.getOrder());
+	// 		returnRecord.setOrderItem(orderItem);
+	// 		returnRecord.setReason(request.getReason());
+	// 		returnRecord.setReasonDescription(request.getReasonDescription());
+	// 		returnRecord.setQuantity(request.getQuantity());
+	// 		// returnRecord.setImageUrls(request.getImageUrls());
+	// 		returnRecord.setStatus(ReturnStatus.PENDING_APPROVAL);
 
 			
 			
-		        returnRecord.setRefundAmount(refundAmount);
-		        returnRecord.setRestockingFee(BigDecimal.ZERO);
-		        returnRecord.setTotalRefundAmount(refundAmount); 
-		        returnRecord.setShippingCost(BigDecimal.ZERO); 
+	// 	        returnRecord.setRefundAmount(refundAmount);
+	// 	        returnRecord.setRestockingFee(BigDecimal.ZERO);
+	// 	        returnRecord.setTotalRefundAmount(refundAmount); 
+	// 	        returnRecord.setShippingCost(BigDecimal.ZERO); 
 
-		        returnRecord.setRefundAmount(refundAmount);
-		        returnRecord.setRestockingFee(BigDecimal.ZERO); 
-		        returnRecord.setTotalRefundAmount(refundAmount.subtract(discountAmount));
-		        returnRecord.setShippingCost(calculateShippingCost(orderItem.getOrder(), request.getQuantity()));
-		        log.debug("=== SAVING RETURN WITH VALUES ===");
-		        log.debug("returnNumber: {}", returnRecord.getReturnNumber());
-		        log.debug("status: {}", returnRecord.getStatus());
-		        log.debug("quantity: {}", returnRecord.getQuantity());
-		        log.debug("reason: {}", returnRecord.getReason());
-		        log.debug("refundAmount: {}", returnRecord.getRefundAmount());
-		        log.debug("restockingFee: {}", returnRecord.getRestockingFee());
-		        log.debug("totalRefundAmount: {}", returnRecord.getTotalRefundAmount());
-		        log.debug("shippingCost: {}", returnRecord.getShippingCost());
-		        log.debug("createdAt: {}", returnRecord.getCreatedAt());
-		        log.debug("updatedAt: {}", returnRecord.getUpdatedAt());
-		        log.debug("================================");
-			returnRecord = returnRepository.save(returnRecord);
+	// 	        returnRecord.setRefundAmount(refundAmount);
+	// 	        returnRecord.setRestockingFee(BigDecimal.ZERO); 
+	// 	        returnRecord.setTotalRefundAmount(refundAmount.subtract(discountAmount));
+	// 	        returnRecord.setShippingCost(calculateShippingCost(orderItem.getOrder(), request.getQuantity()));
+	// 	        log.debug("=== SAVING RETURN WITH VALUES ===");
+	// 	        log.debug("returnNumber: {}", returnRecord.getReturnNumber());
+	// 	        log.debug("status: {}", returnRecord.getStatus());
+	// 	        log.debug("quantity: {}", returnRecord.getQuantity());
+	// 	        log.debug("reason: {}", returnRecord.getReason());
+	// 	        log.debug("refundAmount: {}", returnRecord.getRefundAmount());
+	// 	        log.debug("restockingFee: {}", returnRecord.getRestockingFee());
+	// 	        log.debug("totalRefundAmount: {}", returnRecord.getTotalRefundAmount());
+	// 	        log.debug("shippingCost: {}", returnRecord.getShippingCost());
+	// 	        log.debug("createdAt: {}", returnRecord.getCreatedAt());
+	// 	        log.debug("updatedAt: {}", returnRecord.getUpdatedAt());
+	// 	        log.debug("================================");
+	// 		returnRecord = returnRepository.save(returnRecord);
 
-			createTimelineEntry(returnRecord, "Return requested", "USER", user.getEmail());
+	// 		createTimelineEntry(returnRecord, "Return requested", "USER", user.getEmail());
 
-			return convertToDto(returnRecord);
-		} catch (NotFoundException | UnauthorizedException | IllegalStateException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to create return request", e);
-		}
-	}
+	// 		return convertToDto(returnRecord);
+	// 	} catch (NotFoundException | UnauthorizedException | IllegalStateException e) {
+	// 		throw e;
+	// 	} catch (Exception e) {
+	// 		throw new RuntimeException("Failed to create return request", e);
+	// 	}
+	// }
 
 	
 	private BigDecimal calculateShippingCost(Order order, int returnQuantity) {
@@ -440,110 +426,102 @@ public class AdminReturnService {
 	}
 	
 	@Transactional
-	public ReturnDto cancelReturnRequest(User user, Long returnId) {
-		try {
-			Return returnRecord = returnRepository.findById(returnId)
-					.orElseThrow(() -> new NotFoundException("Return not found"));
+public void retryReturn(Long returnId) {
 
-			if (!returnRecord.getUser().getId().equals(user.getId())) {
-				throw new UnauthorizedException("You don't have access to this return");
-			}
+    Return returnRecord = returnRepository.findById(returnId)
+            .orElseThrow();
 
-			if (returnRecord.getStatus() != ReturnStatus.PENDING_APPROVAL) {
-				throw new IllegalStateException("Cannot cancel return after it has been processed");
-			}
+    if (returnRecord.getStatus() != "FAILED") {
+        throw new RuntimeException("Retry not allowed");
+    }
 
-			returnRecord.setStatus(ReturnStatus.CANCELLED);
-			returnRecord = returnRepository.save(returnRecord);
+    approveReturn(returnId);
+}
 
-			createTimelineEntry(returnRecord, "Return cancelled by customer", "USER", user.getEmail());
+	// public ReturnTrackingDto trackReturn(User user, Long returnId) {
+	// 	try {
+	// 		Return returnRecord = returnRepository.findById(returnId)
+	// 				.orElseThrow(() -> new NotFoundException("Return not found"));
 
-			return convertToDto(returnRecord);
-		} catch (NotFoundException | UnauthorizedException | IllegalStateException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to cancel return", e);
-		}
-	}
+	// 		if (!returnRecord.getUser().getId().equals(user.getId())) {
+	// 			throw new UnauthorizedException("You don't have access to this return");
+	// 		}
 
-	public ReturnTrackingDto trackReturn(User user, Long returnId) {
-		try {
-			Return returnRecord = returnRepository.findById(returnId)
-					.orElseThrow(() -> new NotFoundException("Return not found"));
+	// 		ReturnTrackingDto trackingDto = new ReturnTrackingDto();
+	// 		trackingDto.setReturnNumber(returnRecord.getReturnNumber());
+	// 		trackingDto.setCurrentStatus(returnRecord.getStatus());
 
-			if (!returnRecord.getUser().getId().equals(user.getId())) {
-				throw new UnauthorizedException("You don't have access to this return");
-			}
+	// 		List<ReturnTimeline> timeline = timelineRepository.findByReturnRecordIdOrderByCreatedAtDesc(returnId);
 
-			ReturnTrackingDto trackingDto = new ReturnTrackingDto();
-			trackingDto.setReturnNumber(returnRecord.getReturnNumber());
-			trackingDto.setCurrentStatus(returnRecord.getStatus());
+	// 		List<ReturnTrackingDto.TrackingStep> steps = timeline.stream().map(t -> {
+	// 			ReturnTrackingDto.TrackingStep step = new ReturnTrackingDto.TrackingStep();
+	// 			step.setTitle(t.getTitle());
+	// 			step.setDescription(t.getDescription());
+	// 			step.setDate(t.getCreatedAt());
+	// 			step.setCompleted(true);
+	// 			return step;
+	// 		}).collect(Collectors.toList());
 
-			List<ReturnTimeline> timeline = timelineRepository.findByReturnRecordIdOrderByCreatedAtDesc(returnId);
+	// 		trackingDto.setSteps(steps);
 
-			List<ReturnTrackingDto.TrackingStep> steps = timeline.stream().map(t -> {
-				ReturnTrackingDto.TrackingStep step = new ReturnTrackingDto.TrackingStep();
-				step.setTitle(t.getTitle());
-				step.setDescription(t.getDescription());
-				step.setDate(t.getCreatedAt());
-				step.setCompleted(true);
-				return step;
-			}).collect(Collectors.toList());
+	// 		if (returnRecord.getStatus() == "APPROVED") {
+	// 			trackingDto.setEstimatedCompletionDate(LocalDateTime.now().plusDays(5));
+	// 		} else if (returnRecord.getStatus() == ReturnStatus.QC_PASSED) {
+	// 			trackingDto.setEstimatedCompletionDate(LocalDateTime.now().plusDays(2));
+	// 		}
 
-			trackingDto.setSteps(steps);
+	// 		return trackingDto;
+	// 	} catch (NotFoundException | UnauthorizedException e) {
+	// 		throw e;
+	// 	} catch (Exception e) {
+	// 		throw new RuntimeException("Failed to track return", e);
+	// 	}
+	// }
 
-			if (returnRecord.getStatus() == ReturnStatus.APPROVED) {
-				trackingDto.setEstimatedCompletionDate(LocalDateTime.now().plusDays(5));
-			} else if (returnRecord.getStatus() == ReturnStatus.QC_PASSED) {
-				trackingDto.setEstimatedCompletionDate(LocalDateTime.now().plusDays(2));
-			}
+	// public List<ReturnTimelineDto> getReturnTimeline(User user, Long returnId) {
+	// 	try {
+	// 		Return returnRecord = returnRepository.findById(returnId)
+	// 				.orElseThrow(() -> new NotFoundException("Return not found"));
 
-			return trackingDto;
-		} catch (NotFoundException | UnauthorizedException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to track return", e);
-		}
-	}
+	// 		if (!returnRecord.getUser().getId().equals(user.getId())) {
+	// 			throw new UnauthorizedException("You don't have access to this return");
+	// 		}
 
-	public List<ReturnTimelineDto> getReturnTimeline(User user, Long returnId) {
-		try {
-			Return returnRecord = returnRepository.findById(returnId)
-					.orElseThrow(() -> new NotFoundException("Return not found"));
+	// 		List<ReturnTimeline> timeline = timelineRepository.findByReturnRecordIdOrderByCreatedAtDesc(returnId);
 
-			if (!returnRecord.getUser().getId().equals(user.getId())) {
-				throw new UnauthorizedException("You don't have access to this return");
-			}
+	// 		return timeline.stream().map(this::convertToTimelineDto).collect(Collectors.toList());
+	// 	} catch (NotFoundException | UnauthorizedException e) {
+	// 		throw e;
+	// 	} catch (Exception e) {
+	// 		throw new RuntimeException("Failed to fetch return timeline", e);
+	// 	}
+	// }
 
-			List<ReturnTimeline> timeline = timelineRepository.findByReturnRecordIdOrderByCreatedAtDesc(returnId);
-
-			return timeline.stream().map(this::convertToTimelineDto).collect(Collectors.toList());
-		} catch (NotFoundException | UnauthorizedException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to fetch return timeline", e);
-		}
-	}
-
-	private void createTimelineEntry(Return returnRecord, String title, String role, String createdBy) {
-		ReturnTimeline timeline = ReturnTimeline.builder().returnRecord(returnRecord).status(returnRecord.getStatus())
-				.title(title).createdBy(createdBy).createdByRole(role).isCustomerVisible(true).isAdminVisible(true)
-				.build();
-		timelineRepository.save(timeline);
-	}
-
-	public PageResponseDto<ReturnDto> getAllReturns(ReturnStatus status, String search, Long productId,
-			LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
-		try {
-			 Page<Return> returns = returnRepository.findByFilters(status, search, productId, fromDate, toDate, pageable);
-			return PageResponseDto.<ReturnDto>builder()
-					.content(returns.getContent().stream().map(this::convertToDto).collect(Collectors.toList()))
-					.page(returns.getNumber()).size(returns.getSize()).totalElements(returns.getTotalElements())
-					.totalPages(returns.getTotalPages()).last(returns.isLast()).build();
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to fetch returns", e);
-		}
-	}
+	// private void createTimelineEntry(Return returnRecord, String title, String role, String createdBy) {
+	// 	ReturnTimeline timeline = ReturnTimeline.builder().returnRecord(returnRecord).status(returnRecord.getStatus())
+	// 			.title(title).createdBy(createdBy).createdByRole(role).isCustomerVisible(true).isAdminVisible(true)
+	// 			.build();
+	// 	timelineRepository.save(timeline);
+	// }
+public PageResponseDto<ReturnDto> getAllReturns(ReturnStatus status, String search, Long productId,
+        LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
+    try { 
+		  String statusString = status != null ? status.name() : null;
+        
+        Page<Return> returns = returnRepository.findByFilters(statusString, search, productId, fromDate, toDate, pageable);
+        
+        return PageResponseDto.<ReturnDto>builder()
+                .content(returns.getContent().stream().map(this::convertToDto).collect(Collectors.toList()))
+                .page(returns.getNumber())
+                .size(returns.getSize())
+                .totalElements(returns.getTotalElements())
+                .totalPages(returns.getTotalPages())
+                .last(returns.isLast())
+                .build();
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to fetch returns", e);
+    }
+}
 	
 
 	public ReturnDetailDto getReturnById(Long returnId) {
@@ -570,14 +548,14 @@ public class AdminReturnService {
 		}
 	}
 
-	public List<ReturnDto> getPendingReturns() {
-		try {
-			List<Return> returns = returnRepository.findByStatus(ReturnStatus.PENDING_APPROVAL);
-			return returns.stream().map(this::convertToDto).collect(Collectors.toList());
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to fetch pending returns", e);
-		}
-	}
+public List<ReturnDto> getPendingReturns() {
+    try {
+        List<Return> returns = returnRepository.findByStatus("PENDING_APPROVAL");
+        return returns.stream().map(this::convertToDto).collect(Collectors.toList());
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to fetch pending returns", e);
+    }
+}
 
 	@Transactional
 	public ReturnDto updateReturnStatus(Long returnId, UpdateReturnStatusRequest request,User user) {
@@ -585,13 +563,10 @@ public class AdminReturnService {
 			Return returnRecord = returnRepository.findById(returnId)
 					.orElseThrow(() -> new NotFoundException("Return not found"));
 
-			ReturnStatus oldStatus = returnRecord.getStatus();
+			String oldStatus = returnRecord.getStatus();
 			returnRecord.setStatus(request.getStatus());
 
 			returnRecord = returnRepository.save(returnRecord);
-
-			createTimelineEntry(returnRecord, "Status updated from " + oldStatus + " to " + request.getStatus(),
-					"ADMIN",  user.getEmail());
 
 			return convertToDto(returnRecord);
 		} catch (NotFoundException e) {
@@ -601,92 +576,62 @@ public class AdminReturnService {
 		}
 	}
 
-	@Transactional
-	public ReturnDto approveReturn(Long returnId, ApproveReturnRequest request, User user) {
-		try {
-			Return returnRecord = returnRepository.findById(returnId)
-					.orElseThrow(() -> new NotFoundException("Return not found"));
+@Transactional
+public ReturnDto rejectReturn(Long returnId, RejectReturnRequest request, User user) {
+    try {
+        Return returnRecord = returnRepository.findById(returnId)
+                .orElseThrow(() -> new NotFoundException("Return not found"));
 
-			if (returnRecord.getStatus() != ReturnStatus.PENDING_APPROVAL) {
-				throw new IllegalStateException(
-						"Return cannot be approved in current state: " + returnRecord.getStatus());
-			}
+        if (!"PENDING_APPROVAL".equals(returnRecord.getStatus())) {
+            throw new IllegalStateException(
+                    "Return cannot be rejected in current state: " + returnRecord.getStatus());
+        }
 
-			returnRecord.setStatus(ReturnStatus.APPROVED);
-			returnRecord.setApprovedAt(LocalDateTime.now());
-			returnRecord.setApprovedBy(user.getId());
+        returnRecord.setStatus("REJECTED");
+        returnRecord.setRejectedAt(LocalDateTime.now());
+        returnRecord.setRejectionReason(request.getRejectionReason());
+        returnRecord.setUpdatedAt(LocalDateTime.now()); 
 
-			Double price = returnRecord.getOrderItem().getPrice();
-			BigDecimal subtotal = BigDecimal.valueOf(price * returnRecord.getQuantity());
-
-			BigDecimal restockingFee = request.getRestockingFee() != null ? request.getRestockingFee()
-					: BigDecimal.ZERO;
-
-			returnRecord.setRefundAmount(subtotal);
-			returnRecord.setRestockingFee(restockingFee);
-			returnRecord.setTotalRefundAmount(subtotal.subtract(restockingFee));
-
-			returnRecord = returnRepository.save(returnRecord);
-
-			createTimelineEntry(returnRecord, "Return approved by admin", "ADMIN", user.getEmail());
-
-			return convertToDto(returnRecord);
-		} catch (NotFoundException | IllegalStateException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to approve return", e);
-		}
-	}
-
-	@Transactional
-	public ReturnDto rejectReturn(Long returnId, RejectReturnRequest request, User user) {
-		try {
-			Return returnRecord = returnRepository.findById(returnId)
-					.orElseThrow(() -> new NotFoundException("Return not found"));
-
-			if (returnRecord.getStatus() != ReturnStatus.PENDING_APPROVAL) {
-				throw new IllegalStateException(
-						"Return cannot be rejected in current state: " + returnRecord.getStatus());
-			}
-
-			returnRecord.setStatus(ReturnStatus.REJECTED);
-			returnRecord.setRejectedAt(LocalDateTime.now());
-			returnRecord.setRejectionReason(request.getRejectionReason());
-
-			returnRecord = returnRepository.save(returnRecord);
-
-			createTimelineEntry(returnRecord, "Return rejected: " + request.getRejectionReason(), "ADMIN",
-					user.getEmail());
-
-			return convertToDto(returnRecord);
-		} catch (NotFoundException | IllegalStateException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to reject return", e);
-		}
-	}
+        returnRecord = returnRepository.save(returnRecord);
+        
+        return convertToDto(returnRecord);
+        
+    } catch (NotFoundException | IllegalStateException e) {
+        throw e;
+    } catch (Exception e) {
+        log.error("Failed to reject return {}: {}", returnId, e.getMessage(), e);
+        throw new RuntimeException("Failed to reject return", e);
+    }
+}
 	
 	public ReturnDashboardStats getReturnDashboardStats() {
-		try {
-			ReturnDashboardStats stats = new ReturnDashboardStats();
+    try {
+        ReturnDashboardStats stats = new ReturnDashboardStats();
 
-			stats.setTotalReturns(returnRepository.count());
-			stats.setPendingApproval(returnRepository.countByStatus(ReturnStatus.PENDING_APPROVAL));
-			stats.setApproved(returnRepository.countByStatus(ReturnStatus.APPROVED));
-			stats.setRejected(returnRepository.countByStatus(ReturnStatus.REJECTED));
-			stats.setProcessing(returnRepository.countByStatusIn(
-					List.of(ReturnStatus.PENDING_PICKUP, ReturnStatus.PICKUP_SCHEDULED, ReturnStatus.QC_PENDING)));
-			stats.setCompleted(returnRepository.countByStatus(ReturnStatus.REFUND_COMPLETED));
+        stats.setTotalReturns(returnRepository.count());
+       
+        stats.setPendingApproval(returnRepository.countByStatus("PENDING_APPROVAL"));
+        stats.setApproved(returnRepository.countByStatus("APPROVED"));
+        stats.setRejected(returnRepository.countByStatus("REJECTED"));
+        stats.setCompleted(returnRepository.countByStatus("REFUND_COMPLETED"));
 
-			
+        Map<String, Long> statusCounts = returnRepository.countByStatusGrouped();
+        
+        Map<ReturnStatus, Long> convertedStatusCounts = new HashMap<>();
+        for (Map.Entry<String, Long> entry : statusCounts.entrySet()) {
+            try {
+                convertedStatusCounts.put(ReturnStatus.valueOf(entry.getKey()), entry.getValue());
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown status string: {}", entry.getKey());
+            }
+        }
+        stats.setReturnsByStatus(convertedStatusCounts);
 
-			stats.setReturnsByStatus(returnRepository.countByStatusGrouped());
-
-			return stats;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to fetch dashboard stats", e);
-		}
-	}
+        return stats;
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to fetch dashboard stats", e);
+    }
+}
 
 	public PageResponseDto<ProductReturnStatsDto> getTopReturnedProducts(int page, int size) {
 	    try {
@@ -754,44 +699,181 @@ public class AdminReturnService {
 	}
 	
 	
-	
 	public PageResponseDto<AdminUserReturnResponseDto> getReturnsByUser(Long userId, int page, int size) {
-	    try {
-	        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-	        Page<Return> returns = returnRepository.findByUserId(userId, pageable);
-	        
-	        return PageResponseDto.<AdminUserReturnResponseDto>builder()
-	                .content(returns.getContent().stream()
-	                        .map(this::convertToAdminUserReturnResponseDto)
-	                        .collect(Collectors.toList()))
-	                .page(returns.getNumber())
-	                .size(returns.getSize())
-	                .totalElements(returns.getTotalElements())
-	                .totalPages(returns.getTotalPages())
-	                .last(returns.isLast())
-	                .build();
-	    } catch (Exception e) {
-	        throw new RuntimeException("Failed to fetch returns for user: " + userId, e);
-	    }
-	}
+
+    Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+    Page<Return> returns = returnRepository.findByUserId(userId, pageable);
+
+    return PageResponseDto.<AdminUserReturnResponseDto>builder()
+            .content(returns.getContent().stream()
+                    .map(this::convertToAdminUserReturnResponseDto)
+                    .toList())
+            .page(returns.getNumber())
+            .size(returns.getSize())
+            .totalElements(returns.getTotalElements())
+            .totalPages(returns.getTotalPages())
+            .last(returns.isLast())
+            .build();
+}
 
 	private AdminUserReturnResponseDto convertToAdminUserReturnResponseDto(Return returnRecord) {
-	    AdminUserReturnResponseDto dto = new AdminUserReturnResponseDto();
-	    dto.setReturnId(returnRecord.getId());
-	    dto.setReturnNumber(returnRecord.getReturnNumber());
-	    dto.setStatus(returnRecord.getStatus());
-	    dto.setReason(returnRecord.getReason());
-	    dto.setQuantity(returnRecord.getQuantity());
-	    dto.setRefundAmount(returnRecord.getTotalRefundAmount());
-	    dto.setCreatedAt(returnRecord.getCreatedAt());
-	    dto.setOrderId(returnRecord.getOrder().getId());
-	   dto.setProductName(returnRecord.getOrderItem().getProductName());
-	    dto.setProductPrice(returnRecord.getOrderItem().getPrice());
-	     dto.setUserEmail(returnRecord.getUser().getEmail());
-	 //   dto.setUserName(returnRecord.getUser().getUsername());
-	    
-	    return dto;
-	}
-	
-	
+
+    AdminUserReturnResponseDto dto = new AdminUserReturnResponseDto();
+
+    dto.setReturnId(returnRecord.getId());
+    dto.setReturnNumber(returnRecord.getReturnNumber());
+    dto.setStatus(returnRecord.getStatus());
+    dto.setReason(returnRecord.getReason());
+
+    int totalQty = returnRecord.getItems().stream()
+            .mapToInt(ReturnItem::getQuantity)
+            .sum();
+
+    dto.setQuantity(totalQty);
+
+    dto.setRefundAmount(returnRecord.getTotalRefundAmount());
+    dto.setCreatedAt(returnRecord.getCreatedAt());
+    dto.setOrderId(returnRecord.getOrder().getId());
+    dto.setUserEmail(returnRecord.getUser().getEmail());
+
+    List<ReturnItemDto> items = returnRecord.getItems().stream()
+            .map(ri -> ReturnItemDto.builder()
+                    .orderItemId(ri.getOrderItemId())
+                    .quantity(ri.getQuantity())
+                    .build())
+            .toList();
+
+    dto.setItems(items); 
+
+    return dto;
+}
+@Transactional
+public Return requestReturn(User user, Long orderId, ReturnRequestDto request) {
+
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new NotFoundException("Order not found"));
+
+    if (!order.getUser().getId().equals(user.getId())) {
+        throw new BadRequestException("Unauthorized - This order does not belong to you");
+    }
+
+    if (!"DELIVERED".equals(order.getStatus().name())) {
+        throw new BadRequestException("Return allowed only for delivered orders");
+    }
+    if (returnRepository.findByOrderId(orderId).isPresent()) {
+        throw new BadRequestException("Return already requested for this order");
+    }
+
+    int totalQuantity = 0;
+    BigDecimal totalRefundAmount = BigDecimal.ZERO;
+    List<ReturnItem> returnItems = new ArrayList<>();
+    
+    for (ReturnItemRequestDto itemReq : request.getItems()) {
+     
+        OrderItem orderItem = orderItemRepository
+                .findById(itemReq.getOrderItemId())
+                .orElseThrow(() -> new NotFoundException("Order item not found with ID: " + itemReq.getOrderItemId()));
+
+        if (!orderItem.getOrder().getId().equals(orderId)) {
+            throw new BadRequestException("Item " + itemReq.getOrderItemId() + 
+                                         " does not belong to order " + orderId);
+        }
+
+        if (itemReq.getQuantity() <= 0) {
+            throw new BadRequestException("Quantity must be greater than 0 for item: " + orderItem.getProductName());
+        }
+        
+        if (itemReq.getQuantity() > orderItem.getQuantity()) {
+            throw new BadRequestException("Cannot return " + itemReq.getQuantity() + 
+                                         " items for " + orderItem.getProductName() + 
+                                         ". Only " + orderItem.getQuantity() + " purchased.");
+        }
+
+        if (returnRepository.existsByOrderItemId(orderItem.getId())) {
+            throw new BadRequestException("Item " + orderItem.getProductName() + 
+                                         " is already part of a return request");
+        }
+
+        totalQuantity += itemReq.getQuantity();
+        BigDecimal itemRefund = BigDecimal.valueOf(orderItem.getPrice())
+                .multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+        totalRefundAmount = totalRefundAmount.add(itemRefund);
+        
+        returnItems.add(ReturnItem.builder()
+                .orderItemId(orderItem.getId())
+                .quantity(itemReq.getQuantity())
+                .build());
+    }
+
+    Return ret = Return.builder()
+            .user(user)
+            .order(order)
+            .reason(request.getReason())
+            .reasonDescription(request.getComment())
+            .quantity(totalQuantity)  
+            .status("PENDING_APPROVAL")
+            .refundAmount(totalRefundAmount)  
+            .totalRefundAmount(totalRefundAmount) 
+            .restockingFee(BigDecimal.ZERO) 
+            .shippingCost(BigDecimal.ZERO)  
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now())
+            .build();
+    returnItems.forEach(item -> item.setReturnEntity(ret));
+    ret.setItems(returnItems);
+
+    Return savedReturn = returnRepository.save(ret);
+    
+    log.info("Return request created for order {} with {} items", orderId, returnItems.size());
+    
+    return savedReturn;
+}
+
+@Transactional
+public ReturnDto  approveReturn(Long returnId) {
+
+    Return ret = returnRepository.findById(returnId)
+            .orElseThrow(() -> new NotFoundException("Return not found"));
+
+    Order order = orderRepository.findById(ret.getOrder().getId()).orElseThrow();
+
+    ShipmentResponse shipment = shiprocketService.createReturnShipment(order);
+
+    ShipmentResponse assigned =
+            shiprocketService.assignCourier(shipment.getShipmentId());
+
+    ret.setShipmentId(shipment.getShipmentId());
+    ret.setTrackingId(assigned.getTrackingId());
+    ret.setStatus("PICKUP_SCHEDULED");
+    ret.setUpdatedAt(LocalDateTime.now());
+
+   Return updatedReturn =  returnRepository.save(ret);
+
+	   return convertToDto(updatedReturn);
+}
+
+public ReturnResponseDto getReturn(Long orderId) {
+
+    Return ret = returnRepository.findByOrderId(orderId)
+            .orElseThrow(() -> new NotFoundException("No return found"));
+
+List<ReturnItemDto> items = ret.getItems() != null 
+    ? ret.getItems().stream()
+        .map(ri -> ReturnItemDto.builder()
+                .orderItemId(ri.getOrderItemId())
+                .quantity(ri.getQuantity())
+                .build())
+        .collect(Collectors.toList())
+    : new ArrayList<>();
+    return ReturnResponseDto.builder()
+            .orderId(orderId)
+            .status(ret.getStatus())
+            .reason(ret.getReason())
+            .trackingId(ret.getTrackingId())
+            .refundAmount(ret.getRefundAmount())
+            .items(items)
+            .build();
+}
+
 }

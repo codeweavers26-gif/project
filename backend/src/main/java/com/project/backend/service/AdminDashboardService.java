@@ -22,8 +22,8 @@ import com.project.backend.entity.PaymentMethod;
 import com.project.backend.entity.Role;
 import com.project.backend.repository.CartRepository;
 import com.project.backend.repository.OrderRepository;
-import com.project.backend.repository.OrderReturnRepository;
 import com.project.backend.repository.ProductRepository;
+import com.project.backend.repository.ReturnRepository;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.PageResponseDto;
 
@@ -36,8 +36,8 @@ public class AdminDashboardService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
-    private final CartRepository cartRepository;
-	private final OrderReturnRepository returnRepo;
+    private final CartRepository cartRepository;        
+    private final ReturnRepository returnRepo;
     public AdminDashboardResponse getDashboardMetrics() {
 
         Double totalSales = orderRepository.getTotalSales();
@@ -138,76 +138,76 @@ public class AdminDashboardService {
         );
     }
 
-    public PageResponseDto<ReturnByReasonDto> getReturnsByReason(int page, int size) {
+//     public PageResponseDto<ReturnByReasonDto> getReturnsByReason(int page, int size) {
 
-        Page<Object[]> result =
-                returnRepo.countByReason(PageRequest.of(page, size));
+//         Page<Object[]> result =
+//                 returnRepo.countByReason(PageRequest.of(page, size));
 
-        return PageResponseDto.<ReturnByReasonDto>builder()
-                .content(
-                    result.getContent().stream()
-                        .map(r -> ReturnByReasonDto.builder()
-                                .reason(r[0].toString())
-                                .count((Long) r[1])
-                                .build())
-                        .toList()
-                )
-                .page(result.getNumber())
-                .size(result.getSize())
-                .totalElements(result.getTotalElements())
-                .totalPages(result.getTotalPages())
-                .last(result.isLast())
-                .build();
-    }
-    public PageResponseDto<TopReturnedProductDto> getTopReturnedProducts(
-            int page, int size) {
+//         return PageResponseDto.<ReturnByReasonDto>builder()
+//                 .content(
+//                     result.getContent().stream()
+//                         .map(r -> ReturnByReasonDto.builder()
+//                                 .reason(r[0].toString())
+//                                 .count((Long) r[1])
+//                                 .build())
+//                         .toList()
+//                 )
+//                 .page(result.getNumber())
+//                 .size(result.getSize())
+//                 .totalElements(result.getTotalElements())
+//                 .totalPages(result.getTotalPages())
+//                 .last(result.isLast())
+//                 .build();
+//     }
+//     public PageResponseDto<TopReturnedProductDto> getTopReturnedProducts(
+//             int page, int size) {
 
-        Page<Object[]> result =
-                returnRepo.topReturnedProducts(
-                    PageRequest.of(page, size)
-                );
+//         Page<Object[]> result =
+//                 returnRepo.topReturnedProducts(
+//                     PageRequest.of(page, size)
+//                 );
 
-        return PageResponseDto.<TopReturnedProductDto>builder()
-                .content(
-                    result.getContent().stream()
-                        .map(r -> TopReturnedProductDto.builder()
-                                .productId((Long) r[0])
-                                .productName((String) r[1])
-                                .returnCount((Long) r[2])
-                                .build())
-                        .toList()
-                )
-                .page(result.getNumber())
-                .size(result.getSize())
-                .totalElements(result.getTotalElements())
-                .totalPages(result.getTotalPages())
-                .last(result.isLast())
-                .build();
-    }
-    public PageResponseDto<ReturnTrendDto> getReturnTrend(
-            int page, int size) {
+//         return PageResponseDto.<TopReturnedProductDto>builder()
+//                 .content(
+//                     result.getContent().stream()
+//                         .map(r -> TopReturnedProductDto.builder()
+//                                 .productId((Long) r[0])
+//                                 .productName((String) r[1])
+//                                 .returnCount((Long) r[2])
+//                                 .build())
+//                         .toList()
+//                 )
+//                 .page(result.getNumber())
+//                 .size(result.getSize())
+//                 .totalElements(result.getTotalElements())
+//                 .totalPages(result.getTotalPages())
+//                 .last(result.isLast())
+//                 .build();
+//     }
+//     public PageResponseDto<ReturnTrendDto> getReturnTrend(
+//             int page, int size) {
 
-        Page<Object[]> result =
-                returnRepo.returnTrend(
-                    PageRequest.of(page, size)
-                );
+//         Page<Object[]> result =
+//                 returnRepo.returnTrend(
+//                     PageRequest.of(page, size)
+//                 );
 
-        return PageResponseDto.<ReturnTrendDto>builder()
-                .content(
-                    result.getContent().stream()
-                        .map(r -> ReturnTrendDto.builder()
-                                .date(((java.sql.Date) r[0]).toLocalDate())
-                                .count((Long) r[1])
-                                .build())
-                        .toList()
-                )
-                .page(result.getNumber())
-                .size(result.getSize())
-                .totalElements(result.getTotalElements())
-                .totalPages(result.getTotalPages())
-                .last(result.isLast())
-                .build();
-    }
+//         return PageResponseDto.<ReturnTrendDto>builder()
+//                 .content(
+//                     result.getContent().stream()
+//                         .map(r -> ReturnTrendDto.builder()
+//                                 .date(((java.sql.Date) r[0]).toLocalDate())
+//                                 .count((Long) r[1])
+//                                 .build())
+//                         .toList()
+//                 )
+//                 .page(result.getNumber())
+//                 .size(result.getSize())
+//                 .totalElements(result.getTotalElements())
+//                 .totalPages(result.getTotalPages())
+//                 .last(result.isLast())
+//                 .build();
+//     }
 
     
 }

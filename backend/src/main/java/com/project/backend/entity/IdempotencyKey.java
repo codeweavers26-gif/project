@@ -28,5 +28,5 @@ IdempotencyKey {
     private Long userId;
     private Long cartId;
     private Long orderId;
-    private String status; // PROCESSING, SUCCESS
+    private String status; 
 }

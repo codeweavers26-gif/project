@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateReturnStatusRequest {
     @NotNull
-    private ReturnStatus status;
+    private String status;
 
     private String notes;
     private Boolean notifyCustomer;

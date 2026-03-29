@@ -20,8 +20,8 @@ import lombok.NoArgsConstructor;
 public class ReturnDto {
     private Long id;
     private String returnNumber;
-    private ReturnStatus status;
-    private ReturnReason reason;
+    private String status;
+    private String reason;
     private String reasonDescription;
     private Integer quantity;
     private BigDecimal refundAmount;
@@ -37,7 +37,7 @@ public class ReturnDto {
     
     
     private RefundStatus refundStatus;
-    
+    private List<ReturnItemDto> items;
     private LocalDateTime approvedAt;
     private LocalDateTime rejectedAt;
     private LocalDateTime completedAt;

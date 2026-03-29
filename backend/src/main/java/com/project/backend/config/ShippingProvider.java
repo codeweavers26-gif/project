@@ -20,4 +20,6 @@ public interface ShippingProvider {
         double weight,
         boolean cod
 );
+
+ShipmentResponse createReturnShipment(Order order) ;
 }

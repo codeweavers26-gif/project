@@ -87,18 +87,19 @@ public class AdminReturnController {
 	    public ResponseEntity<ReturnDto> updateReturnStatus(
 	            @PathVariable Long returnId,
 	            @Valid @RequestBody UpdateReturnStatusRequest request,
-	           Authentication auth) { User user = getCurrentUser(auth);
+	           Authentication auth) { 
+				User user = getCurrentUser(auth);
 	        return ResponseEntity.ok(service.updateReturnStatus(returnId, request, user));
 	    }
 
 	@Operation(summary = "approve returns", security = @SecurityRequirement(name = "Bearer Authentication"))
 	    @PostMapping("/returns/{returnId}/approve")
 	    public ResponseEntity<ReturnDto> approveReturn(
-	            @PathVariable Long returnId,
-	            @Valid @RequestBody ApproveReturnRequest request,
-	           Authentication auth) { User user = getCurrentUser(auth);
-	        return ResponseEntity.ok(service.approveReturn(returnId, request, user));
+	            @PathVariable Long returnId, Authentication auth) { 
+					User user = getCurrentUser(auth);
+	        return ResponseEntity.ok(service.approveReturn(returnId));
 	    }
+
 
 	@Operation(summary = "reject returns", security = @SecurityRequirement(name = "Bearer Authentication"))
 	    @PostMapping("/returns/{returnId}/reject")

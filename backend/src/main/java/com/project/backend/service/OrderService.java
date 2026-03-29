@@ -450,8 +450,7 @@ public class OrderService {
     if (cart.getItems() == null || cart.getItems().isEmpty()) {
         throw new BadRequestException("Cart is empty");
     }
-             //       if ("COMPLETED".equals(cart.getStatus())) {
-
+           
  
 
 
