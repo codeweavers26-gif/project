@@ -17,6 +17,7 @@ import com.project.backend.ResponseDto.EligibilityCheckDto;
 import com.project.backend.ResponseDto.EligibleReturnItemDto;
 import com.project.backend.ResponseDto.ReturnDetailDto;
 import com.project.backend.ResponseDto.ReturnDto;
+import com.project.backend.ResponseDto.ReturnResponseDto;
 import com.project.backend.ResponseDto.ReturnTimelineDto;
 import com.project.backend.ResponseDto.ReturnTrackingDto;
 import com.project.backend.entity.ReturnStatus;
@@ -25,6 +26,7 @@ import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.CreateReturnRequest;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.requestDto.ReturnEligibilityRequest;
+import com.project.backend.requestDto.ReturnRequestDto;
 import com.project.backend.service.AdminReturnService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -92,16 +94,16 @@ public class ReturnController {
         return ResponseEntity.ok(returnService.checkReturnEligibility(user.getId(), request));
     }
 
-    @PostMapping("/returns")
+    // @PostMapping("/returns")
 
-    @Operation(summary = "Request product return",
-    security = @SecurityRequirement(name = "Bearer Authentication"))
-    public ResponseEntity<ReturnDto> createReturnRequest(
-            @Valid @RequestBody CreateReturnRequest request,
-            Authentication auth) {
-        User user = getCurrentUser(auth);
-        return ResponseEntity.ok(returnService.createReturnRequest(user.getId(), request));
-    }
+    // @Operation(summary = "Request product return",
+    // security = @SecurityRequirement(name = "Bearer Authentication"))
+    // public ResponseEntity<ReturnDto> createReturnRequest(
+    //         @Valid @RequestBody CreateReturnRequest request,
+    //         Authentication auth) {
+    //     User user = getCurrentUser(auth);
+    //     return ResponseEntity.ok(returnService.createReturnRequest(user.getId(), request));
+    // }
 
     @PutMapping("/returns/{returnId}/cancel")
 
@@ -114,25 +116,65 @@ public class ReturnController {
         return ResponseEntity.ok(returnService.cancelReturnRequest(user, returnId));
     }
 
-    @GetMapping("/returns/{returnId}/track")
+    // @GetMapping("/returns/{returnId}/track")
 
+    // @Operation(summary = "Request product return",
+    // security = @SecurityRequirement(name = "Bearer Authentication"))
+    // public ResponseEntity<ReturnTrackingDto> trackReturn(
+    //         @PathVariable Long returnId,
+    //         Authentication auth) {
+    //     User user = getCurrentUser(auth);
+    //     return ResponseEntity.ok(returnService.trackReturn(user, returnId));
+    // }
+
+    // @GetMapping("/returns/{returnId}/timeline")
+
+    // @Operation(summary = "Request product return",
+    // security = @SecurityRequirement(name = "Bearer Authentication"))
+    // public ResponseEntity<List<ReturnTimelineDto>> getReturnTimeline(
+    //         @PathVariable Long returnId,
+    //         Authentication auth) {
+    //     User user = getCurrentUser(auth);
+    //     return ResponseEntity.ok(returnService.getReturnTimeline(user, returnId));
+    // }
+
+
+ @PostMapping("/{orderId}/return")
+ 
     @Operation(summary = "Request product return",
     security = @SecurityRequirement(name = "Bearer Authentication"))
-    public ResponseEntity<ReturnTrackingDto> trackReturn(
-            @PathVariable Long returnId,
-            Authentication auth) {
-        User user = getCurrentUser(auth);
-        return ResponseEntity.ok(returnService.trackReturn(user, returnId));
+    public ResponseEntity<?> requestReturn(
+            @PathVariable Long orderId,
+            @RequestBody ReturnRequestDto request,
+            Authentication auth) {  
+                User user = getCurrentUser(auth);
+
+        return ResponseEntity.ok(
+                returnService.requestReturn(user, orderId, request)
+        );
     }
 
-    @GetMapping("/returns/{returnId}/timeline")
-
+   @GetMapping("/{orderId}/return")
+   
     @Operation(summary = "Request product return",
     security = @SecurityRequirement(name = "Bearer Authentication"))
-    public ResponseEntity<List<ReturnTimelineDto>> getReturnTimeline(
-            @PathVariable Long returnId,
-            Authentication auth) {
-        User user = getCurrentUser(auth);
-        return ResponseEntity.ok(returnService.getReturnTimeline(user, returnId));
-    }
+public ResponseEntity<ReturnResponseDto> getReturnStatus(
+        @PathVariable Long orderId) {
+
+    return ResponseEntity.ok(returnService.getReturn(orderId));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 }

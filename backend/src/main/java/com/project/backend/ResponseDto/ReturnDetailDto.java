@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ReturnDetailDto {
     private ReturnDto returnInfo;
-    private OrderItemDto orderItem;
+    private List<OrderItemDto> items;
       private RefundDto refund;
     private List<ReturnTimelineDto> timeline;
 

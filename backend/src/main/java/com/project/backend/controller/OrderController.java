@@ -226,19 +226,19 @@ public ResponseEntity<?> getPickupLocations() {
 }
 	
 
-@PostMapping("/webhook/shiprocket")
-public ResponseEntity<Void> handleShiprocketWebhook(
-        @RequestBody Map<String, Object> payload,
-        @RequestParam String secret) {
+// @PostMapping("/webhook/shiprocket")
+// public ResponseEntity<Void> handleShiprocketWebhook(
+//         @RequestBody Map<String, Object> payload,
+//         @RequestParam String secret) {
 
-    if (!"abc123".equals(secret)) {
-        throw new RuntimeException("Unauthorized webhook");
-    }
+//     if (!"abc123".equals(secret)) {
+//         throw new RuntimeException("Unauthorized webhook");
+//     }
 
-    shiprocketService.handleWebhook(payload);
+//     shiprocketService.handleWebhook(payload);
 
-    return ResponseEntity.ok().build();
-}
+//     return ResponseEntity.ok().build();
+// }
 
 
 @GetMapping("/orders/{orderId}/tracking")

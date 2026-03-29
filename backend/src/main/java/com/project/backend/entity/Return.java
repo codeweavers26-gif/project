@@ -19,16 +19,21 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+@Builder
 @Data
 @NoArgsConstructor
 @Entity
+@AllArgsConstructor
 @Table(name = "returns")
 public class Return {
 
@@ -46,14 +51,10 @@ public class Return {
 
     @Column(unique = true, nullable = false)
     private String returnNumber; 
-    
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_item_id", nullable = false, unique = true)
-    private OrderItem orderItem;
-
-    @Enumerated(EnumType.STRING)
+ 
+ //   @Enumerated(EnumType.STRING)
     @Column(length = 50, nullable = false)
-    private ReturnReason reason;
+    private String reason;
     
     @Column(columnDefinition = "TEXT")
     private String reasonDescription;  
@@ -61,9 +62,9 @@ public class Return {
     @Column(nullable = false)
     private Integer quantity;
 
-    @Enumerated(EnumType.STRING)
+  //  @Enumerated(EnumType.STRING)
     @Column(length = 30, nullable = false)
-    private ReturnStatus status;
+    private String status;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal refundAmount;  
@@ -128,6 +129,14 @@ public class Return {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+
+    private String shipmentId;
+
+    private String trackingId;
+
+@OneToMany(mappedBy = "returnEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+private List<ReturnItem> items;
+
     @OneToOne(mappedBy = "returnRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Refund refund;
 
@@ -138,7 +147,7 @@ public class Return {
         returnNumber = generateReturnNumber();
         
         if (status == null) {
-            status = ReturnStatus.PENDING_APPROVAL;
+            status = "PENDING_APPROVAL";
         }
         
         if (refundAmount == null) {
