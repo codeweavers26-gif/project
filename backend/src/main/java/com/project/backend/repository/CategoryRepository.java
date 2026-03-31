@@ -29,7 +29,9 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     boolean existsBySlug(String slug);
     
 
-    
+       Page<Category> findBySectionIdAndIsActiveTrue(Long sectionId, Pageable pageable);
+
+
     List<Category> findBySectionIdAndIsActiveTrue(Long sectionId);
     
 

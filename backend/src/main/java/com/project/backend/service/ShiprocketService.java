@@ -148,7 +148,7 @@ public class ShiprocketService implements ShippingProvider {
     }
 
     private Map<String, Object> buildRequest(Order order) {
-        String phoneNumber = getValidPhoneNumber(order.getUser().getPhoneNumber());
+        String phoneNumber = order.getUser().getPhoneNumber();
         Map<String, Object> request = new HashMap<>();
 
         request.put("order_id", order.getId().toString());
