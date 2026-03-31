@@ -1,6 +1,7 @@
 package com.project.backend.exception;
 
 import java.time.Instant;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -111,6 +112,14 @@ public ResponseEntity<ErrorResponse> handleDuplicateResource(
                     .path(request.getRequestURI())
                     .build()
     );
+}
+
+
+@ExceptionHandler(TooManyRequestsException.class)
+public ResponseEntity<?> handleTooManyRequests(TooManyRequestsException ex) {
+    return ResponseEntity.status(429).body(Map.of(
+            "message", ex.getMessage()
+    ));
 }
  
 }

@@ -12,10 +12,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.project.backend.entity.OrderItem;
+import com.project.backend.entity.Return;
+import com.project.backend.entity.ReturnItem;
 import com.project.backend.entity.Warehouse;
 import com.project.backend.entity.WarehouseInventory;
 import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
+import com.project.backend.repository.OrderItemRepository;
 import com.project.backend.repository.WarehouseInventoryRepository;
 import com.project.backend.repository.WarehouseRepository;
 import com.project.backend.requestDto.WarehouseDto;
@@ -30,6 +34,7 @@ public class WarehouseService {
 
 	private final WarehouseRepository warehouseRepository;
 	private final WarehouseInventoryRepository inventoryRepository;
+	private final OrderItemRepository orderItemRepository; 
 
 private static final int LOW_STOCK_THRESHOLD = 5;
 private static final int DEFAULT_NEAREST_WAREHOUSE_LIMIT = 5;
@@ -275,4 +280,43 @@ public void deleteWarehouse(Long id) {
 				.longitude(warehouse.getLongitude()).createdAt(warehouse.getCreatedAt())
 				.updatedAt(warehouse.getUpdatedAt()).totalVariants(totalVariants).totalStock(totalStock).build();
 	}
+
+
+	@Transactional
+public void restock(Return ret) {
+
+    if (Boolean.TRUE.equals(ret.getInventoryRestocked())) {
+        log.info("Inventory already restocked for returnId={}", ret.getId());
+        return;
+    }
+
+    Long warehouseId = ret.getOrder().getWarehouse().getId();
+
+    for (ReturnItem ri : ret.getItems()) {
+
+        OrderItem oi = orderItemRepository.findById(ri.getOrderItemId())
+                .orElseThrow(() -> new RuntimeException("OrderItem not found"));
+
+        Long variantId = oi.getVariantId();
+        int qty = ri.getQuantity();
+
+        WarehouseInventory inventory =
+                inventoryRepository
+                        .findByWarehouseIdAndVariantId(warehouseId, variantId)
+                        .orElseThrow(() ->
+                                new RuntimeException("Inventory not found for variant=" + variantId)
+                        );
+
+        inventory.setAvailableQuantity(
+                inventory.getAvailableQuantity() + qty
+        );
+
+        inventoryRepository.save(inventory);
+
+        log.info("Restocked variant={}, qty={}, warehouse={}",
+                variantId, qty, warehouseId);
+    }
+
+    ret.setInventoryRestocked(true);
+}
 }

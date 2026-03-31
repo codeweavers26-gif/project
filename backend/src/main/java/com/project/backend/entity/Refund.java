@@ -15,10 +15,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 @Entity
 @Table(name = "refunds")
@@ -38,13 +42,13 @@ public class Refund {
 
 	@Column(precision = 12, scale = 2)
 	private BigDecimal amount;
-	@Enumerated(EnumType.STRING)
+	// @Enumerated(EnumType.STRING)
 	@Column(length = 30)
-	private RefundStatus status;
+	private String status;
 
-	@Enumerated(EnumType.STRING)
+	//@Enumerated(EnumType.STRING)
 	@Column(length = 30)
-	private RefundMethod refundMethod;
+	private String refundMethod;
 
 	@Column(name = "transaction_id", unique = true)
 	private String transactionId;

@@ -14,11 +14,15 @@ import com.project.backend.entity.Role;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.AuthRequest;
 import com.project.backend.requestDto.RegisterRequest;
+import com.project.backend.requestDto.RequestOtpRequest;
 import com.project.backend.requestDto.TokenRefreshRequest;
+import com.project.backend.requestDto.VerifyOtpRequest;
 import com.project.backend.service.AuthService;
+import com.project.backend.service.OtpService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -28,7 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
-    private final UserRepository userRepository;
+    private final OtpService otpService;
 
     @Operation(summary = "Register a new account")
     @PostMapping("/register")
@@ -73,5 +77,36 @@ public class AuthController {
             new MessageResponse("Logged out successfully")
         );
     }
+@PostMapping("/verify-otp")
+public ResponseEntity<AuthResponse> verifyOtp(
+        @RequestBody VerifyOtpRequest req,
+        HttpServletRequest request) {
 
+    String ip = request.getRemoteAddr();
+    String userAgent = request.getHeader("User-Agent");
+
+    return ResponseEntity.ok(
+        authService.verifyOtp(
+            req.getIdentifier(),
+            req.getOtp(),
+            ip,
+            userAgent
+        )
+    );
+}
+
+@PostMapping("/request-otp")
+public ResponseEntity<MessageResponse> requestOtp(
+        @Validated @RequestBody RequestOtpRequest req,
+        HttpServletRequest request) {
+
+    String ip = request.getRemoteAddr();
+    String userAgent = request.getHeader("User-Agent");
+
+    otpService.requestOtp(req.getIdentifier(), ip, userAgent);
+
+    return ResponseEntity.ok(
+            new MessageResponse("OTP sent successfully")
+    );
+}
 }
