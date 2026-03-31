@@ -42,4 +42,6 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
     BigDecimal getTotalRefundedAmount();
     
     Optional<Refund> findByTransactionId(String transactionId);
+
+       boolean existsByReturnRequestId(Long returnId);
 }

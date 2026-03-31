@@ -9,6 +9,7 @@ import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderStatus;
 import com.project.backend.entity.PaymentStatus;
 import com.project.backend.entity.Return;
+import com.project.backend.entity.ReturnStatus;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.repository.OrderItemRepository;
 import com.project.backend.repository.OrderRepository;
@@ -32,6 +33,8 @@ public class WebhookService {
 	private final OrderItemRepository orderItemRepository;
 	private final ReturnTimelineRepository timelineRepository;
 	private final RefundRepository refundRepository;
+    private final AdminReturnService adminReturnService;
+    private final WarehouseService warehouseService;
 @Transactional
 public void processOrderWebhook(Map<String, Object> payload) {
 
@@ -101,23 +104,122 @@ private void updateOrderStatus(Order order, String shiprocketStatus, String awb)
     }
 }
 
-
 @Transactional
 public void processReturnWebhook(Map<String, Object> payload) {
-String awb = (String) payload.get("awb_code");
-    String status = (String) payload.get("current_status");
 
-    Return ret = returnRepository.findByTrackingId(awb)
-            .orElseThrow();
+    String awb = (String) payload.get("awb_code");
+    String incomingStatusStr = (String) payload.get("current_status");
 
-    ret.setStatus(status); 
+    if (awb == null || incomingStatusStr == null) {
+        log.warn("Invalid webhook payload: {}", payload);
+        return;
+    }
+
+    Return ret = returnRepository.findByTrackingId(awb).orElse(null);
+
+    if (ret == null) {
+        log.warn("Unknown AWB: {}", awb);
+        return;
+    }
+
+    String normalized = normalizeStatus(incomingStatusStr);
+
+    ReturnStatus currentStatus = ReturnStatus.valueOf(ret.getStatus());
+    ReturnStatus incomingStatus = mapToReturnStatus(normalized);
+
+    if (incomingStatus == null) {
+        log.warn("Unknown webhook status: {}", normalized);
+        return;
+    }
+
+    // 🔥 ORDER CHECK
+    if (!isForwardTransition(currentStatus, incomingStatus)) {
+        log.warn("Out-of-order webhook ignored. current={}, incoming={}",
+                currentStatus, incomingStatus);
+        return;
+    }
+
     ret.setUpdatedAt(LocalDateTime.now());
 
-    if ("DELIVERED".equalsIgnoreCase(status)) {
-      //  paymentService.refund(ret.getOrderId());
-        ret.setStatus("REFUNDED");
+    // 🔥 ENUM SWITCH (IMPORTANT)
+    switch (incomingStatus) {
+
+        case PICKED_UP:
+            ret.setStatus("PICKED_UP");
+            break;
+
+        case IN_TRANSIT:
+            ret.setStatus("IN_TRANSIT");
+            break;
+
+        case RECEIVED:
+            ret.setStatus("RECEIVED");
+
+            // 🔥 INVENTORY
+            if (!Boolean.TRUE.equals(ret.getInventoryRestocked())) {
+                warehouseService.restock(ret);
+                ret.setInventoryRestocked(true);
+            }
+
+            if (!refundRepository.existsByReturnRequestId(ret.getId())) {
+                try {
+                    ret.setStatus("REFUND_PENDING");
+
+                    adminReturnService.processRefund(ret.getId());
+
+                    ret.setStatus("REFUNDED");
+
+                } catch (Exception e) {
+                    log.error("Refund failed for returnId={}", ret.getId(), e);
+                    ret.setStatus("FAILED");
+                }
+            }
+
+            break;
+
+        case FAILED:
+            ret.setStatus("FAILED");
+            break;
     }
 
     returnRepository.save(ret);
+}
+private String normalizeStatus(String status) {
+
+    String s = status.toUpperCase();
+
+    if (s.contains("PICKED")) return "PICKED_UP";
+    if (s.contains("TRANSIT")) return "IN_TRANSIT";
+    if (s.contains("DELIVERED")) return "DELIVERED";
+    if (s.contains("RTO")) return "RTO";
+
+    return s;
+}
+
+private boolean isForwardTransition(ReturnStatus current, ReturnStatus incoming) {
+
+    if (current == null) return true;
+
+    int curr = STATUS_ORDER.getOrDefault(current, 0);
+    int inc = STATUS_ORDER.getOrDefault(incoming, 0);
+
+    return inc >= curr;
+}
+private static final Map<ReturnStatus, Integer> STATUS_ORDER = Map.of(
+        ReturnStatus.PICKUP_SCHEDULED, 1,
+        ReturnStatus.PICKED_UP, 2,
+        ReturnStatus.IN_TRANSIT, 3,
+        ReturnStatus.RECEIVED, 4
+);
+private ReturnStatus mapToReturnStatus(String status) {
+
+    String s = status.toUpperCase();
+
+    if (s.contains("PICKED")) return ReturnStatus.PICKED_UP;
+    if (s.contains("TRANSIT")) return ReturnStatus.IN_TRANSIT;
+    if (s.contains("DELIVERED")) return ReturnStatus.RECEIVED;
+    if (s.contains("RTO") || s.contains("FAILED")) return ReturnStatus.FAILED;
+
+    return null;
 }
 }

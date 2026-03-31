@@ -1,5 +1,6 @@
 package com.project.backend.entity;
 
+import java.security.AuthProvider;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
@@ -10,13 +11,17 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "users")
+@Table(
+    name = "users",
+    uniqueConstraints = @UniqueConstraint(columnNames = "email")
+)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,12 +33,16 @@ public class User {
     @Column(nullable=false, unique=true)
     private String email;
 
-    @Column(nullable=false)
+    @Column(nullable=true)
     private String password;
 
     private String name;
 
-    private Integer phoneNumber;
+    @Column(nullable = false)
+@Enumerated(EnumType.STRING)
+private com.project.backend.entity.AuthProvider authProvider;
+
+    private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
     private Role role = Role.CUSTOMER;

@@ -129,12 +129,14 @@ public class Return {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    private Boolean inventoryRestocked;
 
     private String shipmentId;
 
     private String trackingId;
 
 @OneToMany(mappedBy = "returnEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+//@Builder.Default
 private List<ReturnItem> items;
 
     @OneToOne(mappedBy = "returnRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

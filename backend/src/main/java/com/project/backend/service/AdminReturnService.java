@@ -33,6 +33,9 @@ import com.project.backend.ResponseDto.ReturnTrackingDto;
 import com.project.backend.ResponseDto.ShipmentResponse;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
+import com.project.backend.entity.PaymentTransaction;
+import com.project.backend.entity.Refund;
+import com.project.backend.entity.RefundStatus;
 import com.project.backend.entity.Return;
 import com.project.backend.entity.ReturnItem;
 import com.project.backend.entity.ReturnReason;
@@ -44,6 +47,7 @@ import com.project.backend.exception.NotFoundException;
 import com.project.backend.exception.UnauthorizedException;
 import com.project.backend.repository.OrderItemRepository;
 import com.project.backend.repository.OrderRepository;
+import com.project.backend.repository.PaymentTransactionRepository;
 import com.project.backend.repository.RefundRepository;
 import com.project.backend.repository.ReturnRepository;
 import com.project.backend.repository.ReturnTimelineRepository;
@@ -72,6 +76,9 @@ public class AdminReturnService {
 	private final ReturnTimelineRepository timelineRepository;
 	private final RefundRepository refundRepository;
 	private final ShiprocketService shiprocketService;
+	private final RazorpayService razorpayService;
+
+	private final PaymentTransactionRepository paymentTransactionRepository;
 
 public PageResponseDto<ReturnDto> getUserReturns(User user, ReturnStatus status, int page, int size) {
 
@@ -145,7 +152,7 @@ private ReturnDetailDto convertToReturnDetailDto(Return returnRecord) {
         dto.setRefund(RefundDto.builder()
                 .id(returnRecord.getRefund().getId())
                 .amount(returnRecord.getRefund().getAmount())
-                .status(returnRecord.getRefund().getStatus())
+                .status(RefundStatus.valueOf(returnRecord.getStatus()))
                 .transactionId(returnRecord.getRefund().getTransactionId())
                 .build());
     }
@@ -835,8 +842,15 @@ public ReturnDto  approveReturn(Long returnId) {
 
     Return ret = returnRepository.findById(returnId)
             .orElseThrow(() -> new NotFoundException("Return not found"));
-
     Order order = orderRepository.findById(ret.getOrder().getId()).orElseThrow();
+
+			if (!ret.getStatus().equals("PENDING_APPROVAL")){
+				throw new BadRequestException("Invalid state");
+			}
+
+			if(ret.getShipmentId() != null){
+				return  convertToDto(ret);
+			}
 
     ShipmentResponse shipment = shiprocketService.createReturnShipment(order);
 
@@ -845,6 +859,8 @@ public ReturnDto  approveReturn(Long returnId) {
 
     ret.setShipmentId(shipment.getShipmentId());
     ret.setTrackingId(assigned.getTrackingId());
+
+	shiprocketService.generatePickup(shipment.getShipmentId());
     ret.setStatus("PICKUP_SCHEDULED");
     ret.setUpdatedAt(LocalDateTime.now());
 
@@ -875,5 +891,55 @@ List<ReturnItemDto> items = ret.getItems() != null
             .items(items)
             .build();
 }
+@Transactional
+public void processRefund(Long returnId) {
 
+    if (refundRepository.existsByReturnRequestId(returnId)) {
+        log.info("Refund already processed for returnId={}", returnId);
+        return;
+    }
+
+    Return ret = returnRepository.findById(returnId)
+            .orElseThrow(() -> new NotFoundException("Return not found"));
+
+    PaymentTransaction txn = paymentTransactionRepository
+            .findByOrderId(ret.getOrder().getId())
+            .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+    if (txn.getRazorpayPaymentId() == null) {
+        throw new RuntimeException("No paymentId found for refund");
+    }
+
+    Refund refund = Refund.builder()
+            .returnRequest(ret)
+            .amount(ret.getTotalRefundAmount())
+            .status("INITIATED")
+            .createdAt(LocalDateTime.now())
+            .build();
+
+    refundRepository.save(refund);
+
+    try {
+        String refundId = razorpayService.refundPayment(
+                txn.getRazorpayPaymentId(),
+                refund.getAmount()
+        );
+
+        refund.setTransactionId(refundId);
+        refund.setStatus("SUCCESS");
+
+        ret.setStatus("REFUNDED");
+
+    } catch (Exception e) {
+
+        refund.setStatus("FAILED");
+        refund.setFailureReason(e.getMessage());
+
+        ret.setStatus("FAILED");
+    }
+
+    refund.setUpdatedAt(LocalDateTime.now());
+
+    refundRepository.save(refund);
+}
 }

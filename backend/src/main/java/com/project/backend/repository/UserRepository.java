@@ -36,5 +36,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean isUserCreatedAfter(@Param("userId") Long userId, @Param("date") LocalDateTime date);
 
 
-
+Optional<User> findByEmailOrPhoneNumber(String value,String value1);
 }

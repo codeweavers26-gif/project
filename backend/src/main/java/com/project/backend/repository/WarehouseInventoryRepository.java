@@ -97,4 +97,9 @@ public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInv
 	 @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT wi FROM WarehouseInventory wi WHERE wi.variant.id = :variantId")
     List<WarehouseInventory> findByVariantIdWithLock(@Param("variantId") Long variantId);
+
+	Optional<WarehouseInventory> findByWarehouseIdAndVariantId(
+        Long warehouseId,
+        Long variantId
+);
 }

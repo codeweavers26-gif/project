@@ -44,9 +44,7 @@ public class RazorpayService {
     @Value("${razorpay.key.secret}")
     private String razorpayKeySecret;
 
-    /**
-     * Create Razorpay order for PREPAID orders
-     */
+ 
     @Transactional
     public CreateOrderResponse createOrder(PaymentRequest request, User user) {
         try {
@@ -204,7 +202,30 @@ public class RazorpayService {
         }
     }
 
+@Transactional
+public String refundPayment(String razorpayPaymentId, BigDecimal amount) {
 
+    try {
+        int amountInPaise = amount.multiply(BigDecimal.valueOf(100)).intValue();
+
+        JSONObject refundRequest = new JSONObject();
+        refundRequest.put("amount", amountInPaise);
+
+        com.razorpay.Refund refund =
+                razorpayClient.payments.refund(razorpayPaymentId, refundRequest);
+
+        String refundId = refund.get("id");
+
+        log.info("Refund success: paymentId={}, refundId={}",
+                razorpayPaymentId, refundId);
+
+        return refundId;
+
+    } catch (RazorpayException e) {
+        log.error("Refund failed for paymentId={}", razorpayPaymentId, e);
+        throw new RuntimeException("Refund failed: " + e.getMessage());
+    }
+}
     
     @Transactional
     public void handleWebhook(String payload, String signature) {
