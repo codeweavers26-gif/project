@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.project.backend.ResponseDto.AdminUserReturnResponseDto;
@@ -942,4 +943,48 @@ public void processRefund(Long returnId) {
 
     refundRepository.save(refund);
 }
+
+//  @Async
+//     public void processRefundAsync(Refund refund) {
+
+//         try {
+//             String refundId = "rfnd_" + UUID.randomUUID();
+
+//             refund.setRefundId(refundId);
+//             refund.setStatus("SUCCESS");
+
+//             log.info("Refund success for {}", refund.getOrderItemId());
+
+//         } catch (Exception e) {
+
+//             refund.setStatus("FAILED");
+//             log.error("Refund failed {}", refund.getOrderItemId(), e);
+//         }
+
+//         refundRepository.save(refund);
+//     }
+
+//     public void initiateRefund(Order order, OrderItem item) {
+
+
+//  PaymentTransaction txn = paymentTransactionRepository
+//             .findByOrderId(ret.getOrder().getId())
+//             .orElseThrow(() -> new RuntimeException("Payment not found"));
+//         double amount = item.getPrice() * item.getQuantity();
+
+//         Refund refund = Refund.builder()
+//                 .orderId(order.getId())
+//                 .orderItemId(item.getId())
+//                 .amount(BigDecimal.valueOf(amount))
+//                 .status("PROCESSING")
+//            //     .paymentId(order.getPaymentId())
+//                 .createdAt(LocalDateTime.now())
+//                 .build();
+
+//         refundRepository.save(refund);
+
+//         processRefundAsync(refund); 
+//     }
+
+
 }

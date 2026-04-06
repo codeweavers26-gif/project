@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -298,11 +299,11 @@ Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 		log.info("Found {} variants for product", variants.size());
 
 		for (ProductVariant variant : variants) {
-			List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
-			log.info("Variant {} has {} inventory records", variant.getId(), inventories.size());
+			Optional<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
+			log.info("Variant {} inventory records", variant.getId());
 
 			variant.getInventories().clear();
-			variant.getInventories().addAll(inventories);
+			variant.getInventories().add(inventories.get());
 		}
 
 		product.getVariants().clear();

@@ -9,9 +9,11 @@ public enum OrderStatus {
     DELIVERED,
     CANCELLED,
     PLACED,
+    PARTIALLY_CANCELLED,
     RETURN_REQUESTED,
     PENDING,
     PREPAID,
+    CREATED,
     PENDING_PAYMENT;
     
     

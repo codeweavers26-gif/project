@@ -21,6 +21,7 @@ import com.project.backend.entity.User;
 		    return OrderResponseDto.builder()
 
 		            .orderId(order.getId())
+		
 		            .totalAmount(order.getTotalAmount())
 		            .taxAmount(order.getTaxAmount())
 		            .shippingCharges(order.getShippingCharges())
@@ -53,6 +54,7 @@ import com.project.backend.entity.User;
 		private static OrderItemResponseDto mapItemToResponse(OrderItem item) {
 
 		    return OrderItemResponseDto.builder()
+			.orderItemId(item.getId())
 		            .productId(item.getProductId())
 		            .variantId(item.getVariantId())
 		            .productName(item.getProductName())

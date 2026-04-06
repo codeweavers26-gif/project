@@ -251,11 +251,28 @@ public class ShiprocketService implements ShippingProvider {
                 .build();
     }
 
-    @Override
-    public void cancelShipment(String shipmentId) {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
+ public void cancelShipment(String orderId) {
 
+    String url = BASE_URL + "/orders/cancel";
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(getValidToken());
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    Map<String, Object> body = new HashMap<>();
+    body.put("ids", List.of(orderId));
+
+    HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+    ResponseEntity<String> response =
+            restTemplate.postForEntity(url, request, String.class);
+
+    log.info("Shiprocket cancel response: {}", response.getBody());
+
+    if (!response.getStatusCode().is2xxSuccessful()) {
+        throw new RuntimeException("Cancel failed: " + response.getBody());
+    }
+}
     private String getValidPhoneNumber(Integer phone) {
         if (phone == null) {
             return "9889808605";

@@ -40,6 +40,10 @@ public class Refund {
 	@JoinColumn(name = "return_id", nullable = false, unique = true)
 	private Return returnRequest;
 
+
+	private Long orderId;
+		private Long orderItemId;
+
 	@Column(precision = 12, scale = 2)
 	private BigDecimal amount;
 	// @Enumerated(EnumType.STRING)

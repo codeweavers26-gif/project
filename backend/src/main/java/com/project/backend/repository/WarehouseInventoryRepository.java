@@ -68,7 +68,7 @@ public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInv
 	        @Param("productId") Long productId, 
 	        @Param("minQuantity") int minQuantity
 	    );
-	List<WarehouseInventory> findByVariantId(Long variantId);
+	Optional<WarehouseInventory> findByVariantId(Long variantId);
 	
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	  @QueryHints({@QueryHint(name = "javax.persistence.lock.timeout", value = "3000")})
@@ -102,4 +102,6 @@ public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInv
         Long warehouseId,
         Long variantId
 );
+
+
 }

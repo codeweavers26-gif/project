@@ -19,6 +19,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.project.backend.ResponseDto.CheckoutResponseDto;
 import com.project.backend.ResponseDto.CreateOrderResponse;
+import com.project.backend.ResponseDto.MessageResponse;
 import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.ResponseDto.PaymentResponse;
 import com.project.backend.ResponseDto.PlaceOrderResponseDto;
@@ -31,6 +32,7 @@ import com.project.backend.entity.User;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.BuyNowCheckoutResponseDto;
 import com.project.backend.requestDto.BuyNowRequestDto;
+import com.project.backend.requestDto.CancelItemsRequest;
 import com.project.backend.requestDto.CheckoutRequestDto;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.requestDto.PaymentRequest;
@@ -113,14 +115,25 @@ public class OrderController {
 
 	}
 
-	@Operation(summary = "cancel order", security = { @SecurityRequirement(name = "Bearer Authentication") })
-	@PostMapping("/{orderId}/cancel")
-	public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId, Authentication auth) {
 
-		User user = getCurrentUser(auth);
-		orderService.cancelOrder(orderId, user);
-		return ResponseEntity.ok().build();
-	}
+	@Operation(summary = "cancel order", security = { @SecurityRequirement(name = "Bearer Authentication") })
+	 @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<MessageResponse> cancelItems(
+            @PathVariable Long orderId,
+            Authentication auth) {
+
+       User user = getCurrentUser(auth);
+
+        orderService.cancelFullOrder(
+                orderId,
+                user
+        );
+
+        return ResponseEntity.ok(
+                new MessageResponse("Order Cancelled Successfully")
+        );
+    }
+
 
 	@GetMapping("/{orderId}")
 	@Operation(summary = "Get order details", security = { @SecurityRequirement(name = "Bearer Authentication") })

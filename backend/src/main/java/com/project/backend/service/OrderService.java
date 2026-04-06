@@ -99,6 +99,7 @@ public class OrderService {
     private final ShiprocketService shiprocketService;
     private final IdempotencyKeyRepository idempotencyRepository;
     private final ShipmentRepository shipmentRepository;
+    private final AdminReturnService refundSevice; 
 
     @Transactional
     public CheckoutResponseDto checkout(User user, CheckoutRequestDto request) {
@@ -151,10 +152,10 @@ public class OrderService {
                 productCodAvailable = true;
             }
 
-            List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
+            Optional<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
 
-            int totalAvailable = inventories.stream().mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
-                    .sum();
+            int totalAvailable = inventories.get().getAvailableQuantity() - inventories.get().getReservedQuantity()
+                    ;
 
             boolean inStock = totalAvailable >= qty;
             if (!inStock) {
@@ -235,11 +236,10 @@ public class OrderService {
             }
 
             Integer quantity = request.getQuantity();
-            List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
+            Optional<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
 
-            int totalAvailable = inventories.stream()
-                    .mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
-                    .sum();
+            int totalAvailable = inventories.get().getAvailableQuantity() - inventories.get().getReservedQuantity()
+                ;
 
             boolean inStock = totalAvailable >= quantity;
             List<String> validationErrors = new ArrayList<>();
@@ -731,10 +731,124 @@ log.info("Shipment response: {}", shipment);
     }
 
     @Transactional
-    public void cancelOrder(Long orderId, User user) {
+public void cancelFullOrder(Long orderId, User user) {
 
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new NotFoundException("Order not found"));
+
+    if (!order.getUser().getId().equals(user.getId())) {
+        throw new UnauthorizedException("You cannot cancel this order");
     }
 
+    if (order.getStatus() == OrderStatus.CANCELLED) {
+        log.info("Order already cancelled {}", orderId);
+        return;
+    }
+
+    if (order.getStatus() == OrderStatus.SHIPPED ||
+        order.getStatus() == OrderStatus.DELIVERED) {
+        throw new BadRequestException("Order cannot be cancelled at this stage");
+    }
+
+    if (order.getShipmentId() != null) {
+        try {
+            shiprocketService.cancelShipment(order.getId()+"");
+        } catch (Exception ex) {
+            log.error("Shiprocket cancel failed {}", order.getShipmentId(), ex);
+            throw new BadRequestException("Unable to cancel shipment");
+        }
+    }
+
+    for (OrderItem item : order.getItems()) {
+
+        if (item.getStatus() == OrderStatus.CANCELLED) continue;
+
+        item.setStatus(OrderStatus.CANCELLED);
+       // item.setCancelledAt(Instant.now());
+
+        WarehouseInventory inventory = inventoryRepository
+                .findByVariantId(item.getVariantId())
+                .orElseThrow(() -> new NotFoundException("Inventory not found"));
+
+        inventory.setReservedQuantity(
+                inventory.getReservedQuantity() - item.getQuantity()
+        );
+
+        inventory.setAvailableQuantity(
+                inventory.getAvailableQuantity() + item.getQuantity()
+        );
+
+        // if (order.getPaymentStatus() == PaymentStatus.PAID) {
+        //     refundService.initiateRefund(order, item);
+        // }
+    }
+
+    order.setStatus(OrderStatus.CANCELLED);
+
+    if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
+        order.setPaymentStatus(PaymentStatus.REFUND_PENDING);
+    }
+
+    log.info("Full order cancelled {}", orderId);
+}
+@Transactional
+public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
+
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new NotFoundException("Order not found"));
+
+    if (!order.getUser().getId().equals(user.getId())) {
+        throw new UnauthorizedException("Unauthorized");
+    }
+
+    List<OrderItem> items = order.getItems().stream()
+            .filter(i -> itemIds.contains(i.getId()))
+            .toList();
+
+    if (items.isEmpty()) {
+        throw new BadRequestException("No valid items");
+    }
+
+    for (OrderItem item : items) {
+
+        if (item.getStatus() == OrderStatus.CANCELLED) continue;
+
+        if (item.getStatus() == OrderStatus.SHIPPED ||
+            item.getStatus() == OrderStatus.DELIVERED) {
+            throw new BadRequestException("Item already shipped");
+        }
+
+        item.setStatus(OrderStatus.CANCELLED);
+      
+
+        WarehouseInventory inventory =
+                inventoryRepository.findByVariantId(item.getVariantId())
+                .orElseThrow(() -> new NotFoundException("Inventory not found"));
+
+        inventory.setReservedQuantity(
+                inventory.getReservedQuantity() - item.getQuantity()
+        );
+
+        inventory.setAvailableQuantity(
+                inventory.getAvailableQuantity() + item.getQuantity()
+        );
+
+   
+
+        // if (order.getPaymentStatus() == PaymentStatus.PAID) {
+        //     refundService.processRefund(order, item);
+        // }
+    }
+
+    boolean allCancelled = order.getItems().stream()
+            .allMatch(i -> i.getStatus() == OrderStatus.CANCELLED);
+
+    if (allCancelled) {
+        order.setStatus(OrderStatus.CANCELLED);
+    } else {
+        order.setStatus(OrderStatus.PARTIALLY_CANCELLED);
+    }
+}
     public OrderResponseDto getOrderById(Long orderId, User user) {
 
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));
@@ -830,11 +944,9 @@ log.info("Shipment response: {}", shipment);
             }
 
             Integer quantity = request.getQuantity();
-            List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
+           Optional< WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
 
-            int totalAvailable = inventories.stream()
-                    .mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
-                    .sum();
+            int totalAvailable = inventories.get().getAvailableQuantity() - inventories.get().getReservedQuantity();
 
             boolean inStock = totalAvailable >= quantity;
             List<String> validationErrors = new ArrayList<>();
@@ -984,11 +1096,10 @@ log.info("Shipment response: {}", shipment);
                             () -> new NotFoundException("Default warehouse not configured. Please contact support."));
 
             Integer quantity = request.getQuantity();
-            List<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
+            Optional<WarehouseInventory> inventories = inventoryRepository.findByVariantId(variant.getId());
 
-            int totalAvailable = inventories.stream()
-                    .mapToInt(i -> i.getAvailableQuantity() - i.getReservedQuantity())
-                    .sum();
+            int totalAvailable = inventories.get().getAvailableQuantity() - inventories.get().getReservedQuantity()
+                 ;
 
             if (totalAvailable < quantity) {
                 throw new BadRequestException(String.format(
@@ -1027,7 +1138,7 @@ log.info("Shipment response: {}", shipment);
                     .warehouse(defaultWarehouse)
                     .build();
 
-            order = orderRepository.save(order);
+        
 
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
@@ -1039,7 +1150,8 @@ log.info("Shipment response: {}", shipment);
                     .size(variant.getSize())
                     .color(variant.getColor())
                     .build();
-
+order.getItems().add(orderItem);
+    order = orderRepository.save(order);
             orderItemRepository.save(orderItem);
 
             reserveStock(variant, quantity);

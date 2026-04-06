@@ -9,6 +9,7 @@ import lombok.Data;
 @Builder
 public class OrderItemResponseDto {
 
+    private Long orderItemId;
     private Long productId;
     private Long variantId;
     private String productName;
