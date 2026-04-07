@@ -5,9 +5,11 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EmailService {
 private final JavaMailSender mailSender;
 
@@ -27,6 +29,7 @@ private final JavaMailSender mailSender;
             mailSender.send(message);
 
         } catch (Exception e) {
+            log.error("Email. failed error",e);
             throw new RuntimeException("Failed to send email OTP", e);
         }
     }
