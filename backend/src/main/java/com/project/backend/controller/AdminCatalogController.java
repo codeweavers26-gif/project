@@ -20,8 +20,7 @@ import com.project.backend.ResponseDto.AdminSubCategoryResponseDto;
 import com.project.backend.ResponseDto.AminAttributeResponseDto;
 import com.project.backend.ResponseDto.AttributeOptionResponseDto;
 import com.project.backend.ResponseDto.CategoryResponseDto;
-import com.project.backend.entity.AttributeConfig;
-import com.project.backend.entity.AttributeOption;
+
 import com.project.backend.entity.Category;
 import com.project.backend.entity.Section;
 import com.project.backend.requestDto.AttributeOptionRequestDto;
