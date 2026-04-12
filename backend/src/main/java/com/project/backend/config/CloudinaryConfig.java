@@ -13,24 +13,27 @@ import com.cloudinary.Cloudinary;
 @Configuration
 public class CloudinaryConfig {
 
-    @Value("${cloudinary.cloud-name}")
+    @Value("${cloudinary.cloud-name:}")
     private String cloudName;
-    
-    @Value("${cloudinary.api-key}")
+
+    @Value("${cloudinary.api-key:}")
     private String apiKey;
-    
-    @Value("${cloudinary.api-secret}")
+
+    @Value("${cloudinary.api-secret:}")
     private String apiSecret;
-    
+
     @Bean
     public Cloudinary cloudinary() {
+        if (cloudName.isEmpty() || apiKey.isEmpty() || apiSecret.isEmpty()) {
+            return null;
+        }
         Map<String, String> config = new HashMap<>();
         config.put("cloud_name", cloudName);
         config.put("api_key", apiKey);
         config.put("api_secret", apiSecret);
-        config.put("secure", "true"); 
-        
+        config.put("secure", "true");
+
         return new Cloudinary(config);
     }
-    
+
 }

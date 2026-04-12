@@ -16,41 +16,49 @@ import com.cloudinary.utils.ObjectUtils;
 @Service
 public class CloudinaryService {
 
-    @Autowired
+    @Autowired(required = false)
     private Cloudinary cloudinary;
-    
+
     @Value("${cloudinary.folder:products}")
     private String defaultFolder;
+
+    private void checkConfigured() {
+        if (cloudinary == null) {
+            throw new RuntimeException("Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.");
+        }
+    }
 
     public Map uploadImage(MultipartFile multipartFile) throws IOException {
         return uploadImage(multipartFile, defaultFolder);
     }
 
-  
+
     public Map uploadImage(MultipartFile multipartFile, String folder) throws IOException {
+        checkConfigured();
         try {
             String publicId = UUID.randomUUID().toString();
-            
+
             Map<String, Object> options = ObjectUtils.asMap(
                 "folder", folder,
                 "public_id", publicId,
                 "overwrite", true,
                 "resource_type", "auto"
             );
-            
+
             Map uploadResult = cloudinary.uploader().upload(multipartFile.getBytes(), options);
-            
+
             return uploadResult;
-            
+
         } catch (IOException e) {
             throw new IOException("Failed to upload image to Cloudinary", e);
         }
     }
 
     public Map uploadOptimizedImage(MultipartFile multipartFile, Long productId) throws IOException {
+        checkConfigured();
         String folder = "products/" + productId;
         String publicId = UUID.randomUUID().toString();
-        
+
         Map<String, Object> options = ObjectUtils.asMap(
             "folder", folder,
             "public_id", publicId,
@@ -59,24 +67,25 @@ public class CloudinaryService {
                 .quality("auto")
                 .fetchFormat("auto")
         );
-        
+
         return cloudinary.uploader().upload(multipartFile.getBytes(), options);
     }
 
     public Map<String, String> uploadResponsiveImage(MultipartFile file, Long productId) throws IOException {
+        checkConfigured();
         String folder = "products/" + productId;
         String basePublicId = UUID.randomUUID().toString();
-        
+
         Map<String, String> urls = new java.util.HashMap<>();
-        
-        Map thumbResult = cloudinary.uploader().upload(file.getBytes(), 
+
+        Map thumbResult = cloudinary.uploader().upload(file.getBytes(),
             ObjectUtils.asMap(
                 "folder", folder,
                 "public_id", basePublicId + "_thumb",
                 "transformation", new Transformation<>().width(100).height(100).crop("fill")
             ));
         urls.put("thumbnail", (String) thumbResult.get("secure_url"));
-        
+
         Map mediumResult = cloudinary.uploader().upload(file.getBytes(),
             ObjectUtils.asMap(
                 "folder", folder,
@@ -91,13 +100,15 @@ public class CloudinaryService {
                 "transformation", new Transformation<>().width(800).height(800).crop("limit")
             ));
         urls.put("large", (String) largeResult.get("secure_url"));
-        
+
         return urls;
     }
   public Map deleteImage(String publicId) throws IOException {
+        checkConfigured();
         return cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
     }
     public String getOptimizedImageUrl(String publicId, int width, int height) {
+        checkConfigured();
         return cloudinary.url()
             .transformation(new Transformation<>()
                 .width(width).height(height).crop("fill")

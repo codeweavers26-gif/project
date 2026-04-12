@@ -16,14 +16,19 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class EmailService {
 
-    @Value("${sendgrid.api-key}")
+    @Value("${sendgrid.api-key:}")
     private String apiKey;
 
-    @Value("${sendgrid.from-email}")
+    @Value("${sendgrid.from-email:}")
     private String fromEmail;
 
     @Async
     public void sendOtp(String to, String otp) {
+
+        if (apiKey.isEmpty() || fromEmail.isEmpty()) {
+            log.warn("SendGrid not configured, skipping email to {}", to);
+            return;
+        }
 
         try {
             Email from = new Email(fromEmail);
@@ -44,19 +49,16 @@ public class EmailService {
             Response response = sg.api(request);
 
             if (response.getStatusCode() != 202) {
-                log.error("❌ SendGrid failed: status={}, body={}",
+                log.error("SendGrid failed: status={}, body={}",
                         response.getStatusCode(),
                         response.getBody());
                 throw new RuntimeException("Email send failed");
             }
 
-            log.info("✅ OTP email sent to {}", to);
+            log.info("OTP email sent to {}", to);
 
         } catch (Exception e) {
-            log.error("❌ SendGrid exception for {}", to, e);
-
-            // 🔥 DO NOT BREAK USER FLOW
-            // Optionally: save to retry queue / DB
+            log.error("SendGrid exception for {}", to, e);
         }
     }
 }
