@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductImage;
 
-import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface ProductImageRepository extends JpaRepository<ProductImage, Long> {

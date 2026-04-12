@@ -21,7 +21,6 @@
         <jjwt.version>0.11.5</jjwt.version>
         <springdoc.version>2.3.0</springdoc.version>
         <cloudinary.version>1.33.0</cloudinary.version>
-        <bucket4j.version>8.10.1</bucket4j.version>
     </properties>
     
     <dependencies>
@@ -56,11 +55,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
         
         <dependency>
@@ -134,22 +128,6 @@
             <optional>true</optional>
         </dependency>
         
-        <!-- Bucket4j for Rate Limiting -->
-        <dependency>
-            <groupId>io.lettuce</groupId>
-            <artifactId>lettuce-core</artifactId>
-            <version>6.3.2.RELEASE</version>
-        </dependency>
-        <dependency>
-            <groupId>com.bucket4j</groupId>
-            <artifactId>bucket4j-core</artifactId>
-            <version>${bucket4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.bucket4j</groupId>
-            <artifactId>bucket4j-redis</artifactId>
-            <version>${bucket4j.version}</version>
-        </dependency>
         
         <!-- Testing -->
         <dependency>

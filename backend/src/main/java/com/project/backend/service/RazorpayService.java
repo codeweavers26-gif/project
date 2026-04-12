@@ -34,14 +34,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class RazorpayService {
 
-    private final RazorpayClient razorpayClient;
+    private final @org.springframework.lang.Nullable RazorpayClient razorpayClient;
     private final OrderRepository orderRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
     
-    @Value("${razorpay.key.id}")
+    @Value("${razorpay.key.id:}")
     private String razorpayKeyId;
-    
-    @Value("${razorpay.key.secret}")
+
+    @Value("${razorpay.key.secret:}")
     private String razorpayKeySecret;
 
  

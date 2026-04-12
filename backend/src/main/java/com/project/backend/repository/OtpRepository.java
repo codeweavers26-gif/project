@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import com.project.backend.entity.Otp;
 
-import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 @Repository

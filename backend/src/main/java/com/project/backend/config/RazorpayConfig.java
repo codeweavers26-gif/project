@@ -9,14 +9,17 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RazorpayConfig {
 
-    @Value("${razorpay.key.id}")
+    @Value("${razorpay.key.id:}")
     private String razorpayKeyId;
 
-    @Value("${razorpay.key.secret}")
+    @Value("${razorpay.key.secret:}")
     private String razorpayKeySecret;
 
     @Bean
     public RazorpayClient razorpayClient() throws RazorpayException {
+        if (razorpayKeyId.isEmpty() || razorpayKeySecret.isEmpty()) {
+            return null;
+        }
         return new RazorpayClient(razorpayKeyId, razorpayKeySecret);
     }
 }

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 import com.project.backend.entity.Role;
 import com.project.backend.entity.User;
 
-import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
