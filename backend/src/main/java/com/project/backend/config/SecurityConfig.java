@@ -79,44 +79,21 @@ public class SecurityConfig {
 
 	}
 	@Bean
-	public CorsConfigurationSource corsConfigurationSource(
-	        @Value("${app.cors.allowedOrigins}") String allowedOriginsString) {
-	    
-	    List<String> allowedOrigins = Arrays.stream(allowedOriginsString.split(","))
-	            .map(String::trim)
-	            .collect(Collectors.toList());
-	    
+	public CorsConfigurationSource corsConfigurationSource() {
 	    CorsConfiguration configuration = new CorsConfiguration();
-	    
-	    configuration.setAllowedOriginPatterns(Arrays.asList(
-	        "https://richfrontend.vercel.app",
-	        "https://www.richnretired.in",
-	        "https://www.richnretired.com",
-	        "http://localhost:3000",
-	        "http://localhost:3001",
-	        "https://project-fnwy.onrender.com", 
-	        "http://project-fnwy.onrender.com"  
-	    ));
-	    
-	    configuration.setAllowedOriginPatterns(Arrays.asList(
-	        "*richfrontend*",
-	        "*richnretired*",
-	        "*localhost*",
-	        "*project-fnwy*",
-	        "*.onrender.com",
-	        "*.vercel.app"
-	    ));
-	    
+
+	    configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+
 	    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 	    configuration.setAllowedHeaders(Arrays.asList("*"));
 	    configuration.setAllowCredentials(true);
 	    configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
-	    
+
 	    configuration.setMaxAge(3600L);
-	    
+
 	    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 	    source.registerCorsConfiguration("/**", configuration);
-	    
+
 	    return source;
 	}
 }
