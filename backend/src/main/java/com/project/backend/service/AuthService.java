@@ -45,7 +45,7 @@ public class AuthService {
     private final EmailService emailService;
     private final SmsService smsService;
 @Transactional
-public AuthResponse register(RegisterRequest req) {
+public AuthResponse register(RegisterRequest req, Role role) {
 
     String email = req.getEmail().toLowerCase().trim();
     String name = req.getName().trim();
@@ -59,7 +59,7 @@ public AuthResponse register(RegisterRequest req) {
             .password(passwordEncoder.encode(req.getPassword()))
             .name(name)
             .authProvider(AuthProvider.PASSWORD)
-            .role(Role.CUSTOMER)
+            .role(role)
             .createdAt(Instant.now())
             .build();
 
@@ -88,9 +88,6 @@ public AuthResponse register(RegisterRequest req) {
     User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
 
-if (user.getAuthProvider() != null && user.getAuthProvider() != AuthProvider.PASSWORD) {
-    throw new UnauthorizedException("Please login via OTP");
-}
     if (user.getRole() != expectedRole) {
         throw new UnauthorizedException("Access denied");
     }

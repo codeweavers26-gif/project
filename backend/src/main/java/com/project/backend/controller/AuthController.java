@@ -34,20 +34,31 @@ public class AuthController {
     private final AuthService authService;
     private final OtpService otpService;
 
-    @Operation(summary = "Register a new account")
+    @Operation(summary = "Register a new customer account")
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
             @Validated @RequestBody RegisterRequest req) {
 
-        AuthResponse resp = authService.register(req);
+        AuthResponse resp = authService.register(req, Role.CUSTOMER);
         return ResponseEntity.ok(resp);
     }
 
-    @Operation(summary = "Login user and generate JWT tokens")
+    @Operation(summary = "Register a new admin account")
+    @PostMapping("/admin/register")
+    public ResponseEntity<AuthResponse> adminRegister(
+            @Validated @RequestBody RegisterRequest req) {
+
+        AuthResponse resp = authService.register(req, Role.ADMIN);
+        return ResponseEntity.ok(resp);
+    }
+
+    @Operation(summary = "Admin login")
     @PostMapping("/admin/login")
     public ResponseEntity<AuthResponse> adminLogin(@RequestBody AuthRequest req) {
         return ResponseEntity.ok(authService.login(req, Role.ADMIN));
     }
+
+    @Operation(summary = "Customer login")
     @PostMapping("/customer/login")
     public ResponseEntity<AuthResponse> customerLogin(@RequestBody AuthRequest req) {
         return ResponseEntity.ok(authService.login(req, Role.CUSTOMER));
