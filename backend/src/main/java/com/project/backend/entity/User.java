@@ -1,6 +1,5 @@
 package com.project.backend.entity;
 
-import java.security.AuthProvider;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
@@ -30,17 +29,17 @@ public class User {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable=false, unique=true)
+    @Column(unique = true)
     private String email;
 
-    @Column(nullable=true)
+    @Column(nullable = true)
     private String password;
 
     private String name;
 
     @Column(nullable = false)
-@Enumerated(EnumType.STRING)
-private com.project.backend.entity.AuthProvider authProvider;
+    @Enumerated(EnumType.STRING)
+    private AuthProvider authProvider;
 
     private String phoneNumber;
 

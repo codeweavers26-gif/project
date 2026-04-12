@@ -22,8 +22,9 @@ public interface OtpRepository  extends JpaRepository<Otp, Long>{
     WHERE o.identifier = :identifier
     AND o.used = false
     ORDER BY o.createdAt DESC
+    LIMIT 1
 """)
-Optional<Otp> findActiveOtpForUpdate(String identifier);
+Optional<Otp> findActiveOtpForUpdate(@Param("identifier") String identifier);
 
 
     long countByIdentifierAndCreatedAtAfter(String identifier, Instant time);
