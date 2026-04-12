@@ -1,6 +1,7 @@
 package com.project.backend.repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,17 +16,21 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 @Repository
-public interface OtpRepository  extends JpaRepository<Otp, Long>{
-@Lock(LockModeType.PESSIMISTIC_WRITE)
-@Query("""
-    SELECT o FROM Otp o
-    WHERE o.identifier = :identifier
-    AND o.used = false
-    ORDER BY o.createdAt DESC
-    LIMIT 1
-""")
-Optional<Otp> findActiveOtpForUpdate(@Param("identifier") String identifier);
+public interface OtpRepository extends JpaRepository<Otp, Long> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT o FROM Otp o
+        WHERE o.identifier = :identifier
+        AND o.used = false
+        ORDER BY o.createdAt DESC
+    """)
+    List<Otp> findActiveOtpsForUpdate(@Param("identifier") String identifier);
+
+    default Optional<Otp> findActiveOtpForUpdate(String identifier) {
+        List<Otp> otps = findActiveOtpsForUpdate(identifier);
+        return otps.isEmpty() ? Optional.empty() : Optional.of(otps.get(0));
+    }
 
     long countByIdentifierAndCreatedAtAfter(String identifier, Instant time);
 
