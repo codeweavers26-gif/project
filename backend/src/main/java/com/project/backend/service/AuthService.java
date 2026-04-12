@@ -88,7 +88,7 @@ public AuthResponse register(RegisterRequest req) {
     User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
 
-if (user.getAuthProvider() != AuthProvider.PASSWORD) {
+if (user.getAuthProvider() != null && user.getAuthProvider() != AuthProvider.PASSWORD) {
     throw new UnauthorizedException("Please login via OTP");
 }
     if (user.getRole() != expectedRole) {
