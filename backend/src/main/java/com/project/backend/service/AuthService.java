@@ -88,11 +88,11 @@ public AuthResponse register(RegisterRequest req, Role role) {
     User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
 
-    if (user.getRole() != expectedRole) {
-        throw new UnauthorizedException("Access denied");
+    // If user is logging in from admin panel but is CUSTOMER, upgrade to ADMIN
+    if (expectedRole == Role.ADMIN && user.getRole() == Role.CUSTOMER) {
+        user.setRole(Role.ADMIN);
+        userRepository.save(user);
     }
-
-  
 
     String accessToken = jwtUtils.generateAccessToken(user);
     RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
