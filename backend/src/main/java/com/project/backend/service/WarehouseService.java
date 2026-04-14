@@ -208,10 +208,12 @@ public void deleteWarehouse(Long id) {
 		return mapToResponse(warehouse);
 	}
 
+	@Transactional(readOnly = true)
 	public List<WarehouseDto.Response> getAllActiveWarehouses() {
 		return warehouseRepository.findByIsActiveTrue().stream().map(this::mapToResponse).collect(Collectors.toList());
 	}
 
+	@Transactional(readOnly = true)
 	public Page<WarehouseDto.Response> getActiveWarehousesPaginated(Pageable pageable) {
 		return warehouseRepository.findByIsActiveTrue(pageable).map(this::mapToResponse);
 	}
