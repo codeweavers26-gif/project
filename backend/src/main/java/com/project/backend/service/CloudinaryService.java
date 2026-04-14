@@ -16,17 +16,11 @@ import com.cloudinary.utils.ObjectUtils;
 @Service
 public class CloudinaryService {
 
-    @Autowired(required = false)
+    @Autowired
     private Cloudinary cloudinary;
 
     @Value("${cloudinary.folder:products}")
     private String defaultFolder;
-
-    private void checkConfigured() {
-        if (cloudinary == null) {
-            throw new RuntimeException("Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.");
-        }
-    }
 
     public Map uploadImage(MultipartFile multipartFile) throws IOException {
         return uploadImage(multipartFile, defaultFolder);
@@ -34,7 +28,7 @@ public class CloudinaryService {
 
 
     public Map uploadImage(MultipartFile multipartFile, String folder) throws IOException {
-        checkConfigured();
+
         try {
             String publicId = UUID.randomUUID().toString();
 
@@ -55,7 +49,7 @@ public class CloudinaryService {
     }
 
     public Map uploadOptimizedImage(MultipartFile multipartFile, Long productId) throws IOException {
-        checkConfigured();
+
         String folder = "products/" + productId;
         String publicId = UUID.randomUUID().toString();
 
@@ -72,7 +66,7 @@ public class CloudinaryService {
     }
 
     public Map<String, String> uploadResponsiveImage(MultipartFile file, Long productId) throws IOException {
-        checkConfigured();
+
         String folder = "products/" + productId;
         String basePublicId = UUID.randomUUID().toString();
 
@@ -104,11 +98,11 @@ public class CloudinaryService {
         return urls;
     }
   public Map deleteImage(String publicId) throws IOException {
-        checkConfigured();
+
         return cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
     }
     public String getOptimizedImageUrl(String publicId, int width, int height) {
-        checkConfigured();
+
         return cloudinary.url()
             .transformation(new Transformation<>()
                 .width(width).height(height).crop("fill")
