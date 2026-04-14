@@ -59,10 +59,15 @@ public class AdminCatalogController {
         return ResponseEntity.ok(catalogService.getCategoriesBySection(sectionId));
     }
 
-      @PostMapping
-      
-    @Operation(summary = "create", security = @SecurityRequirement(name = "Bearer Authentication"))
+    @PostMapping
+    @Operation(summary = "create category", security = @SecurityRequirement(name = "Bearer Authentication"))
     public ResponseEntity<CategoryResponseDto> create(@RequestBody @Valid CategoryRequest req) {
+        return ResponseEntity.ok(catalogService.createCategory(req));
+    }
+
+    @PostMapping("/categories")
+    @Operation(summary = "create category alt", security = @SecurityRequirement(name = "Bearer Authentication"))
+    public ResponseEntity<CategoryResponseDto> createCategory(@RequestBody @Valid CategoryRequest req) {
         return ResponseEntity.ok(catalogService.createCategory(req));
     }
 

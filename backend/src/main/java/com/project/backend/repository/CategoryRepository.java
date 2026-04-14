@@ -23,8 +23,8 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findFirstBySectionId(Long sectionId);
     List<Category> findBySectionId(Long sectionId);
     boolean existsByName(String name);
-    @Query("SELECT c FROM Category c WHERE c.section.id = :sectionId ORDER BY c.id LIMIT 1")
-    Optional<Category> findFirstBySectionIdQuery(@Param("sectionId") Long sectionId);
+    @Query("SELECT c FROM Category c WHERE c.section.id = :sectionId ORDER BY c.id")
+    List<Category> findBySectionIdOrderById(@Param("sectionId") Long sectionId);
 
     boolean existsBySlug(String slug);
     
