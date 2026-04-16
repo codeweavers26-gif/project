@@ -54,12 +54,15 @@ public class CartService {
 		}
 
 		// If variantId is 0/null, auto-select first active variant
+		final Long resolvedVariantId;
 		if (variantId == null || variantId == 0) {
-			variantId = variantRepo.findByProductId(productId).stream()
+			resolvedVariantId = variantRepo.findByProductId(productId).stream()
 					.filter(v -> Boolean.TRUE.equals(v.getIsActive()))
 					.map(ProductVariant::getId)
 					.findFirst()
 					.orElseThrow(() -> new BadRequestException("No active variant found for product: " + productId));
+		} else {
+			resolvedVariantId = variantId;
 		}
 
 		Cart cart = cartRepository.findByUserId(user.getId())
@@ -67,14 +70,14 @@ public class CartService {
 					Cart newCart = Cart.builder()
 							.user(user)
 							.totalQuantity(0)
-.totalAmount(BigDecimal.ZERO)
+							.totalAmount(BigDecimal.ZERO)
 							.createdAt(Instant.now())
 							.build();
 					return cartRepository.save(newCart);
 				});
 
-		ProductVariant variant = variantRepo.findByIdWithProductAndInventories(variantId)
-				.orElseThrow(() -> new NotFoundException("Variant not found with id: " + variantId));
+		ProductVariant variant = variantRepo.findByIdWithProductAndInventories(resolvedVariantId)
+				.orElseThrow(() -> new NotFoundException("Variant not found with id: " + resolvedVariantId));
 
 		Product product = productRepository.findById(productId)
 				.orElseThrow(() -> new NotFoundException("Product not found with id: " + productId));
@@ -91,7 +94,7 @@ public class CartService {
 		if (qty > 10) {
 			throw new BadRequestException("Maximum purchase quantity is 10 units");
 		}
-		CartItem existingItem = cartItemRepository.findByCartIdAndVariantId(cart.getId(), variantId)
+		CartItem existingItem = cartItemRepository.findByCartIdAndVariantId(cart.getId(), resolvedVariantId)
 				.orElse(null);
 
 		if (existingItem != null) {
@@ -128,7 +131,7 @@ public class CartService {
 		updateCartTotals(cart);
 
 		CartItem savedItem = existingItem != null ? existingItem
-				: cartItemRepository.findByCartIdAndVariantId(cart.getId(), variantId).get();
+				: cartItemRepository.findByCartIdAndVariantId(cart.getId(), resolvedVariantId).get();
 
 		return mapToCartItemResponse(savedItem);
 	}
