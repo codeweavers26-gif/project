@@ -45,14 +45,25 @@ public class WishlistService {
 
     @Transactional
     public void add(User user, WishlistRequestDto request) {
-        log.info("Adding to wishlist - User: {}, Product: {}, Variant: {}", 
+        log.info("Adding to wishlist - User: {}, Product: {}, Variant: {}",
                  user.getId(), request.getProductId(), request.getVariantId());
 
         Product product = productRepo.findById(request.getProductId())
                 .orElseThrow(() -> new NotFoundException("Product not found with id: " + request.getProductId()));
 
-        ProductVariant variant = variantRepo.findById(request.getVariantId())
-                .orElseThrow(() -> new NotFoundException("Variant not found with id: " + request.getVariantId()));
+        // If variantId is null/0, auto-select the first active variant
+        Long variantId = request.getVariantId();
+        if (variantId == null || variantId == 0) {
+            variantId = variantRepo.findByProductId(product.getId()).stream()
+                    .filter(v -> Boolean.TRUE.equals(v.getIsActive()))
+                    .map(ProductVariant::getId)
+                    .findFirst()
+                    .orElseThrow(() -> new BadRequestException("No active variant found for this product"));
+        }
+        final Long resolvedVariantId = variantId;
+
+        ProductVariant variant = variantRepo.findById(resolvedVariantId)
+                .orElseThrow(() -> new NotFoundException("Variant not found with id: " + resolvedVariantId));
 
         if (!variant.getProduct().getId().equals(product.getId())) {
             throw new BadRequestException("Variant does not belong to the specified product");

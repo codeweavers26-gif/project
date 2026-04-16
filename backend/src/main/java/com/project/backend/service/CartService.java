@@ -53,6 +53,15 @@ public class CartService {
 			throw new BadRequestException("Quantity must be greater than 0");
 		}
 
+		// If variantId is 0/null, auto-select first active variant
+		if (variantId == null || variantId == 0) {
+			variantId = variantRepo.findByProductId(productId).stream()
+					.filter(v -> Boolean.TRUE.equals(v.getIsActive()))
+					.map(ProductVariant::getId)
+					.findFirst()
+					.orElseThrow(() -> new BadRequestException("No active variant found for product: " + productId));
+		}
+
 		Cart cart = cartRepository.findByUserId(user.getId())
 				.orElseGet(() -> {
 					Cart newCart = Cart.builder()
