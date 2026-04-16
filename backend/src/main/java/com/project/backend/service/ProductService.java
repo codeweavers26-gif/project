@@ -225,6 +225,7 @@ savedProduct.updateLowestPriceFromVariants();
 		log.info("Product activated with id: {}", id);
 	}
 
+	@Transactional(readOnly = true)
 	public Page<ProductResponseDto> listProducts(Long categoryId, String status, Pageable pageable) {
 		log.info("Listing products with filters - categoryId: {}, status: {}", categoryId, status);
 
@@ -237,7 +238,8 @@ savedProduct.updateLowestPriceFromVariants();
 
 		String thumbnailImage = null;
 		if (product.getImages() != null && !product.getImages().isEmpty()) {
-			thumbnailImage = product.getImages().stream().sorted(Comparator.comparing(ProductImage::getPosition))
+			thumbnailImage = product.getImages().stream()
+					.sorted(Comparator.comparing(ProductImage::getPosition, Comparator.nullsLast(Comparator.naturalOrder())))
 					.findFirst().map(ProductImage::getImageUrl).orElse(null);
 		}
 
@@ -285,6 +287,7 @@ Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 				.build();
 	}
 
+	@Transactional(readOnly = true)
 	public ProductResponseDto getProduct(Long id) {
 		log.info("Fetching product with id: {}", id);
 
@@ -651,7 +654,8 @@ private BigDecimal calculateSellingPrice(BigDecimal costPrice, BigDecimal profit
 
 		List<ProductResponseDto.ImageInfo> imageInfos = new ArrayList<>();
 		if (product.getImages() != null && !product.getImages().isEmpty()) {
-			imageInfos = product.getImages().stream().sorted(Comparator.comparing(ProductImage::getPosition))
+			imageInfos = product.getImages().stream()
+					.sorted(Comparator.comparing(ProductImage::getPosition, Comparator.nullsLast(Comparator.naturalOrder())))
 					.map(img -> ProductResponseDto.ImageInfo.builder().id(img.getId()).imageUrl(img.getImageUrl())
 							.isPrimary(img.getIsPrimary() != null ? img.getIsPrimary() : false)
 							.position(img.getPosition()).build())

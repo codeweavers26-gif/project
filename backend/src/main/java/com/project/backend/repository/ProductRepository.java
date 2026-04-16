@@ -189,6 +189,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	@Query(value = """
 			SELECT DISTINCT p FROM Product p
+			LEFT JOIN FETCH p.category
+			LEFT JOIN FETCH p.images
 			WHERE (:categoryId IS NULL OR p.category.id = :categoryId)
 			AND (:status IS NULL OR p.status = :status)
 			""", countQuery = """
@@ -433,8 +435,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    AND (:brand IS NULL OR p.brand = :brand)
 		    AND (
     :search IS NULL
-    OR MATCH(p.name, p.short_description, p.brand, p.slug)
-       AGAINST(:search IN BOOLEAN MODE)
+    OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+    OR LOWER(p.short_description) LIKE LOWER(CONCAT('%', :search, '%'))
+    OR LOWER(p.brand) LIKE LOWER(CONCAT('%', :search, '%'))
+    OR LOWER(p.slug) LIKE LOWER(CONCAT('%', :search, '%'))
 )
 		    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
 		    """,
@@ -444,7 +448,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    LEFT JOIN categories c ON p.category_id = c.id
 		    LEFT JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
 		    LEFT JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
-		    WHERE p.is_active = true 
+		    WHERE p.is_active = true
 		    AND p.is_deleted = false
 		    AND (:categoryId IS NULL OR p.category_id = :categoryId)
 		    AND (:sectionId IS NULL OR c.section_id = :sectionId)
@@ -455,8 +459,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		    AND (:brand IS NULL OR p.brand = :brand)
 		    AND (
     :search IS NULL
-    OR MATCH(p.name, p.short_description, p.brand, p.slug)
-       AGAINST(:search IN BOOLEAN MODE)
+    OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+    OR LOWER(p.short_description) LIKE LOWER(CONCAT('%', :search, '%'))
+    OR LOWER(p.brand) LIKE LOWER(CONCAT('%', :search, '%'))
+    OR LOWER(p.slug) LIKE LOWER(CONCAT('%', :search, '%'))
 )
 		    """,
 		    nativeQuery = true)

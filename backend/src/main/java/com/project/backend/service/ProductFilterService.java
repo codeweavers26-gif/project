@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.project.backend.ResponseDto.ProductResponseDto;
 import com.project.backend.entity.Category;
@@ -41,6 +42,7 @@ public class ProductFilterService {
 	private final SectionRepository sectionRepository;
 
 
+	@Transactional(readOnly = true)
 	public PageResponseDto<ProductResponseDto> filterProducts(ProductFilterDto filter) {
 		 log.info("Filter params - sectionId: {}, categoryId: {}, minPrice: {}, maxPrice: {}, color: {}, size: {}, brand: {}", 
 			        filter.getSectionId(), filter.getCategoryId(), filter.getMinPrice(), 
@@ -63,8 +65,9 @@ public class ProductFilterService {
 	    String search = filter.getSearch();
 
 	    if (search != null && !search.trim().isEmpty()) {
-	        String[] words = search.toLowerCase().split("\\s+");
-	        search = String.join("%", words); 
+	        search = search.trim();
+	    } else {
+	        search = null;
 	    }
 	    
 	    Page<Object[]> productPage = productRepo.findActiveProductsWithFiltersNative(
@@ -183,22 +186,22 @@ public class ProductFilterService {
 		String sortBy = filter.getSortBy();
 
 		if (sortBy == null || sortBy.isEmpty()) {
-			return PageRequest.of(page, size, Sort.by("created_at").descending());
+			return PageRequest.of(page, size, Sort.by("p.id").descending());
 		}
 
 		switch (sortBy) {
 		case "price_asc":
-			return PageRequest.of(page, size, Sort.by("price").ascending());
+			return PageRequest.of(page, size, Sort.by("p.price").ascending());
 		case "price_desc":
-			return PageRequest.of(page, size, Sort.by("price").descending());
+			return PageRequest.of(page, size, Sort.by("p.price").descending());
 		case "name_asc":
-			return PageRequest.of(page, size, Sort.by("name").ascending());
+			return PageRequest.of(page, size, Sort.by("p.name").ascending());
 		case "name_desc":
-			return PageRequest.of(page, size, Sort.by("name").descending());
+			return PageRequest.of(page, size, Sort.by("p.name").descending());
 		case "created_at":
-			return PageRequest.of(page, size, Sort.by("created_at").descending());
+			return PageRequest.of(page, size, Sort.by("p.id").descending());
 		default:
-			return PageRequest.of(page, size, Sort.by("created_at").descending());
+			return PageRequest.of(page, size, Sort.by("p.id").descending());
 		}
 	}
 
