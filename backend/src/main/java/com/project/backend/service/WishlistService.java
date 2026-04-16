@@ -126,6 +126,7 @@ public class WishlistService {
  
 
 
+    @Transactional
     public PageResponseDto<WishlistItemDto> get(User user, int page, int size) {
         log.info("Fetching wishlist for user: {}, page: {}, size: {}", user.getId(), page, size);
 
@@ -147,6 +148,7 @@ public class WishlistService {
                 .build();
     }
 
+    @Transactional
     public WishlistResponseDto getFullWishlist(User user) {
         log.info("Fetching full wishlist for user: {}", user.getId());
 

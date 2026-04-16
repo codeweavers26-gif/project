@@ -124,6 +124,7 @@ public class CartService {
 		return mapToCartItemResponse(savedItem);
 	}
 
+	@Transactional(readOnly = true)
 	public List<CartItemResponseDto> getCart(User user) {
 
 		Cart cart = cartRepository.findByUserId(user.getId()).orElse(null);
@@ -387,6 +388,7 @@ public class CartService {
 				.build();
 	}
 
+@Transactional(readOnly = true)
 public CartPricingResponseDto getCartPricing(User user, String couponCode) {
 
     Cart cart = cartRepository.findByUserId(user.getId())

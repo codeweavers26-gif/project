@@ -71,6 +71,7 @@ public class ProductService {
 	@PersistenceContext
 	private EntityManager entityManager;
 
+	@Transactional(readOnly = true)
 	@Cacheable(value = "customerProducts", key = "#filter.toString()")
 	public PageResponseDto<ProductResponseDto> getActiveProducts(ProductFilterDto filter) {
 
@@ -523,11 +524,17 @@ Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 					product.getCategory() != null ? product.getCategory().getName() : "GEN", vr.getColor(),
 					vr.getSize());
 
-  BigDecimal sellingPrice = calculateSellingPrice(
-                vr.getCostPrice(),
-                vr.getProfitMargin(),
-                product.getTaxPercent() != null ? product.getTaxPercent() : 0.0
-        );
+		BigDecimal sellingPrice;
+		if (vr.getSellingPrice() != null && vr.getSellingPrice().compareTo(BigDecimal.ZERO) > 0) {
+			sellingPrice = vr.getSellingPrice();
+		} else if (vr.getCostPrice() != null && vr.getProfitMargin() != null) {
+			sellingPrice = calculateSellingPrice(
+					vr.getCostPrice(),
+					vr.getProfitMargin(),
+					product.getTaxPercent() != null ? product.getTaxPercent() : 0.0);
+		} else {
+			sellingPrice = vr.getMrp() != null ? vr.getMrp() : BigDecimal.ZERO;
+		}
 
 
 
@@ -743,6 +750,7 @@ private BigDecimal calculateSellingPrice(BigDecimal costPrice, BigDecimal profit
 		return mapToPageResponse(productPage);
 	}
 
+	@Transactional(readOnly = true)
 	@Cacheable(value = "productDetails", key = "#id")
 	public ProductResponseDto getActiveProductById(Long id) {
 		Product product = productRepository.findByIdAndIsActiveTrue(id)
