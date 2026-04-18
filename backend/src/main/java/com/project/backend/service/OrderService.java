@@ -557,6 +557,7 @@ try {
                 .quantity(quantity)
                 .size(variant.getSize())
                 .color(variant.getColor())
+                .status(paymentMethod == PaymentMethod.COD ? OrderStatus.PENDING : OrderStatus.PENDING_PAYMENT)
                 .build());
    savedOrderItems.add(orderItem); 
         reserveStock(inventories, quantity);
