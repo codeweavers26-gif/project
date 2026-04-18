@@ -724,6 +724,7 @@ log.info("Shipment response: {}", shipment);
         log.info("Order {} payment failed: {}", orderId, failureReason);
     }
 
+    @Transactional(readOnly = true)
     public PageResponseDto<OrderResponseDto> loggedUserLogin(User user, int page, int size) {
 
         PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -856,6 +857,7 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
         order.setStatus(OrderStatus.PARTIALLY_CANCELLED);
     }
 }
+    @Transactional(readOnly = true)
     public OrderResponseDto getOrderById(Long orderId, User user) {
 
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));
@@ -1147,6 +1149,8 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
 
         
 
+            order = orderRepository.save(order);
+
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
                     .productId(product.getId())
@@ -1156,9 +1160,8 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
                     .quantity(quantity)
                     .size(variant.getSize())
                     .color(variant.getColor())
+                    .status(request.getPaymentMethod() == PaymentMethod.COD ? OrderStatus.PENDING : OrderStatus.PENDING_PAYMENT)
                     .build();
-order.getItems().add(orderItem);
-    order = orderRepository.save(order);
             orderItemRepository.save(orderItem);
 
             reserveStock(variant, quantity);
