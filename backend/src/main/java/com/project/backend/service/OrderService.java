@@ -466,17 +466,23 @@ public class OrderService {
 	        BigDecimal shipping = BigDecimal.valueOf(12);
 	        int maxDeliveryDays = 0;
 
-ServiceabilityResponse serviceability =
-        shippingFactory.getProvider(ShippingProviderType.SHIPROCKET)
-                .checkServiceability(
-                        "110001", 
-                        address.getPostalCode(),
-                        0.5,
-                        paymentMethod == PaymentMethod.COD
-                );
+try {
+    ServiceabilityResponse serviceability =
+            shippingFactory.getProvider(ShippingProviderType.SHIPROCKET)
+                    .checkServiceability(
+                            "110001",
+                            address.getPostalCode(),
+                            0.5,
+                            paymentMethod == PaymentMethod.COD
+                    );
 
-if (!serviceability.isServiceable()) {
-    throw new BadRequestException("Delivery not available for this pincode");
+    if (!serviceability.isServiceable()) {
+        throw new BadRequestException("Delivery not available for this pincode");
+    }
+} catch (BadRequestException e) {
+    throw e;
+} catch (Exception e) {
+    log.warn("Shiprocket serviceability check failed, proceeding with order: {}", e.getMessage());
 }
 
 
