@@ -19,6 +19,7 @@ public class UserAddressService {
 
 	private final UserAddressRepository repo;
 
+	@jakarta.transaction.Transactional
 	public List<UserAddress> getAllAddresses(User user) {
 		return repo.findByUserAndIsActiveTrue(user);
 	}
