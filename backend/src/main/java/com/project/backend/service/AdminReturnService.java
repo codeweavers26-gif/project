@@ -198,6 +198,7 @@ private ReturnDetailDto convertToReturnDetailDto(Return returnRecord) {
 		}
 	}
 
+	@org.springframework.transaction.annotation.Transactional(readOnly = true)
 	public List<EligibleReturnItemDto> getEligibleItems(Long userId, Long orderId) {
 		try {
 			Order order = orderRepository.findById(orderId).orElseThrow(() -> new NotFoundException("Order not found"));

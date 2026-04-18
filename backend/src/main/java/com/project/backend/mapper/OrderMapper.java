@@ -1,8 +1,10 @@
 
 	package com.project.backend.mapper;
-	
+
 	import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Map;
 
 import com.project.backend.ResponseDto.OrderItemResponseDto;
 import com.project.backend.ResponseDto.OrderResponseDto;
@@ -11,17 +13,18 @@ import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductImage;
 import com.project.backend.entity.User;
-	
+
 	public class OrderMapper {
-	
-		public static OrderResponseDto toDto(Order order) {
+
+		/** Preferred: pass a productId->imageUrl map so images are included. */
+		public static OrderResponseDto toDto(Order order, Map<Long, String> imageMap) {
 
 		    User user = order.getUser();
 
 		    return OrderResponseDto.builder()
 
 		            .orderId(order.getId())
-		
+
 		            .totalAmount(order.getTotalAmount())
 		            .taxAmount(order.getTaxAmount())
 		            .shippingCharges(order.getShippingCharges())
@@ -44,20 +47,28 @@ import com.project.backend.entity.User;
 
 		            .items(order.getItems() != null
 		                    ? order.getItems().stream()
-		                        .map(OrderMapper::mapItemToResponse)
+		                        .map(item -> mapItemToResponse(item, imageMap))
 		                        .toList()
 		                    : new ArrayList<>())
 
 		            .build();
 		}
-		
-		private static OrderItemResponseDto mapItemToResponse(OrderItem item) {
+
+		/** Fallback: no images. */
+		public static OrderResponseDto toDto(Order order) {
+		    return toDto(order, Collections.emptyMap());
+		}
+
+		private static OrderItemResponseDto mapItemToResponse(OrderItem item, Map<Long, String> imageMap) {
+		    String imageUrl = (imageMap != null && item.getProductId() != null)
+		            ? imageMap.get(item.getProductId()) : null;
 
 		    return OrderItemResponseDto.builder()
 			.orderItemId(item.getId())
 		            .productId(item.getProductId())
 		            .variantId(item.getVariantId())
 		            .productName(item.getProductName())
+		            .imageUrl(imageUrl)
 		            .price(item.getPrice())
 		            .quantity(item.getQuantity())
 		            .totalPrice(

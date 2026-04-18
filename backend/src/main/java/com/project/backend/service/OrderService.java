@@ -99,6 +99,7 @@ public class OrderService {
     private final ShiprocketService shiprocketService;
     private final IdempotencyKeyRepository idempotencyRepository;
     private final ShipmentRepository shipmentRepository;
+    private final com.project.backend.repository.ProductImageRepository productImageRepository;
     private final AdminReturnService refundSevice; 
 
     @Transactional
@@ -731,11 +732,28 @@ log.info("Shipment response: {}", shipment);
 
         Page<Order> orders = orderRepository.findByUser(user, pageable);
 
+        Map<Long, String> imageMap = buildProductImageMap(orders.getContent());
+
         return PageResponseDto.<OrderResponseDto>builder()
-                .content(orders.getContent().stream().map(OrderMapper::toDto).toList()).page(orders.getNumber())
+                .content(orders.getContent().stream().map(o -> OrderMapper.toDto(o, imageMap)).toList())
+                .page(orders.getNumber())
                 .size(orders.getSize()).totalElements(orders.getTotalElements()).totalPages(orders.getTotalPages())
                 .last(orders.isLast()).build();
 
+    }
+
+    private Map<Long, String> buildProductImageMap(java.util.List<Order> orders) {
+        Map<Long, String> imageMap = new HashMap<>();
+        orders.forEach(order -> {
+            if (order.getItems() == null) return;
+            order.getItems().forEach(item -> {
+                if (item.getProductId() == null || imageMap.containsKey(item.getProductId())) return;
+                productImageRepository.findByProductIdOrderByPositionAsc(item.getProductId())
+                    .stream().findFirst()
+                    .ifPresent(img -> imageMap.put(item.getProductId(), img.getImageUrl()));
+            });
+        });
+        return imageMap;
     }
 
     @Transactional
@@ -866,7 +884,8 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
             throw new UnauthorizedException("Not your order");
         }
 
-        return OrderMapper.toDto(order);
+        Map<Long, String> imageMap = buildProductImageMap(java.util.List.of(order));
+        return OrderMapper.toDto(order, imageMap);
     }
 
     @Transactional
