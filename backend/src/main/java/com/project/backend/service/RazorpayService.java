@@ -47,83 +47,99 @@ public class RazorpayService {
  
     @Transactional
     public CreateOrderResponse createOrder(PaymentRequest request, User user) {
-        try {
-            com.project.backend.entity.Order order = orderRepository.findById(request.getOrderId())
-                .orElseThrow(() -> new NotFoundException("Order not found"));
-            
-            if (!order.getUser().getId().equals(user.getId())) {
-                throw new UnauthorizedException("Unauthorized access to order");
-            }
-            
-            if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
-                throw new RuntimeException("Order already paid");
-            }
-            
-            if (order.getPaymentMethod() != PaymentMethod.PREPAID) {
-                throw new RuntimeException("Order is not prepaid");
-            }
-            
-            if (order.getPaymentMethod() == PaymentMethod.COD) {
-                throw new RuntimeException("COD orders cannot be paid online");
-            }
-            
-            paymentTransactionRepository.findByOrderId(order.getId())
-            .ifPresent(transaction -> {
-                if (!"FAILED".equals(transaction.getStatus())) {
-                    throw new RuntimeException("Payment already initiated for this order");
+        if (razorpayClient == null) {
+            throw new BadRequestException("Payment gateway is not configured. Please contact support.");
+        }
+
+        com.project.backend.entity.Order order = orderRepository.findById(request.getOrderId())
+            .orElseThrow(() -> new NotFoundException("Order not found"));
+
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new UnauthorizedException("Unauthorized access to order");
+        }
+
+        if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            throw new BadRequestException("Order is already paid");
+        }
+
+        if (order.getPaymentMethod() == PaymentMethod.COD) {
+            throw new BadRequestException("COD orders cannot be paid online");
+        }
+
+        if (order.getPaymentMethod() != PaymentMethod.PREPAID) {
+            throw new BadRequestException("Order is not a prepaid order");
+        }
+
+        paymentTransactionRepository.findByOrderId(order.getId())
+            .ifPresent(existing -> {
+                if (!"FAILED".equals(existing.getStatus()) && !"CREATED".equals(existing.getStatus())) {
+                    throw new BadRequestException("Payment already initiated for this order");
                 }
             });
+
+        try {
             int amountInPaise = request.getAmount().multiply(BigDecimal.valueOf(100)).intValue();
             JSONObject orderRequest = new JSONObject();
             orderRequest.put("amount", amountInPaise);
             orderRequest.put("currency", request.getCurrency() != null ? request.getCurrency() : "INR");
             orderRequest.put("receipt", request.getReceipt() != null ? request.getReceipt() : "receipt_" + order.getId());
-            
+
             JSONObject notes = new JSONObject();
             notes.put("order_id", order.getId());
             notes.put("user_id", user.getId());
             notes.put("user_email", user.getEmail());
             orderRequest.put("notes", notes);
-            
             orderRequest.put("partial_payment", false);
-            
+
             log.info("Creating Razorpay order for order ID: {}", order.getId());
             Order razorpayOrder = razorpayClient.orders.create(orderRequest);
-            
+
             PaymentTransaction transaction = PaymentTransaction.builder()
                 .order(order)
                 .razorpayOrderId(razorpayOrder.get("id"))
                 .amount(request.getAmount())
-                .currency(request.getCurrency())
+                .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
                 .status("CREATED")
                 .gatewayResponse(razorpayOrder.toString())
                 .build();
-            
+
             paymentTransactionRepository.save(transaction);
-            
+
             order.setPaymentStatus(PaymentStatus.PENDING);
             orderRepository.save(order);
-            
+
             return CreateOrderResponse.builder()
                 .razorpayOrderId(razorpayOrder.get("id"))
                 .razorpayKeyId(razorpayKeyId)
                 .orderId(order.getId())
                 .amount(request.getAmount())
-                .currency(request.getCurrency())
+                .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
                 .customerName(user.getName())
                 .customerEmail(user.getEmail())
                 .customerPhone(request.getCustomerPhone())
                 .build();
-            
+
         } catch (RazorpayException e) {
             log.error("Razorpay order creation failed", e);
-            throw new BadRequestException("Failed to create payment order: " + e.getMessage());
+            throw new BadRequestException("Payment gateway error: " + e.getMessage());
+        } catch (BadRequestException | NotFoundException | UnauthorizedException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error creating payment order", e);
+            throw new BadRequestException("Failed to initiate payment. Please try again.");
         }
     }
 
   
     @Transactional
     public PaymentResponse verifyPayment(VerifyPaymentRequest request, User user) {
+        if (razorpayClient == null) {
+            return PaymentResponse.builder()
+                .success(false)
+                .message("Payment gateway is not configured")
+                .orderId(request.getOrderId())
+                .build();
+        }
         try {
             PaymentTransaction transaction = paymentTransactionRepository
                 .findByRazorpayOrderId(request.getRazorpayOrderId())

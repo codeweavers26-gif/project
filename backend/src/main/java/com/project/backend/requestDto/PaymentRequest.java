@@ -26,13 +26,9 @@ public class PaymentRequest {
     
     private String receipt;
     
-    @NotBlank(message = "Customer name is required")
     private String customerName;
-    
-    @Email(message = "Invalid email format")
-    @NotBlank(message = "Customer email is required")
+
     private String customerEmail;
-    
-    @Pattern(regexp = "^[0-9]{10}$", message = "Phone number must be 10 digits")
+
     private String customerPhone;
 }
