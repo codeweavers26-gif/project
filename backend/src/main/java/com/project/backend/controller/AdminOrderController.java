@@ -16,6 +16,8 @@ import com.project.backend.entity.OrderStatus;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.requestDto.UpdateOrderStatusDto;
 import com.project.backend.service.AdminOrderService;
+import com.project.backend.service.ShiprocketService;
+import com.project.backend.service.OrderService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -32,6 +34,8 @@ import lombok.RequiredArgsConstructor;
 public class AdminOrderController {
 
 	private final AdminOrderService adminOrderService;
+	private final ShiprocketService shiprocketService;
+	private final OrderService orderService;
 
 	@Operation(summary = "Search & filter orders", security = @SecurityRequirement(name = "Bearer Authentication"))
 	@GetMapping
@@ -77,5 +81,43 @@ public class AdminOrderController {
 			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
 
 		return ResponseEntity.ok(adminOrderService.getOrdersOfUser(userId, page, size));
+	}
+
+	@Operation(summary = "Test Shiprocket auth + fetch pickup locations", security = @SecurityRequirement(name = "Bearer Authentication"))
+	@GetMapping("/shiprocket/test")
+	public ResponseEntity<java.util.Map<String, Object>> testShiprocket() {
+		java.util.Map<String, Object> result = new java.util.HashMap<>();
+		try {
+			String token = shiprocketService.getValidToken();
+			result.put("auth", "SUCCESS");
+			result.put("tokenPreview", token.substring(0, Math.min(20, token.length())) + "...");
+
+			org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+			headers.setBearerAuth(token);
+			org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
+			org.springframework.web.client.RestTemplate rt = new org.springframework.web.client.RestTemplate();
+			org.springframework.http.ResponseEntity<java.util.Map> res = rt.exchange(
+				"https://apiv2.shiprocket.in/v1/external/settings/company/pickup",
+				org.springframework.http.HttpMethod.GET, entity, java.util.Map.class);
+			result.put("pickupLocations", res.getBody());
+		} catch (Exception e) {
+			result.put("error", e.getMessage());
+			result.put("cause", e.getCause() != null ? e.getCause().getMessage() : null);
+		}
+		return ResponseEntity.ok(result);
+	}
+
+	@Operation(summary = "Manually trigger shipping for an order", security = @SecurityRequirement(name = "Bearer Authentication"))
+	@org.springframework.web.bind.annotation.PostMapping("/{orderId}/trigger-shipping")
+	public ResponseEntity<java.util.Map<String, Object>> triggerShipping(@PathVariable Long orderId) {
+		java.util.Map<String, Object> result = new java.util.HashMap<>();
+		try {
+			orderService.triggerShippingAsync(orderId);
+			result.put("status", "triggered");
+			result.put("orderId", orderId);
+		} catch (Exception e) {
+			result.put("error", e.getMessage());
+		}
+		return ResponseEntity.ok(result);
 	}
 }

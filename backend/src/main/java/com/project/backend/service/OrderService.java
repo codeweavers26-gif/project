@@ -1191,7 +1191,9 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
 
             log.info("Buy now order placed successfully: orderId={}", order.getId());
 
-            triggerShippingAsync(order.getId());
+            if (request.getPaymentMethod() == PaymentMethod.COD) {
+                triggerShippingAsync(order.getId());
+            }
             return OrderMapper.toDto(order);
 
         } catch (NotFoundException | BadRequestException e) {
