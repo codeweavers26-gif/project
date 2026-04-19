@@ -70,12 +70,14 @@ public class RazorpayService {
             throw new BadRequestException("Order is not a prepaid order");
         }
 
-        paymentTransactionRepository.findByOrderId(order.getId())
-            .ifPresent(existing -> {
-                if (!"FAILED".equals(existing.getStatus()) && !"CREATED".equals(existing.getStatus())) {
-                    throw new BadRequestException("Payment already initiated for this order");
-                }
-            });
+        java.util.Optional<PaymentTransaction> existingTransactionOpt =
+            paymentTransactionRepository.findByOrderId(order.getId());
+
+        existingTransactionOpt.ifPresent(existing -> {
+            if (!"FAILED".equals(existing.getStatus()) && !"CREATED".equals(existing.getStatus())) {
+                throw new BadRequestException("Payment already initiated for this order");
+            }
+        });
 
         try {
             int amountInPaise = request.getAmount().multiply(BigDecimal.valueOf(100)).intValue();
@@ -94,14 +96,16 @@ public class RazorpayService {
             log.info("Creating Razorpay order for order ID: {}", order.getId());
             Order razorpayOrder = razorpayClient.orders.create(orderRequest);
 
-            PaymentTransaction transaction = PaymentTransaction.builder()
-                .order(order)
-                .razorpayOrderId(razorpayOrder.get("id"))
-                .amount(request.getAmount())
-                .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
-                .status("CREATED")
-                .gatewayResponse(razorpayOrder.toString())
-                .build();
+            // Reuse existing transaction (CREATED/FAILED) to avoid unique constraint violation on order_id
+            PaymentTransaction transaction = existingTransactionOpt.orElseGet(() ->
+                PaymentTransaction.builder().order(order).build()
+            );
+            transaction.setRazorpayOrderId(razorpayOrder.get("id"));
+            transaction.setAmount(request.getAmount());
+            transaction.setCurrency(request.getCurrency() != null ? request.getCurrency() : "INR");
+            transaction.setStatus("CREATED");
+            transaction.setGatewayResponse(razorpayOrder.toString());
+            transaction.setFailureReason(null);
 
             paymentTransactionRepository.save(transaction);
 
