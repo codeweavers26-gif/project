@@ -283,9 +283,12 @@ public class ProductFilterService {
 			String slug = (String) row[2];
 			String brand = (String) row[3];
 			String shortDescription = (String) row[4];
-			Double price = (Double) row[5];
-			Integer stock = ((Number) row[6]).intValue();
-			Boolean isActive = (Boolean) row[7];
+			// p.price may come back as Double or BigDecimal depending on MySQL column type
+			Double price = row[5] != null ? ((Number) row[5]).doubleValue() : 0.0;
+			Integer stock = row[6] != null ? ((Number) row[6]).intValue() : 0;
+			// is_active: TINYINT(1) returns Boolean with modern driver, Integer with older
+			Boolean isActive = row[7] == null ? false
+					: (row[7] instanceof Boolean ? (Boolean) row[7] : ((Number) row[7]).intValue() != 0);
 
 			String thumbnail = row.length > 8 && row[8] != null ? (String) row[8] : null;
 			Double minPrice = row.length > 9 && row[9] != null ? ((Number) row[9]).doubleValue() : price;
@@ -301,7 +304,7 @@ public class ProductFilterService {
 					.mainImage(thumbnail).thumbnailImage(thumbnail).price(minPrice).category(categoryInfo).build();
 
 		} catch (Exception e) {
-			log.error("Error mapping product row to DTO: {}", e.getMessage());
+			log.error("Error mapping filter product row: {} | row={}", e.getMessage(), java.util.Arrays.toString(row));
 			return null;
 		}
 	}
