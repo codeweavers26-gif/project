@@ -86,15 +86,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(
             Exception ex, HttpServletRequest request) {
-        
+
         ex.printStackTrace();
+
+        // TODO: remove ex details before going live to real users
+        String debugMessage = ex.getClass().getSimpleName() + ": " + ex.getMessage()
+                + (ex.getCause() != null ? " | Caused by: " + ex.getCause().getMessage() : "");
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ErrorResponse.builder()
                         .timestamp(Instant.now())
                         .status(500)
                         .error("Internal Server Error")
-                        .message("Something went wrong")
+                        .message(debugMessage)
                         .path(request.getRequestURI())
                         .build()
         );
