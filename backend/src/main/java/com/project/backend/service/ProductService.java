@@ -547,14 +547,21 @@ Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 			ProductVariant savedVariant = variantRepository.save(variant);
 			log.info("Variant created with SKU: {}", sku);
 
-			Warehouse defaultWarehouse = warehouseRepository.findDefaultWarehouse()
-					.orElseThrow(() -> new NotFoundException("Default warehouse not configured"));
+			Optional<Warehouse> defaultWarehouseOpt = warehouseRepository.findDefaultWarehouse();
 
-			WarehouseInventory inventory = WarehouseInventory.builder().warehouse(defaultWarehouse)
-					.variant(savedVariant).availableQuantity(vr.getInitialStock()).reservedQuantity(0).build();
-
-			inventoryRepository.save(inventory);
-			log.info("Inventory created for variant {} with stock {}", savedVariant.getId(), vr.getInitialStock());
+			if (defaultWarehouseOpt.isPresent()) {
+				WarehouseInventory inventory = WarehouseInventory.builder()
+						.warehouse(defaultWarehouseOpt.get())
+						.variant(savedVariant)
+						.availableQuantity(vr.getInitialStock() != null ? vr.getInitialStock() : 0)
+						.reservedQuantity(0).build();
+				inventoryRepository.save(inventory);
+				log.info("Inventory created for variant {} with stock {}", savedVariant.getId(), vr.getInitialStock());
+			} else if (vr.getInitialStock() != null && vr.getInitialStock() > 0) {
+				throw new NotFoundException("Default warehouse not configured. Cannot add initial stock.");
+			} else {
+				log.warn("No default warehouse configured. Skipping inventory creation for variant {}", savedVariant.getId());
+			}
 
 			product.getVariants().add(savedVariant);
 
@@ -806,8 +813,11 @@ private BigDecimal calculateSellingPrice(BigDecimal costPrice, BigDecimal profit
 
 		ProductResponseDto.ProductResponseDtoBuilder builder = ProductResponseDto.builder()
 				.id(((Number) row[0]).longValue()).name((String) row[1]).slug((String) row[2]).brand((String) row[3])
-				.shortDescription((String) row[4]).description((String) row[5]).price((Double) row[6])
-				.stock(((Number) row[7]).intValue()).isActive((Boolean) row[8]);
+				.shortDescription((String) row[4]).description((String) row[5])
+				.price(row[6] != null ? ((Number) row[6]).doubleValue() : 0.0)
+				.stock(row[7] != null ? ((Number) row[7]).intValue() : 0)
+				.isActive(row[8] == null ? false
+						: (row[8] instanceof Boolean ? (Boolean) row[8] : ((Number) row[8]).intValue() != 0));
 
 		if (row[11] != null) {
 			ProductResponseDto.CategoryInfo category = ProductResponseDto.CategoryInfo.builder()
@@ -826,9 +836,12 @@ private BigDecimal calculateSellingPrice(BigDecimal costPrice, BigDecimal profit
 
 			ProductResponseDto.VariantInfo variant = ProductResponseDto.VariantInfo.builder()
 					.id(((Number) vRow[0]).longValue()).sku((String) vRow[1]).size((String) vRow[2])
-					.color((String) vRow[3]).mrp((BigDecimal) vRow[4]).sellingPrice((BigDecimal) vRow[5])
-					.costPrice((BigDecimal) vRow[6]).isActive((Boolean) vRow[7])
-					.availableStock(((Number) vRow[8]).intValue()).build();
+					.color((String) vRow[3]).mrp(vRow[4] != null ? new BigDecimal(vRow[4].toString()) : null)
+					.sellingPrice(vRow[5] != null ? new BigDecimal(vRow[5].toString()) : null)
+					.costPrice(vRow[6] != null ? new BigDecimal(vRow[6].toString()) : null)
+					.isActive(vRow[7] == null ? false
+							: (vRow[7] instanceof Boolean ? (Boolean) vRow[7] : ((Number) vRow[7]).intValue() != 0))
+					.availableStock(vRow[8] != null ? ((Number) vRow[8]).intValue() : 0).build();
 
 			variantInfos.add(variant);
 			totalStock += ((Number) vRow[8]).intValue();
@@ -852,7 +865,8 @@ private BigDecimal calculateSellingPrice(BigDecimal costPrice, BigDecimal profit
 
 			Long imageId = ((Number) iRow[0]).longValue();
 			String imageUrl = (String) iRow[1];
-			Boolean isPrimary = (Boolean) iRow[2];
+			Boolean isPrimary = iRow[2] == null ? false
+					: (iRow[2] instanceof Boolean ? (Boolean) iRow[2] : ((Number) iRow[2]).intValue() != 0);
 			Integer position = iRow[3] != null ? ((Number) iRow[3]).intValue() : 0;
 
 			ProductResponseDto.ImageInfo imageInfo = ProductResponseDto.ImageInfo.builder().id(imageId)
