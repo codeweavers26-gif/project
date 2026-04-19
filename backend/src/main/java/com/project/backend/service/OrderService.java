@@ -100,7 +100,8 @@ public class OrderService {
     private final IdempotencyKeyRepository idempotencyRepository;
     private final ShipmentRepository shipmentRepository;
     private final com.project.backend.repository.ProductImageRepository productImageRepository;
-    private final AdminReturnService refundSevice; 
+    private final AdminReturnService refundSevice;
+    private final ShippingAsyncService shippingAsyncService;
 
     @Transactional
     public CheckoutResponseDto checkout(User user, CheckoutRequestDto request) {
@@ -601,48 +602,8 @@ try {
     return buildResponse(order, subtotal, taxTotal, shipping, maxDeliveryDays, address);
 	}
 
-    @Async
     public void triggerShippingAsync(Long orderId) {
- Order order = orderRepository.findById(orderId).orElseThrow();
-        log.info("Triggering shipping for orderId={}", order.getId());
-
-        try {
-
-            ShipmentResponse shipment = RetryUtil.executeWithRetry(
-                    () -> shippingFactory
-                            .getProvider(ShippingProviderType.SHIPROCKET)
-                            .createShipment(order),
-                    3);
-
-            updateOrderWithShipment(order, shipment);
-
-            ShipmentResponse assigned = shiprocketService.assignCourier(shipment.getShipmentId());
-
-log.info("Assigned courier response: {}", assigned);
-            order.setTrackingId(assigned.getTrackingId());
-            order.setShippingProvider("SHIPROCKET");
-            order.setShippingStatus("AWB_ASSIGNED");
-
-            orderRepository.save(order);
-                
-
-
-              Shipment shipmentEntity = Shipment.builder()
-                .order(order)
-                .trackingId(assigned.getTrackingId())
-                .shippingStatus("AWB_ASSIGNED")
-                .courierName("SHIPROCKET")
-                .warehouse(order.getWarehouse())
-                .build();
-
-        shipmentRepository.save(shipmentEntity);
-
-        } catch (Exception e) {
-            log.error("Shiprocket failed for orderId={}", order.getId(), e);
-
-            order.setShippingStatus("FAILED");
-            orderRepository.save(order);
-        }
+        shippingAsyncService.triggerShippingAsync(orderId);
     }
 
     private void updateOrderWithShipment(Order order, ShipmentResponse shipment) {

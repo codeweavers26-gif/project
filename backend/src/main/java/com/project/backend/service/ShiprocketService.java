@@ -117,7 +117,18 @@ public class ShiprocketService implements ShippingProvider {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+        ResponseEntity<Map> response;
+        try {
+            response = restTemplate.postForEntity(url, entity, Map.class);
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Shiprocket createShipment HTTP error: status={}, body={}",
+                e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Shiprocket API error " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            log.error("Shiprocket createShipment server error: status={}, body={}",
+                e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Shiprocket server error " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
+        }
 
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
             throw new RuntimeException("Shiprocket API failed: " + response.getStatusCode());
