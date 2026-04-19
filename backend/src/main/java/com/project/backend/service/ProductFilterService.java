@@ -11,8 +11,6 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -183,27 +181,8 @@ public class ProductFilterService {
 	private Pageable createPageable(ProductFilterDto filter) {
 		int page = filter.getPage() != null ? filter.getPage() : 0;
 		int size = filter.getLimit() != null ? filter.getLimit() : 20;
-
-		String sortBy = filter.getSortBy();
-
-		if (sortBy == null || sortBy.isEmpty()) {
-			return PageRequest.of(page, size, JpaSort.unsafe(Sort.Direction.DESC, "p.id"));
-		}
-
-		switch (sortBy) {
-		case "price_asc":
-			return PageRequest.of(page, size, JpaSort.unsafe(Sort.Direction.ASC, "p.price"));
-		case "price_desc":
-			return PageRequest.of(page, size, JpaSort.unsafe(Sort.Direction.DESC, "p.price"));
-		case "name_asc":
-			return PageRequest.of(page, size, JpaSort.unsafe(Sort.Direction.ASC, "p.name"));
-		case "name_desc":
-			return PageRequest.of(page, size, JpaSort.unsafe(Sort.Direction.DESC, "p.name"));
-		case "created_at":
-			return PageRequest.of(page, size, JpaSort.unsafe(Sort.Direction.DESC, "p.id"));
-		default:
-			return PageRequest.of(page, size, JpaSort.unsafe(Sort.Direction.DESC, "p.id"));
-		}
+		// ORDER BY is handled directly in the SQL query
+		return PageRequest.of(page, size);
 	}
 
 

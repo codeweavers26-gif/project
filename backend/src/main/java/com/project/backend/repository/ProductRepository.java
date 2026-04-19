@@ -441,6 +441,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     OR LOWER(p.slug) LIKE LOWER(CONCAT('%', :search, '%'))
 )
 		    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
+		    ORDER BY p.id DESC
 		    """,
 		    countQuery = """
 		    SELECT COUNT(DISTINCT p.id)
