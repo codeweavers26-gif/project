@@ -592,7 +592,11 @@ try {
  order.setItems(savedOrderItems);
     
 
-	        triggerShippingAsync((order.getId()));
+        // For COD orders, trigger shipping immediately.
+        // For Prepaid, shipping is triggered after payment verification (see verifyPayment).
+        if (paymentMethod == PaymentMethod.COD) {
+            triggerShippingAsync(order.getId());
+        }
 
     return buildResponse(order, subtotal, taxTotal, shipping, maxDeliveryDays, address);
 	}

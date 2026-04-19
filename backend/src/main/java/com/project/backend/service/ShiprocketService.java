@@ -153,7 +153,7 @@ public class ShiprocketService implements ShippingProvider {
 
         request.put("order_id", order.getId().toString());
         request.put("order_date", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-        request.put("pickup_location", "Home");
+        request.put("pickup_location", "Primary");
         request.put("comment", "Order from " + order.getUser().getName());
         request.put("billing_customer_name", order.getUser().getName());
         request.put("billing_last_name", "");
