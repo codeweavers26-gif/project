@@ -19,7 +19,10 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "users",
-    uniqueConstraints = @UniqueConstraint(columnNames = "email")
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = "email"),
+        @UniqueConstraint(columnNames = "phone_number")
+    }
 )
 @Data
 @NoArgsConstructor
@@ -41,6 +44,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private AuthProvider authProvider;
 
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
     @Enumerated(EnumType.STRING)

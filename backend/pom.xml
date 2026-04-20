@@ -120,6 +120,13 @@
             <artifactId>cloudinary-http44</artifactId>
             <version>${cloudinary.version}</version>
         </dependency>
+
+        <!-- Twilio SMS -->
+        <dependency>
+            <groupId>com.twilio.sdk</groupId>
+            <artifactId>twilio</artifactId>
+            <version>9.14.1</version>
+        </dependency>
         
         <!-- Lombok -->
         <dependency>
