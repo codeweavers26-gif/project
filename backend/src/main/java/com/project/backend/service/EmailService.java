@@ -1,46 +1,59 @@
 package com.project.backend.service;
 
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.sendgrid.*;
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.Content;
+import com.sendgrid.helpers.mail.objects.Email;
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    @Value("${sendgrid.api-key:}")
+    private String apiKey;
 
-    @Value("${spring.mail.username:}")
+    @Value("${sendgrid.from-email:}")
     private String fromEmail;
 
     @Async
     public void sendOtp(String to, String otp) {
 
-        if (fromEmail.isEmpty()) {
-            log.warn("Mail not configured (spring.mail.username empty), skipping OTP email to {}", to);
+        if (apiKey.isEmpty() || fromEmail.isEmpty()) {
+            log.warn("SendGrid not configured, skipping email to {}", to);
             return;
         }
 
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            Email from = new Email(fromEmail);
+            Email recipient = new Email(to);
 
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject("Your OTP - Rich and Retired");
-            helper.setText(buildOtpHtml(otp), true);
+            String subject = "Your OTP - Rich and Retired";
+            String body = buildOtpHtml(otp);
 
-            mailSender.send(message);
-            log.info("OTP email sent to {}", to);
+            Mail mail = new Mail(from, subject, recipient, new Content("text/html", body));
+
+            SendGrid sg = new SendGrid(apiKey);
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            Response response = sg.api(request);
+
+            if (response.getStatusCode() == 202) {
+                log.info("OTP email sent to {} via SendGrid", to);
+            } else {
+                log.error("SendGrid failed: status={}, body={}", response.getStatusCode(), response.getBody());
+            }
 
         } catch (Exception e) {
-            log.error("Failed to send OTP email to {}: {}", to, e.getMessage(), e);
+            log.error("SendGrid exception for {}: {}", to, e.getMessage(), e);
         }
     }
 
