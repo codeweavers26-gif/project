@@ -26,6 +26,7 @@ import com.project.backend.repository.RefreshTokenRepository;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.requestDto.AuthRequest;
 import com.project.backend.requestDto.RegisterRequest;
+import com.project.backend.service.UserAutoRegisterService;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class AuthService {
     private final OtpService otpService;
     private final EmailService emailService;
     private final SmsService smsService;
+    private final UserAutoRegisterService userAutoRegisterService;
 @Transactional
 public AuthResponse register(RegisterRequest req, Role role) {
 
@@ -192,33 +194,9 @@ public AuthResponse verifyOtp(String rawIdentifier,
     otp.setUsed(true);
     otpRepository.save(otp);
 
-    User user = userRepository.findByEmailOrPhoneNumber(identifier,(identifier))
-            .orElseGet(() -> safeAutoRegister(identifier));
+    User user = userAutoRegisterService.findOrCreate(identifier);
 
     return generateAuth(user, ip, userAgent);
-}
-private User safeAutoRegister(String identifier) {
-
-    try {
-        User user = new User();
-
-        if (isEmail(identifier)) {
-            user.setEmail(identifier);
-        } else {
-            user.setPhoneNumber((identifier));
-        }
-
-        user.setRole(Role.CUSTOMER);
-        user.setAuthProvider(AuthProvider.OTP) ;
-        user.setPassword(null);
-        user.setCreatedAt(Instant.now());
-
-        return userRepository.save(user);
-
-    } catch (DataIntegrityViolationException ex) {
-        return userRepository.findByEmailOrPhoneNumber(identifier,(identifier))
-                .orElseThrow();
-    }
 }
 
 
