@@ -46,7 +46,7 @@ public class ReturnController {
     private final UserRepository userRepository;
 
 	private User getCurrentUser(Authentication auth) {
-		return userRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
+		return userRepository.findByEmailOrPhoneNumber(auth.getName(), auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
 	}
 
 	@GetMapping("/returns")

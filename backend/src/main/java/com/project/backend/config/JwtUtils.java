@@ -31,8 +31,12 @@ public class JwtUtils {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtExpirationMs);
 
+        // Use email for email users, phoneNumber for phone-only OTP users
+        String subject = (user.getEmail() != null && !user.getEmail().isBlank())
+                ? user.getEmail() : user.getPhoneNumber();
+
         return Jwts.builder()
-                .setSubject(user.getEmail())
+                .setSubject(subject)
                 .claim("role", user.getRole().name())
                 .setIssuedAt(now)
                 .setExpiration(expiry)

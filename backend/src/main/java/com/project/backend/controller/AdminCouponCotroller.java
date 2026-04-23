@@ -45,7 +45,7 @@ public class AdminCouponCotroller {
       private final UserRepository userRepository;
 
     private User getCurrentUser(Authentication auth) {
-        return userRepository.findByEmail(auth.getName())
+        return userRepository.findByEmailOrPhoneNumber(auth.getName(), auth.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
   @Operation(summary = "Create coupon", security = @SecurityRequirement(name = "Bearer Authentication"))

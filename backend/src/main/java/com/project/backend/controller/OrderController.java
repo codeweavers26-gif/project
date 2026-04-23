@@ -63,7 +63,7 @@ public class OrderController {
 
 
 	private User getCurrentUser(Authentication auth) {
-		return userRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
+		return userRepository.findByEmailOrPhoneNumber(auth.getName(), auth.getName()).orElseThrow(() -> new RuntimeException("User not found"));
 	}
 
 	@Operation(summary = "Checkout (login required)", security = {

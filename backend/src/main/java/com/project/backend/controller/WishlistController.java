@@ -37,7 +37,7 @@ public class WishlistController {
     private final UserRepository userRepo;
 
     private User user(Authentication auth) {
-        return userRepo.findByEmail(auth.getName())
+        return userRepo.findByEmailOrPhoneNumber(auth.getName(), auth.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
     }
     @Operation(summary = "add wishlist", security = {

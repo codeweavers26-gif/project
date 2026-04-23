@@ -31,7 +31,7 @@ public class UserAccountController {
     private final UserAddressService addressService;
 
     private User getCurrentUser(Authentication auth) {
-        return userRepository.findByEmail(auth.getName())
+        return userRepository.findByEmailOrPhoneNumber(auth.getName(), auth.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
