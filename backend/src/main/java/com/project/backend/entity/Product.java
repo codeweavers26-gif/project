@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -62,6 +64,10 @@ public class Product {
     private Double height;
     @Column(name = "cod_available")
     private Boolean codAvailable = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tag", length = 20)
+    private ProductTag tag;
     
     private Boolean returnable = true;
     @Column(name = "average_rating")
@@ -123,13 +129,14 @@ public class Product {
     }
 
     @Builder
-    public Product(Long id, String name, String slug, String sku, String brand, String shortDescription, 
+    public Product(Long id, String name, String slug, String sku, String brand, String shortDescription,
                   String description, Category category, Double price,Double mrp, Double discountPercent,
-                  Double taxPercent, Double weight, Double length, 
+                  Double taxPercent, Double weight, Double length,
                   Double width, Double height, Boolean codAvailable, Boolean returnable,
                   Integer deliveryDays, Double averageRating, Integer totalReviews,
-                  Boolean isActive, Boolean isDeleted, LocalDateTime createdAt, 
-                  LocalDateTime updatedAt, List<ProductVariant> variants, List<ProductImage> images, Integer stock) {
+                  Boolean isActive, Boolean isDeleted, LocalDateTime createdAt,
+                  LocalDateTime updatedAt, List<ProductVariant> variants, List<ProductImage> images,
+                  Integer stock, ProductTag tag) {
         this.id = id;
         this.name = name;
         this.slug = slug;
@@ -160,6 +167,7 @@ public class Product {
         this.variants = variants != null ? variants : new ArrayList<>();
         this.images = images != null ? images : new ArrayList<>();
         this.stock = stock;
+        this.tag = tag;
     }
     
    

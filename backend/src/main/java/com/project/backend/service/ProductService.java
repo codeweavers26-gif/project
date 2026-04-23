@@ -145,7 +145,9 @@ public class ProductService {
 				.codAvailable(dto.getCodAvailable())
 				.taxPercent(dto.getTaxPercent())
 				.weight(dto.getWeight()).length(dto.getLength()).width(dto.getWidth()).height(dto.getHeight())
-				.stock(dto.getStock() != null ? dto.getStock() : 0).build();
+				.stock(dto.getStock() != null ? dto.getStock() : 0)
+				.tag(dto.getTag())
+				.build();
 
 		product.setSlug(generateUniqueSlug(dto.getName()));
 
@@ -187,6 +189,9 @@ savedProduct.updateLowestPriceFromVariants();
 		}
 		if (!product.getName().equals(dto.getName())) {
 			product.setSlug(generateUniqueSlug(dto.getName()));
+		}
+		if (dto.getTag() != null) {
+			product.setTag(dto.getTag());
 		}
 
 		Product updatedProduct = productRepository.save(product);

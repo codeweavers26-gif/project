@@ -252,120 +252,126 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			@Param("color") String color, @Param("brand") String brand, Pageable pageable);
 
 	@Query(value = """
-		    SELECT DISTINCT 
-		         p.id, 
+		    SELECT DISTINCT
+		         p.id,
                     p.status,
                     p.description,
                     p.mrp,
                     p.returnable,
-			        p.name, 
-			        p.slug, 
-			        p.brand, 
+			        p.name,
+			        p.slug,
+			        p.brand,
 			        p.short_description,
-			        p.price, 
-			        p.stock, 
+			        p.price,
+			        p.stock,
 			        p.is_active,
 			        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
 			        MIN(v.selling_price) as min_price,
-			        c.id, 
-			        c.name, 
+			        c.id,
+			        c.name,
 			        c.slug
 		    FROM products p
 		    LEFT JOIN categories c ON p.category_id = c.id
 		    JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
 		    JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
-		    WHERE p.is_active = true 
+		    WHERE p.is_active = true
 		    AND p.is_deleted = false
-		    AND v.is_active = true 
+		    AND p.tag = 'FEATURED'
+		    AND v.is_active = true
 		    AND wi.available_quantity > 0
 		    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
-		    """, 
+		    """,
     countQuery = """
-    SELECT COUNT(DISTINCT p.id) 
+    SELECT COUNT(DISTINCT p.id)
     FROM products p
     JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
     JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
-    WHERE p.is_active = true 
+    WHERE p.is_active = true
         AND (p.is_deleted IS NULL OR p.is_deleted = false)
-        AND v.is_active = true 
+        AND p.tag = 'FEATURED'
+        AND v.is_active = true
         AND wi.available_quantity > 0
     """,nativeQuery = true)
 		Page<Object[]> findFeaturedProducts(Pageable pageable);
 
 	@Query(value = """
-		    SELECT DISTINCT 
-		       p.id, 
+		    SELECT DISTINCT
+		       p.id,
                     p.status,
                     p.description,
                     p.mrp,
                     p.returnable,
-			        p.name, 
-			        p.slug, 
-			        p.brand, 
+			        p.name,
+			        p.slug,
+			        p.brand,
 			        p.short_description,
-			        p.price, 
-			        p.stock, 
+			        p.price,
+			        p.stock,
 			        p.is_active,
 			        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
 			        MIN(v.selling_price) as min_price,
-			        c.id, 
-			        c.name, 
+			        c.id,
+			        c.name,
 			        c.slug
 		    FROM products p
 		    LEFT JOIN categories c ON p.category_id = c.id
 		    JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
 		    JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
-		    WHERE p.is_active = true 
+		    WHERE p.is_active = true
 		    AND p.is_deleted = false
+		    AND p.tag = 'NEW_ARRIVAL'
 		    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
 
 		    """,countQuery = """
-        SELECT COUNT(DISTINCT p.id) 
+        SELECT COUNT(DISTINCT p.id)
         FROM products p
         JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
         JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
-        WHERE p.is_active = true 
+        WHERE p.is_active = true
             AND (p.is_deleted IS NULL OR p.is_deleted = false)
-            AND v.is_active = true 
+            AND p.tag = 'NEW_ARRIVAL'
+            AND v.is_active = true
             AND wi.available_quantity > 0
         """, nativeQuery = true)
 		Page<Object[]> findNewArrivals(Pageable pageable);
 
 		@Query(value = """
-			  SELECT DISTINCT 
-			        p.id, 
+			  SELECT DISTINCT
+			        p.id,
                     p.status,
                     p.description,
                     p.mrp,
                     p.returnable,
-			        p.name, 
-			        p.slug, 
-			        p.brand, 
+			        p.name,
+			        p.slug,
+			        p.brand,
 			        p.short_description,
-			        p.price, 
-			        p.stock, 
+			        p.price,
+			        p.stock,
 			        p.is_active,
 			        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
 			        MIN(v.selling_price) as min_price,
-			        c.id, 
-			        c.name, 
+			        c.id,
+			        c.name,
 			        c.slug
 			    FROM products p
 			    LEFT JOIN categories c ON p.category_id = c.id
 			    JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
 			    JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
-			    WHERE p.is_active = true 
+			    WHERE p.is_active = true
 			    AND p.is_deleted = false
+			    AND p.tag = 'TRENDING'
 			    GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
-	
+
 			    """,  countQuery = """
-    SELECT COUNT(DISTINCT p.id) 
+    SELECT COUNT(DISTINCT p.id)
     FROM products p
     JOIN product_variants v ON p.id = v.product_id AND v.is_active = true
     JOIN warehouse_inventory wi ON v.id = wi.variant_id AND wi.available_quantity > 0
-    WHERE p.is_active = true 
+    WHERE p.is_active = true
         AND (p.is_deleted IS NULL OR p.is_deleted = false)
-        AND v.is_active = true 
+        AND p.tag = 'TRENDING'
+        AND v.is_active = true
         AND wi.available_quantity > 0
     """, nativeQuery = true)
 			Page<Object[]> findBestSellers(Pageable pageable);

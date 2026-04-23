@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.project.backend.entity.ProductTag;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
@@ -80,6 +81,9 @@ public class ProductRequestDto {
 
     @Schema(description = "Category ID to which product belongs", example = "2")
     private Long categoryId;
+
+    @Schema(description = "Section tag for the product (NEW_ARRIVAL, TRENDING, FEATURED, BEST_SELLER)", example = "NEW_ARRIVAL")
+    private ProductTag tag;
     
     @Data
     public static class VariantRequest {
