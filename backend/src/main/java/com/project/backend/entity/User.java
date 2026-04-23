@@ -32,7 +32,7 @@ public class User {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = true)
     private String email;
 
     @Column(nullable = true)

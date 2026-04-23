@@ -1,8 +1,8 @@
 package com.project.backend.service;
 
 import java.time.Instant;
+import java.util.Optional;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,39 +22,31 @@ public class UserAutoRegisterService {
 
     private final UserRepository userRepository;
 
-    /**
-     * Finds an existing user by email or phone, or creates a new one.
-     * Runs in its OWN transaction (REQUIRES_NEW) so a DataIntegrityViolationException
-     * doesn't corrupt the outer Hibernate session.
-     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public User findOrCreate(String identifier) {
 
-        // Always check first to avoid unnecessary save attempt
-        return userRepository.findByEmailOrPhoneNumber(identifier, identifier)
-                .orElseGet(() -> {
-                    try {
-                        User user = new User();
+        // Always check first — no try/catch, no dirty session
+        Optional<User> existing = userRepository.findByEmailOrPhoneNumber(identifier, identifier);
+        if (existing.isPresent()) {
+            log.info("Found existing user for identifier {}", identifier);
+            return existing.get();
+        }
 
-                        if (identifier.contains("@")) {
-                            user.setEmail(identifier);
-                        } else {
-                            user.setPhoneNumber(identifier);
-                        }
+        User user = new User();
+        if (identifier.contains("@")) {
+            user.setEmail(identifier);
+        } else {
+            user.setPhoneNumber(identifier);
+            // email stays null — requires ALTER TABLE users MODIFY COLUMN email VARCHAR(255) NULL
+        }
 
-                        user.setRole(Role.CUSTOMER);
-                        user.setAuthProvider(AuthProvider.OTP);
-                        user.setPassword(null);
-                        user.setCreatedAt(Instant.now());
+        user.setRole(Role.CUSTOMER);
+        user.setAuthProvider(AuthProvider.OTP);
+        user.setPassword(null);
+        user.setCreatedAt(Instant.now());
 
-                        return userRepository.save(user);
-
-                    } catch (DataIntegrityViolationException ex) {
-                        // Race condition: another request created the user just now
-                        log.warn("Race condition on auto-register for {}, fetching existing", identifier);
-                        return userRepository.findByEmailOrPhoneNumber(identifier, identifier)
-                                .orElseThrow(() -> new RuntimeException("Failed to find or create user for: " + identifier));
-                    }
-                });
+        User saved = userRepository.save(user);
+        log.info("Auto-registered new user id={} for identifier {}", saved.getId(), identifier);
+        return saved;
     }
 }
