@@ -194,7 +194,10 @@ public AuthResponse verifyOtp(String rawIdentifier,
     otp.setUsed(true);
     otpRepository.save(otp);
 
-    User user = userAutoRegisterService.findOrCreate(identifier);
+    // findOrCreate runs in REQUIRES_NEW (separate session) → re-fetch inside current session
+    Long userId = userAutoRegisterService.findOrCreate(identifier).getId();
+    User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found after registration"));
 
     return generateAuth(user, ip, userAgent);
 }
