@@ -711,7 +711,7 @@ private void validateUserEligibility(Coupon coupon, Long userId,
     }
 
     private Coupon mapToEntity(CouponDto dto) {
-        return Coupon.builder()
+        Coupon coupon = Coupon.builder()
             .code(dto.getCode().toUpperCase())
             .description(dto.getDescription())
             .type(dto.getType())
@@ -723,15 +723,17 @@ private void validateUserEligibility(Coupon coupon, Long userId,
             .usageLimit(dto.getUsageLimit())
             .usagePerUser(dto.getUsagePerUser())
             .status(dto.getStatus() != null ? dto.getStatus() : CouponStatus.SCHEDULED)
-            .applicableCategoryIds(dto.getApplicableCategoryIds())
-            .applicableProductIds(dto.getApplicableProductIds())
-            .excludedCategoryIds(dto.getExcludedCategoryIds())
-            .excludedProductIds(dto.getExcludedProductIds())
             .isFirstOrderOnly(dto.getIsFirstOrderOnly())
             .isNewUserOnly(dto.getIsNewUserOnly())
             .applicablePaymentMethods(dto.getApplicablePaymentMethods())
             .applicableUserTiers(dto.getApplicableUserTiers())
             .build();
+        // Use setters for the CSV-backed Set<Long> fields
+        coupon.setApplicableCategoryIds(dto.getApplicableCategoryIds());
+        coupon.setApplicableProductIds(dto.getApplicableProductIds());
+        coupon.setExcludedCategoryIds(dto.getExcludedCategoryIds());
+        coupon.setExcludedProductIds(dto.getExcludedProductIds());
+        return coupon;
     }
 
     private CouponDto mapToDto(Coupon coupon) {
@@ -752,14 +754,10 @@ private void validateUserEligibility(Coupon coupon, Long userId,
             .usagePerUser(coupon.getUsagePerUser())
             .status(coupon.getStatus())
             .totalUsedCount(coupon.getTotalUsedCount())
-            .applicableCategoryIds(coupon.getApplicableCategoryIds() != null
-                    ? new HashSet<>(coupon.getApplicableCategoryIds()) : new HashSet<>())
-            .applicableProductIds(coupon.getApplicableProductIds() != null
-                    ? new HashSet<>(coupon.getApplicableProductIds()) : new HashSet<>())
-            .excludedCategoryIds(coupon.getExcludedCategoryIds() != null
-                    ? new HashSet<>(coupon.getExcludedCategoryIds()) : new HashSet<>())
-            .excludedProductIds(coupon.getExcludedProductIds() != null
-                    ? new HashSet<>(coupon.getExcludedProductIds()) : new HashSet<>())
+            .applicableCategoryIds(coupon.getApplicableCategoryIds())
+            .applicableProductIds(coupon.getApplicableProductIds())
+            .excludedCategoryIds(coupon.getExcludedCategoryIds())
+            .excludedProductIds(coupon.getExcludedProductIds())
             .isFirstOrderOnly(coupon.getIsFirstOrderOnly())
             .isNewUserOnly(coupon.getIsNewUserOnly())
             .applicablePaymentMethods(coupon.getApplicablePaymentMethods())
@@ -778,6 +776,7 @@ private void validateUserEligibility(Coupon coupon, Long userId,
         coupon.setValidTo(dto.getValidTo());
         coupon.setUsageLimit(dto.getUsageLimit());
         coupon.setUsagePerUser(dto.getUsagePerUser());
+        // CSV-backed Set<Long> fields — setters convert to comma-separated string
         coupon.setApplicableCategoryIds(dto.getApplicableCategoryIds());
         coupon.setApplicableProductIds(dto.getApplicableProductIds());
         coupon.setExcludedCategoryIds(dto.getExcludedCategoryIds());

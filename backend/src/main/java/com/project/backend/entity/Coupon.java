@@ -10,8 +10,10 @@ import org.hibernate.annotations.UpdateTimestamp;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Data
 @Builder
@@ -67,29 +69,69 @@ public class Coupon {
     @Column(nullable = false, length = 20)
     private CouponStatus status; 
 
-    @ElementCollection
-    @CollectionTable(name = "coupon_applicable_categories", 
-                     joinColumns = @JoinColumn(name = "coupon_id"))
-    @Column(name = "category_id")
-    private Set<Long> applicableCategoryIds = new HashSet<>();
+    // Stored as comma-separated IDs ("1,2,3") in a single column.
+    // Avoids @ElementCollection separate tables and lazy-loading issues.
+    // Use getApplicableCategoryIds() / setApplicableCategoryIds() for Set<Long> access.
 
-    @ElementCollection
-    @CollectionTable(name = "coupon_applicable_products", 
-                     joinColumns = @JoinColumn(name = "coupon_id"))
-    @Column(name = "product_id")
-    private Set<Long> applicableProductIds = new HashSet<>();
+    @Column(name = "applicable_category_ids", length = 500)
+    private String applicableCategoryIdsStr;
 
-    @ElementCollection
-    @CollectionTable(name = "coupon_excluded_categories", 
-                     joinColumns = @JoinColumn(name = "coupon_id"))
-    @Column(name = "category_id")
-    private Set<Long> excludedCategoryIds = new HashSet<>();
+    @Column(name = "applicable_product_ids", length = 500)
+    private String applicableProductIdsStr;
 
-    @ElementCollection
-    @CollectionTable(name = "coupon_excluded_products", 
-                     joinColumns = @JoinColumn(name = "coupon_id"))
-    @Column(name = "product_id")
-    private Set<Long> excludedProductIds = new HashSet<>();
+    @Column(name = "excluded_category_ids", length = 500)
+    private String excludedCategoryIdsStr;
+
+    @Column(name = "excluded_product_ids", length = 500)
+    private String excludedProductIdsStr;
+
+    // ── Convenience accessors (not persisted — JPA uses field access) ────────
+
+    public Set<Long> getApplicableCategoryIds() {
+        return parseCsv(applicableCategoryIdsStr);
+    }
+
+    public void setApplicableCategoryIds(Set<Long> ids) {
+        this.applicableCategoryIdsStr = toCsv(ids);
+    }
+
+    public Set<Long> getApplicableProductIds() {
+        return parseCsv(applicableProductIdsStr);
+    }
+
+    public void setApplicableProductIds(Set<Long> ids) {
+        this.applicableProductIdsStr = toCsv(ids);
+    }
+
+    public Set<Long> getExcludedCategoryIds() {
+        return parseCsv(excludedCategoryIdsStr);
+    }
+
+    public void setExcludedCategoryIds(Set<Long> ids) {
+        this.excludedCategoryIdsStr = toCsv(ids);
+    }
+
+    public Set<Long> getExcludedProductIds() {
+        return parseCsv(excludedProductIdsStr);
+    }
+
+    public void setExcludedProductIds(Set<Long> ids) {
+        this.excludedProductIdsStr = toCsv(ids);
+    }
+
+    private static Set<Long> parseCsv(String csv) {
+        if (csv == null || csv.isBlank()) return new HashSet<>();
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    private static String toCsv(Set<Long> ids) {
+        if (ids == null || ids.isEmpty()) return null;
+        return ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+    }
 
     @Column(name = "is_first_order_only")
     private Boolean isFirstOrderOnly = false;
