@@ -213,7 +213,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			    p.price,
 			    p.stock,
 			    p.is_active,
-			    (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
+			    COALESCE((SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1), (SELECT pv2.image_url FROM product_variants pv2 WHERE pv2.product_id = p.id AND pv2.image_url IS NOT NULL AND pv2.is_active = true LIMIT 1)) as thumbnail,
 			    MIN(v.selling_price) as min_price,
 			    c.id as category_id,
 			    c.name as category_name,
@@ -267,7 +267,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			        p.price,
 			        p.stock,
 			        p.is_active,
-			        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
+			        COALESCE((SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1), (SELECT pv2.image_url FROM product_variants pv2 WHERE pv2.product_id = p.id AND pv2.image_url IS NOT NULL AND pv2.is_active = true LIMIT 1)) as thumbnail,
 			        MIN(v.selling_price) as min_price,
 			        c.id,
 			        c.name,
@@ -310,7 +310,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			        p.price,
 			        p.stock,
 			        p.is_active,
-			        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
+			        COALESCE((SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1), (SELECT pv2.image_url FROM product_variants pv2 WHERE pv2.product_id = p.id AND pv2.image_url IS NOT NULL AND pv2.is_active = true LIMIT 1)) as thumbnail,
 			        MIN(v.selling_price) as min_price,
 			        c.id,
 			        c.name,
@@ -351,7 +351,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			        p.price,
 			        p.stock,
 			        p.is_active,
-			        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
+			        COALESCE((SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1), (SELECT pv2.image_url FROM product_variants pv2 WHERE pv2.product_id = p.id AND pv2.image_url IS NOT NULL AND pv2.is_active = true LIMIT 1)) as thumbnail,
 			        MIN(v.selling_price) as min_price,
 			        c.id,
 			        c.name,
@@ -380,22 +380,25 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	@Query(value = """
 			SELECT DISTINCT
-			      p.id, 
+			      p.id,
                     p.status,
                     p.description,
                     p.mrp,
                     p.returnable,
-			        p.name, 
-			        p.slug, 
-			        p.brand, 
+			        p.name,
+			        p.slug,
+			        p.brand,
 			        p.short_description,
-			        p.price, 
-			        p.stock, 
+			        p.price,
+			        p.stock,
 			        p.is_active,
-			        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
+			        COALESCE(
+			            (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1),
+			            (SELECT pv.image_url FROM product_variants pv WHERE pv.product_id = p.id AND pv.image_url IS NOT NULL AND pv.is_active = true LIMIT 1)
+			        ) as thumbnail,
 			        MIN(v.selling_price) as min_price,
-			        c.id, 
-			        c.name, 
+			        c.id,
+			        c.name,
 			        c.slug
 			FROM products p
 			LEFT JOIN categories c ON p.category_id = c.id
@@ -408,6 +411,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			AND v.is_active = true
 			AND wi.available_quantity > 0
 			GROUP BY p.id, p.name, p.slug, p.brand, p.short_description, p.price, p.stock, p.is_active, c.id, c.name, c.slug
+			""",
+			countQuery = """
+			SELECT COUNT(DISTINCT p.id)
+			FROM products p
+			JOIN product_variants v ON p.id = v.product_id
+			JOIN warehouse_inventory wi ON v.id = wi.variant_id
+			WHERE p.category_id = (SELECT category_id FROM products WHERE id = :productId)
+			AND p.id != :productId
+			AND p.is_active = true
+			AND p.is_deleted = false
+			AND v.is_active = true
+			AND wi.available_quantity > 0
 			""", nativeQuery = true)
 	Page<Object[]> findRelatedProducts(@Param("productId") Long productId, Pageable pageable);
 	
@@ -423,7 +438,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		        p.price, 
 		        p.stock, 
 		        p.is_active,
-		        (SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1) as thumbnail,
+		        COALESCE((SELECT i.image_url FROM product_images i WHERE i.product_id = p.id ORDER BY i.position LIMIT 1), (SELECT pv2.image_url FROM product_variants pv2 WHERE pv2.product_id = p.id AND pv2.image_url IS NOT NULL AND pv2.is_active = true LIMIT 1)) as thumbnail,
 		        MIN(v.selling_price) as min_price,
 		        c.id, 
 		        c.name, 
