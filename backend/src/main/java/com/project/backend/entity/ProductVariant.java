@@ -71,6 +71,9 @@ public class ProductVariant {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

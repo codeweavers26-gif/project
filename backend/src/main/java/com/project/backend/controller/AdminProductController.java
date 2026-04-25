@@ -1,6 +1,7 @@
 package com.project.backend.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -130,6 +131,16 @@ public class AdminProductController {
 		log.info("Deactivating variant: {}", variantId);
 		productService.deactivateVariant(variantId);
 		return ResponseEntity.noContent().build();
+	}
+
+	@Operation(summary = "Upload image for a specific variant", security = { @SecurityRequirement(name = "Bearer Authentication") })
+	@PostMapping(value = "/variants/{variantId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<Map<String, String>> uploadVariantImage(
+			@PathVariable Long variantId,
+			@RequestPart("image") MultipartFile imageFile) {
+		log.info("Uploading image for variantId={}", variantId);
+		String url = productService.uploadVariantImage(variantId, imageFile);
+		return ResponseEntity.ok(Map.of("imageUrl", url));
 	}
 
 	@Operation(summary = "Upload product images", security = { @SecurityRequirement(name = "Bearer Authentication") })

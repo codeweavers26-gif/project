@@ -125,10 +125,11 @@ public class ProductResponseDto {
 		private String size;
 		private String color;
 		private BigDecimal mrp;
-		 private BigDecimal costPrice;
+		private BigDecimal costPrice;
 		private BigDecimal sellingPrice;
 		private Boolean isActive;
-		private Integer availableStock; 
+		private Integer availableStock;
+		private String imageUrl;
 	}
 
 	@Data

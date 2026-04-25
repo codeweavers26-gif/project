@@ -384,6 +384,21 @@ Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 	}
 
 	@Transactional
+	public String uploadVariantImage(Long variantId, MultipartFile imageFile) {
+		ProductVariant variant = variantRepository.findById(variantId)
+				.orElseThrow(() -> new NotFoundException("Variant not found with id: " + variantId));
+
+		Map uploadResult = cloudinaryService.uploadImage(imageFile, "variants/" + variantId);
+		String url = (String) uploadResult.get("secure_url");
+
+		variant.setImageUrl(url);
+		variantRepository.save(variant);
+
+		log.info("Variant image uploaded for variantId={}, url={}", variantId, url);
+		return url;
+	}
+
+	@Transactional
 	public ProductResponseDto addImages(Long productId, List<ProductRequestDto.ImageRequest> imageRequests) {
 
 		Product product = productRepository.findById(productId)
@@ -662,7 +677,7 @@ private BigDecimal calculateSellingPrice(BigDecimal costPrice, BigDecimal profit
 
 				return ProductResponseDto.VariantInfo.builder().id(v.getId()).sku(v.getSku()).size(v.getSize())
 						.color(v.getColor()).mrp(v.getMrp()).sellingPrice(v.getSellingPrice()).isActive(v.getIsActive())
-						.availableStock(availableStock).build();
+						.availableStock(availableStock).imageUrl(v.getImageUrl()).build();
 			}).collect(Collectors.toList());
 		}
 
