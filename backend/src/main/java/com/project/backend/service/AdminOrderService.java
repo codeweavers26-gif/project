@@ -46,6 +46,7 @@ public class AdminOrderService {
 	private final OrderRepository orderRepository;
 	private final UserRepository userRepository;
 	private final WarehouseInventoryRepository warehouseInventoryRepository;
+	private final EmailService emailService;
 	private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
 	private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
@@ -118,9 +119,12 @@ public class AdminOrderService {
 		}
 
 		order.setStatus(newStatus);
-		return OrderMapper.toDto(orderRepository.save(order));
-	
+		Order saved = orderRepository.save(order);
 
+		// Send status update email to customer (async, fire-and-forget)
+		emailService.sendOrderStatusUpdate(saved.getUser(), saved);
+
+		return OrderMapper.toDto(saved);
 	}
 @Transactional
 protected void releaseReservedStock(Order order) {

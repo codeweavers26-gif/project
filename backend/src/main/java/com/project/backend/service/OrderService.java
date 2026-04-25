@@ -102,6 +102,7 @@ public class OrderService {
     private final com.project.backend.repository.ProductImageRepository productImageRepository;
     private final AdminReturnService refundSevice;
     private final ShippingAsyncService shippingAsyncService;
+    private final EmailService emailService;
 
     @Transactional
     public CheckoutResponseDto checkout(User user, CheckoutRequestDto request) {
@@ -591,7 +592,9 @@ try {
         log.warn("Cart cleanup failed for orderId={}", order.getId());
     }
  order.setItems(savedOrderItems);
-    
+
+        // Send order confirmation email (async, fire-and-forget)
+        emailService.sendOrderConfirmation(user, order, savedOrderItems);
 
         // For COD orders, trigger shipping immediately.
         // For Prepaid, shipping is triggered after payment verification (see verifyPayment).
@@ -1151,6 +1154,9 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
             reserveStock(variant, quantity);
 
             log.info("Buy now order placed successfully: orderId={}", order.getId());
+
+            // Send order confirmation email (async)
+            emailService.sendOrderConfirmation(user, order, List.of(orderItem));
 
             if (request.getPaymentMethod() == PaymentMethod.COD) {
                 triggerShippingAsync(order.getId());
