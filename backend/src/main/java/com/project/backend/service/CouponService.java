@@ -733,6 +733,9 @@ private void validateUserEligibility(Coupon coupon, Long userId,
     }
 
     private CouponDto mapToDto(Coupon coupon) {
+        // Copy @ElementCollection sets into plain HashSets to force lazy-load
+        // within the current transaction — prevents LazyInitializationException
+        // when open-in-view=false and Jackson serializes the response.
         return CouponDto.builder()
             .id(coupon.getId())
             .code(coupon.getCode())
@@ -747,10 +750,14 @@ private void validateUserEligibility(Coupon coupon, Long userId,
             .usagePerUser(coupon.getUsagePerUser())
             .status(coupon.getStatus())
             .totalUsedCount(coupon.getTotalUsedCount())
-            .applicableCategoryIds(coupon.getApplicableCategoryIds())
-            .applicableProductIds(coupon.getApplicableProductIds())
-            .excludedCategoryIds(coupon.getExcludedCategoryIds())
-            .excludedProductIds(coupon.getExcludedProductIds())
+            .applicableCategoryIds(coupon.getApplicableCategoryIds() != null
+                    ? new HashSet<>(coupon.getApplicableCategoryIds()) : new HashSet<>())
+            .applicableProductIds(coupon.getApplicableProductIds() != null
+                    ? new HashSet<>(coupon.getApplicableProductIds()) : new HashSet<>())
+            .excludedCategoryIds(coupon.getExcludedCategoryIds() != null
+                    ? new HashSet<>(coupon.getExcludedCategoryIds()) : new HashSet<>())
+            .excludedProductIds(coupon.getExcludedProductIds() != null
+                    ? new HashSet<>(coupon.getExcludedProductIds()) : new HashSet<>())
             .isFirstOrderOnly(coupon.getIsFirstOrderOnly())
             .isNewUserOnly(coupon.getIsNewUserOnly())
             .applicablePaymentMethods(coupon.getApplicablePaymentMethods())
