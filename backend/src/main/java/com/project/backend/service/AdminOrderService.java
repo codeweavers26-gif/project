@@ -279,29 +279,22 @@ public void cancelOrder(Long orderId) {
 
 	private void validateStatusTransition(OrderStatus current, OrderStatus next) {
 
-		if (current == OrderStatus.CANCELLED || current == OrderStatus.DELIVERED) {
-			throw new BadRequestException(
-					"Cannot change status of a " + current + " order");
+		// Terminal states — cannot be changed
+		if (current == OrderStatus.CANCELLED) {
+			throw new BadRequestException("Cannot change status of a CANCELLED order");
 		}
 
-		Map<OrderStatus, Set<OrderStatus>> validTransitions = Map.of(
-				OrderStatus.PENDING, Set.of(OrderStatus.PAID, OrderStatus.PLACED, OrderStatus.CANCELLED),
-				OrderStatus.PENDING_PAYMENT, Set.of(OrderStatus.PAID, OrderStatus.PLACED, OrderStatus.CANCELLED),
-				OrderStatus.PLACED, Set.of(OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.CANCELLED),
-				OrderStatus.PAID, Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
-				OrderStatus.SHIPPED, Set.of(OrderStatus.DELIVERED, OrderStatus.RETURN_REQUESTED),
-				OrderStatus.RETURN_REQUESTED, Set.of(OrderStatus.CANCELLED));
-
-		Set<OrderStatus> allowedNext = validTransitions.get(current);
-		if (allowedNext == null) {
+		// Admin can set any status on a DELIVERED order only back to specific states
+		// (e.g. RETURN_REQUESTED), but not re-open it to PENDING/PLACED
+		if (current == OrderStatus.DELIVERED &&
+			next != OrderStatus.RETURN_REQUESTED) {
 			throw new BadRequestException(
-					"Unknown order status: " + current);
+				"A DELIVERED order can only be moved to RETURN_REQUESTED");
 		}
 
-		if (!allowedNext.contains(next)) {
-			throw new BadRequestException(
-					"Invalid transition from " + current + " to " + next);
-		}
+		// Admin is allowed to jump directly to any non-terminal status
+		// (e.g. PENDING → DELIVERED for COD orders marked delivered on spot)
+		// No further restrictions — admin has full control
 	}
 
 	public PageResponseDto<AdminUserOrderResponseDto> getOrdersOfUser(Long userId, int page, int size) {
