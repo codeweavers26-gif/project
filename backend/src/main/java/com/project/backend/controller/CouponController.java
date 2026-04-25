@@ -98,4 +98,11 @@ public class CouponController {
     public ResponseEntity<CouponDto> getCouponByCode(@PathVariable String code) {
         return ResponseEntity.ok(couponService.getCouponByCode(code));
     }
+
+    @Operation(summary = "Get all currently active coupons (public)")
+    @GetMapping("/public/coupons")
+    public ResponseEntity<List<Map<String, Object>>> getActiveCoupons() {
+        List<Map<String, Object>> coupons = couponService.getActiveCouponsPublic();
+        return ResponseEntity.ok(coupons);
+    }
 }

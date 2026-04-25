@@ -114,6 +114,22 @@ private <T, R> PageResponseDto<R> buildPageResponse(Page<T> page, java.util.func
        
     }
     @Transactional(readOnly = true)
+    public List<Map<String, Object>> getActiveCouponsPublic() {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+        List<Coupon> active = couponRepository.findActiveCoupons(now);
+        return active.stream().map(c -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("code", c.getCode());
+            m.put("description", c.getDescription());
+            m.put("type", c.getType() != null ? c.getType().name() : null);
+            m.put("discountValue", c.getDiscountValue());
+            m.put("minOrderAmount", c.getMinOrderAmount());
+            m.put("maxDiscountAmount", c.getMaxDiscountAmount());
+            return m;
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public CouponDto getCouponByCode(String code) {
         log.info("Fetching coupon by code: {}", code);
         
