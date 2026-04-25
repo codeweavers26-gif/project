@@ -123,5 +123,16 @@ Long countByUserId(Long userId);
     @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
     List<Order> findOrdersBetweenDates(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
     Optional<Order> findByCartId(Long id);
-	
+
+    /**
+     * Eagerly fetches order with its items and user in a single query.
+     * Used by ShippingAsyncService to avoid LazyInitializationException
+     * in a separate async thread where no session is open.
+     */
+    @Query("SELECT DISTINCT o FROM Order o " +
+           "LEFT JOIN FETCH o.items " +
+           "LEFT JOIN FETCH o.user " +
+           "WHERE o.id = :orderId")
+    Optional<Order> findByIdWithItems(@Param("orderId") Long orderId);
+
 }

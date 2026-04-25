@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -24,8 +25,13 @@ public class ShippingAsyncService {
     private final ShiprocketService shiprocketService;
 
     @Async
+    @Transactional
     public void triggerShippingAsync(Long orderId) {
-        Order order = orderRepository.findById(orderId).orElseThrow();
+        // Use JOIN FETCH so order.items and order.user are loaded eagerly.
+        // Plain findById() closes its own transaction immediately, leaving
+        // lazy collections unloadable in this async thread → LazyInitializationException.
+        Order order = orderRepository.findByIdWithItems(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
         log.info("Triggering shipping for orderId={}", order.getId());
 
         try {
