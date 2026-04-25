@@ -79,5 +79,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     
     @Query("SELECT pv FROM ProductVariant pv LEFT JOIN FETCH pv.inventories WHERE pv.id = :variantId")
     Optional<ProductVariant> findByIdWithInventories(@Param("variantId") Integer variantId);
- 
+
+    @Query(value = "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(sku, '-', -1) AS UNSIGNED)), 0) FROM product_variants", nativeQuery = true)
+    Long findMaxSkuSequence();
+
 }
