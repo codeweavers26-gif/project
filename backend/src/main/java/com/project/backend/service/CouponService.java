@@ -144,8 +144,10 @@ private <T, R> PageResponseDto<R> buildPageResponse(Page<T> page, java.util.func
             Coupon coupon = mapToEntity(couponDto);
             coupon.setCreatedBy(adminId);
             coupon.setUpdatedBy(adminId);
-            coupon.setStatus(couponDto.getValidFrom().isAfter(LocalDateTime.now()) ? 
-                            CouponStatus.SCHEDULED : CouponStatus.ACTIVE);
+            // If validFrom is more than 1 minute in the future → SCHEDULED, otherwise ACTIVE
+            LocalDateTime oneMinuteLater = LocalDateTime.now().plusMinutes(1);
+            coupon.setStatus(couponDto.getValidFrom().isAfter(oneMinuteLater)
+                            ? CouponStatus.SCHEDULED : CouponStatus.ACTIVE);
             coupon.setTotalUsedCount(0);
 
             coupon = couponRepository.save(coupon);

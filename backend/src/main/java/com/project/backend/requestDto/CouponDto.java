@@ -43,11 +43,9 @@ public class CouponDto {
     private BigDecimal maxDiscountAmount;
 
     @NotNull(message = "Valid from date is required")
-    @FutureOrPresent(message = "Valid from date cannot be in the past")
     private LocalDateTime validFrom;
 
     @NotNull(message = "Valid to date is required")
-    @Future(message = "Valid to date must be in the future")
     private LocalDateTime validTo;
 
     @Min(value = 1, message = "Usage limit must be at least 1")
