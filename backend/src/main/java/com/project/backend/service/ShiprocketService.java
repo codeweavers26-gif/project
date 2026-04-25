@@ -12,6 +12,7 @@ import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.PaymentMethod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -51,6 +52,9 @@ public class ShiprocketService implements ShippingProvider {
     private String token;
     private LocalDateTime tokenExpiry;
     private static final String BASE_URL = "https://apiv2.shiprocket.in/v1/external";
+
+    @Value("${shiprocket.pickup-location:Primary}")
+    private String pickupLocation;
 
     public void authenticate() {
         String url = "https://apiv2.shiprocket.in/v1/external/auth/login";
@@ -159,14 +163,27 @@ public class ShiprocketService implements ShippingProvider {
     }
 
     private Map<String, Object> buildRequest(Order order) {
-        String phoneNumber = order.getUser().getPhoneNumber();
+
+        // Null-safe user fields — Shiprocket rejects nulls
+        String customerName = order.getUser().getName();
+        if (customerName == null || customerName.isBlank()) {
+            customerName = "Customer";
+        }
+
+        String billingPhone = sanitizePhone(order.getUser().getPhoneNumber());
+        String billingEmail = order.getUser().getEmail();
+        if (billingEmail == null || billingEmail.isBlank()) {
+            // Shiprocket needs *some* email; use a placeholder derived from order id
+            billingEmail = "order" + order.getId() + "@placeholder.com";
+        }
+
         Map<String, Object> request = new HashMap<>();
 
         request.put("order_id", order.getId().toString());
         request.put("order_date", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-        request.put("pickup_location", "Home");
-        request.put("comment", "Order from " + order.getUser().getName());
-        request.put("billing_customer_name", order.getUser().getName());
+        request.put("pickup_location", pickupLocation);
+        request.put("comment", "Order #" + order.getId());
+        request.put("billing_customer_name", customerName);
         request.put("billing_last_name", "");
         request.put("billing_address", order.getDeliveryAddressLine1());
         request.put("billing_address_2",
@@ -175,11 +192,12 @@ public class ShiprocketService implements ShippingProvider {
         request.put("billing_pincode", Integer.parseInt(order.getDeliveryPostalCode()));
         request.put("billing_state", order.getDeliveryState());
         request.put("billing_country", order.getDeliveryCountry() != null ? order.getDeliveryCountry() : "India");
-        request.put("billing_email", order.getUser().getEmail());
-        request.put("billing_phone", phoneNumber);
+        request.put("billing_email", billingEmail);
+        request.put("billing_phone", billingPhone);
         request.put("billing_isd_code", "+91");
 
         request.put("shipping_is_billing", true);
+
         List<Map<String, Object>> orderItems = new ArrayList<>();
         for (OrderItem item : order.getItems()) {
             Map<String, Object> orderItem = new HashMap<>();
@@ -199,14 +217,37 @@ public class ShiprocketService implements ShippingProvider {
         request.put("transaction_charges", 0);
         request.put("total_discount",
                 order.getDiscountAmount() != null ? (int) Math.round(order.getDiscountAmount()) : 0);
-        request.put("sub_total", (int) Math.round(order.getTotalAmount() -
-                order.getShippingCharges() - order.getTaxAmount()));
+        // sub_total = order total minus shipping (tax is already included in price)
+        request.put("sub_total", (int) Math.round(order.getTotalAmount() - order.getShippingCharges()));
         request.put("length", 10.0);
         request.put("breadth", 10.0);
         request.put("height", 10.0);
         request.put("weight", 0.5);
 
         return request;
+    }
+
+    /**
+     * Sanitizes a phone number string to exactly 10 digits.
+     * Strips country code (+91 / 91 prefix), non-digit chars.
+     * Falls back to a placeholder if null or too short.
+     */
+    private String sanitizePhone(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "9999999999"; // placeholder — Shiprocket requires a phone
+        }
+        String digits = raw.replaceAll("[^0-9]", "");
+        // Remove leading country code
+        if (digits.length() == 12 && digits.startsWith("91")) {
+            digits = digits.substring(2);
+        } else if (digits.length() == 13 && digits.startsWith("091")) {
+            digits = digits.substring(3);
+        }
+        if (digits.length() >= 10) {
+            return digits.substring(digits.length() - 10);
+        }
+        // Pad left with zeros if somehow shorter
+        return String.format("%10s", digits).replace(' ', '0');
     }
 
     @Override
@@ -284,18 +325,6 @@ public class ShiprocketService implements ShippingProvider {
         throw new RuntimeException("Cancel failed: " + response.getBody());
     }
 }
-    private String getValidPhoneNumber(Integer phone) {
-        if (phone == null) {
-            return "9889808605";
-        }
-        String phoneStr = String.valueOf(phone);
-        phoneStr = phoneStr.replaceAll("[^0-9]", "");
-        if (phoneStr.length() >= 10) {
-            return phoneStr.substring(phoneStr.length() - 10);
-        }
-        return String.format("%10s", phoneStr).replace(' ', '0');
-    }
-
     @Override
     public ShipmentResponse assignCourier(String shipmentId) {
 
