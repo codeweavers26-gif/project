@@ -24,6 +24,9 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+
+// All coupon dates are stored in IST. Server (Render) runs UTC.
+// Always use IST when comparing coupon dates against "now".
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -144,9 +147,10 @@ private <T, R> PageResponseDto<R> buildPageResponse(Page<T> page, java.util.func
             Coupon coupon = mapToEntity(couponDto);
             coupon.setCreatedBy(adminId);
             coupon.setUpdatedBy(adminId);
+            // Compare in IST — coupon dates stored in IST, server runs UTC
+            LocalDateTime nowIST = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
             // If validFrom is more than 1 minute in the future → SCHEDULED, otherwise ACTIVE
-            LocalDateTime oneMinuteLater = LocalDateTime.now().plusMinutes(1);
-            coupon.setStatus(couponDto.getValidFrom().isAfter(oneMinuteLater)
+            coupon.setStatus(couponDto.getValidFrom().isAfter(nowIST.plusMinutes(1))
                             ? CouponStatus.SCHEDULED : CouponStatus.ACTIVE);
             coupon.setTotalUsedCount(0);
 
@@ -385,7 +389,7 @@ private void validateDates(LocalDateTime from, LocalDateTime to) {
 
 
     private void validateCouponBasicEligibility(Coupon coupon, ApplyCouponRequest request, List<String> warnings) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
 
         if (coupon.getStatus() != CouponStatus.ACTIVE) {
             throw new BadRequestException("Coupon is not active. Status: " + coupon.getStatus());
@@ -654,7 +658,7 @@ private void validateUserEligibility(Coupon coupon, Long userId,
     @Transactional(readOnly = true)
     public List<CouponDto> getAvailableCouponsForUser(Long userId, BigDecimal orderAmount) {
         try {
-            List<Coupon> activeCoupons = couponRepository.findActiveCoupons(LocalDateTime.now());
+            List<Coupon> activeCoupons = couponRepository.findActiveCoupons(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
             
             return activeCoupons.stream()
                 .filter(coupon -> {
@@ -695,7 +699,7 @@ private void validateUserEligibility(Coupon coupon, Long userId,
     }
 
     private void updateCouponStatus(Coupon coupon) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
         
         if (coupon.getStatus() == CouponStatus.DISABLED) {
             return; 

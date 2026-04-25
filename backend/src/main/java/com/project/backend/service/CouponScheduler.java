@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Component
 @RequiredArgsConstructor
@@ -16,15 +17,20 @@ public class CouponScheduler {
 
     private final CouponRepository couponRepository;
 
+    // All coupon dates are stored in IST (user's timezone).
+    // Render server runs in UTC, so LocalDateTime.now() would be UTC.
+    // We must use IST for correct comparison.
+    private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
+
     /**
      * Runs every minute.
-     * Activates SCHEDULED coupons whose validFrom <= now.
-     * Expires ACTIVE coupons whose validTo < now.
+     * Activates SCHEDULED coupons whose validFrom <= now (IST).
+     * Expires ACTIVE coupons whose validTo < now (IST).
      */
     @Scheduled(fixedRate = 60_000)
     @Transactional
     public void syncCouponStatuses() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(IST);
 
         int activated = couponRepository.activateScheduledCoupons(now);
         int expired   = couponRepository.expireCoupons(now);
