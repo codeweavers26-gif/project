@@ -52,6 +52,10 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     @Query("UPDATE Coupon c SET c.status = 'EXPIRED' WHERE c.validTo < :now AND c.status = 'ACTIVE'")
     int expireCoupons(@Param("now") LocalDateTime now);
 
+    @Modifying
+    @Query("UPDATE Coupon c SET c.status = 'ACTIVE' WHERE c.validFrom <= :now AND c.status = 'SCHEDULED'")
+    int activateScheduledCoupons(@Param("now") LocalDateTime now);
+
     @Query("SELECT c.type, COUNT(c) FROM Coupon c GROUP BY c.type")
     List<Object[]> countByType();
 
