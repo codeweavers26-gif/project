@@ -388,14 +388,19 @@ Double displayPrice = minPrice != null ? minPrice : product.getPrice();
 		ProductVariant variant = variantRepository.findById(variantId)
 				.orElseThrow(() -> new NotFoundException("Variant not found with id: " + variantId));
 
-		Map uploadResult = cloudinaryService.uploadImage(imageFile, "variants/" + variantId);
-		String url = (String) uploadResult.get("secure_url");
+		try {
+			Map uploadResult = cloudinaryService.uploadImage(imageFile, "variants/" + variantId);
+			String url = (String) uploadResult.get("secure_url");
 
-		variant.setImageUrl(url);
-		variantRepository.save(variant);
+			variant.setImageUrl(url);
+			variantRepository.save(variant);
 
-		log.info("Variant image uploaded for variantId={}, url={}", variantId, url);
-		return url;
+			log.info("Variant image uploaded for variantId={}, url={}", variantId, url);
+			return url;
+		} catch (Exception e) {
+			log.error("Failed to upload variant image for variantId={}", variantId, e);
+			throw new RuntimeException("Failed to upload variant image", e);
+		}
 	}
 
 	@Transactional
