@@ -219,8 +219,8 @@ public class EmailService {
                 + ", " + order.getDeliveryState()
                 + " - " + order.getDeliveryPostalCode();
 
+        // Tax is included in price; subtotal = total - shipping + discount
         double subtotal = order.getTotalAmount()
-                - (order.getTaxAmount() != null ? order.getTaxAmount() : 0)
                 - (order.getShippingCharges() != null ? order.getShippingCharges() : 0)
                 + (order.getDiscountAmount() != null ? order.getDiscountAmount() : 0);
 
@@ -280,11 +280,7 @@ public class EmailService {
                     <!-- Pricing Summary -->
                     <table style="width:100%%;border-collapse:collapse;margin-top:16px;">
                       <tr>
-                        <td style="padding:6px 8px;color:#555;">Subtotal</td>
-                        <td style="padding:6px 8px;text-align:right;color:#333;">₹%.2f</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px 8px;color:#555;">GST / Tax</td>
+                        <td style="padding:6px 8px;color:#555;">Subtotal <span style="font-size:11px;color:#aaa;">(incl. taxes)</span></td>
                         <td style="padding:6px 8px;text-align:right;color:#333;">₹%.2f</td>
                       </tr>
                       <tr>
@@ -325,7 +321,6 @@ public class EmailService {
                         name, orderId, orderDate, paymentLabel,
                         rows.toString(),
                         subtotal,
-                        order.getTaxAmount() != null ? order.getTaxAmount() : 0.0,
                         order.getShippingCharges() != null && order.getShippingCharges() > 0
                                 ? "₹" + String.format("%.2f", order.getShippingCharges()) : "FREE",
                         order.getTotalAmount(),

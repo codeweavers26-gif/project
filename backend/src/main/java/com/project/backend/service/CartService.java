@@ -457,12 +457,9 @@ public CartPricingResponseDto getCartPricing(User user, String couponCode) {
         BigDecimal itemTotal = price.multiply(BigDecimal.valueOf(qty));
         BigDecimal itemMrpTotal = mrp.multiply(BigDecimal.valueOf(qty));
 
-        double taxPercent = product.getTaxPercent() != null ? product.getTaxPercent() : 0.0;
-        BigDecimal itemTax = BigDecimal.valueOf(taxPercent / 100.0).multiply(itemTotal);
-
+        // Tax is included in price — no separate tax calculation
         subtotal = subtotal.add(itemTotal);
         totalMrp = totalMrp.add(itemMrpTotal);
-        tax = tax.add(itemTax);
 
         int discountPercentage = calculateDiscount(price, mrp);
 
@@ -490,7 +487,8 @@ public CartPricingResponseDto getCartPricing(User user, String couponCode) {
 
     
 
-    BigDecimal finalAmount = subtotal.add(tax).add(shipping).subtract(discount);
+    // Tax is included in price — total = subtotal + shipping - discount
+    BigDecimal finalAmount = subtotal.add(shipping).subtract(discount);
     BigDecimal totalSavings = totalMrp.subtract(subtotal.subtract(discount));
 
     return CartPricingResponseDto.builder()
@@ -498,7 +496,7 @@ public CartPricingResponseDto getCartPricing(User user, String couponCode) {
             .totalItems(cart.getItems().size())
             .subtotal(subtotal)
             .totalMrp(totalMrp)
-            .taxAmount(tax)
+            .taxAmount(BigDecimal.ZERO)
             .shippingCharges(shipping)
             .discountAmount(discount)
             .finalAmount(finalAmount)

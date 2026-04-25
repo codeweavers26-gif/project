@@ -171,11 +171,8 @@ public class OrderService {
             BigDecimal mrp = variant.getMrp() != null ? variant.getMrp() : price;
             BigDecimal itemSubtotal = price.multiply(BigDecimal.valueOf(qty));
 
-            BigDecimal gstPercent = BigDecimal.valueOf(5);
-            BigDecimal itemTax = itemSubtotal.multiply(gstPercent).divide(BigDecimal.valueOf(100));
-
+            // Tax is included in price — no separate tax line
             subtotal = subtotal.add(itemSubtotal);
-            taxTotal = taxTotal.add(itemTax);
 
             int discountPercentage = 0;
             if (mrp.compareTo(BigDecimal.ZERO) > 0 && mrp.compareTo(price) > 0) {
@@ -197,7 +194,7 @@ public class OrderService {
             shipping = BigDecimal.valueOf(extraShippingCharge);
         }
 
-        BigDecimal grandTotal = subtotal.add(taxTotal).add(shipping);
+        BigDecimal grandTotal = subtotal.add(shipping);
         LocalDate expectedDelivery = LocalDate.now().plusDays(maxDeliveryDays);
 
         CheckoutResponseDto.AddressDto addressDto = CheckoutResponseDto.AddressDto.builder()
@@ -205,7 +202,7 @@ public class OrderService {
                 .addressLine1(address.getAddressLine1()).addressLine2(address.getAddressLine2()).city(address.getCity())
                 .state(address.getState()).postalCode(address.getPostalCode()).country(address.getCountry()).build();
 
-        return CheckoutResponseDto.builder().subtotal(subtotal).taxAmount(taxTotal).shippingCharges(shipping)
+        return CheckoutResponseDto.builder().subtotal(subtotal).taxAmount(BigDecimal.ZERO).shippingCharges(shipping)
                 .discountAmount(BigDecimal.ZERO).totalAmount(grandTotal).items(itemDtos)
                 .totalItems(cart.getTotalQuantity()).deliveryAddress(addressDto).deliveryDays(maxDeliveryDays)
                 .expectedDelivery(expectedDelivery).isDeliveryAvailable(true).paymentMethod(request.getPaymentMethod())
@@ -256,9 +253,8 @@ public class OrderService {
             BigDecimal mrp = variant.getMrp() != null ? variant.getMrp() : price;
             BigDecimal itemSubtotal = price.multiply(BigDecimal.valueOf(quantity));
 
-            BigDecimal gstPercent = BigDecimal.valueOf(5);
-            BigDecimal taxAmount = itemSubtotal.multiply(gstPercent).divide(BigDecimal.valueOf(100), 2,
-                    RoundingMode.HALF_UP);
+            // Tax is included in price — no separate tax
+            BigDecimal taxAmount = BigDecimal.ZERO;
 
             BigDecimal shipping;
             if (itemSubtotal.compareTo(BigDecimal.valueOf(999)) > 0) {
@@ -269,7 +265,7 @@ public class OrderService {
 
             BigDecimal discountAmount = BigDecimal.ZERO;
 
-            BigDecimal grandTotal = itemSubtotal.add(taxAmount).add(shipping).subtract(discountAmount);
+            BigDecimal grandTotal = itemSubtotal.add(shipping).subtract(discountAmount);
 
             Integer deliveryDays = product.getDeliveryDays();
             if (deliveryDays == null) {
@@ -541,15 +537,8 @@ try {
                 .orElseThrow(() -> new BadRequestException("Price not configured"));
 
         BigDecimal itemSubtotal = price.multiply(BigDecimal.valueOf(quantity));
-        BigDecimal gstPercent = BigDecimal.valueOf(
-                Optional.ofNullable(product.getTaxPercent()).orElse(5.0)
-        );
-
-        BigDecimal itemTax = itemSubtotal.multiply(gstPercent)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-
+        // Tax is included in price — no separate tax line
         subtotal = subtotal.add(itemSubtotal);
-        taxTotal = taxTotal.add(itemTax);
 
      OrderItem orderItem =   orderItemRepository.save(OrderItem.builder()
                 .order(order)
@@ -571,9 +560,10 @@ try {
         shipping = BigDecimal.ZERO;
     }
 
-    BigDecimal total = subtotal.add(taxTotal).add(shipping);
+    // Tax included in price — total = subtotal + shipping
+    BigDecimal total = subtotal.add(shipping);
 
-    order.setTaxAmount(taxTotal.doubleValue());
+    order.setTaxAmount(0.0);
     order.setShippingCharges(shipping.doubleValue());
     order.setTotalAmount(total.doubleValue());
 
@@ -970,13 +960,13 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
                         .intValue();
             }
 
-            BigDecimal tax = subtotal.multiply(BigDecimal.valueOf(5))
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            // Tax is included in price — no separate tax
+            BigDecimal tax = BigDecimal.ZERO;
 
             BigDecimal shipping = subtotal.compareTo(BigDecimal.valueOf(999)) > 0 ? BigDecimal.ZERO
                     : BigDecimal.valueOf(50);
 
-            BigDecimal total = subtotal.add(tax).add(shipping);
+            BigDecimal total = subtotal.add(shipping);
 
             Integer deliveryDays = product.getDeliveryDays();
             if (deliveryDays == null)
@@ -1105,12 +1095,12 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
          
             BigDecimal price = variant.getSellingPrice();
             BigDecimal subtotal = price.multiply(BigDecimal.valueOf(quantity));
-            BigDecimal tax = subtotal.multiply(BigDecimal.valueOf(5))
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            // Tax is included in price — no separate tax
+            BigDecimal tax = BigDecimal.ZERO;
             BigDecimal shipping = subtotal.compareTo(BigDecimal.valueOf(999)) > 0 ? BigDecimal.ZERO
                     : BigDecimal.valueOf(50);
 
-            BigDecimal total = subtotal.add(tax).add(shipping);
+            BigDecimal total = subtotal.add(shipping);
 
             Order order = Order.builder()
                     .user(user)
