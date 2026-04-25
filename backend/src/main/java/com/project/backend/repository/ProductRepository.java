@@ -193,10 +193,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 			LEFT JOIN FETCH p.images
 			WHERE (:categoryId IS NULL OR p.category.id = :categoryId)
 			AND (:status IS NULL OR p.status = :status)
+			AND p.isDeleted = false
 			""", countQuery = """
 			SELECT COUNT(DISTINCT p) FROM Product p
 			WHERE (:categoryId IS NULL OR p.category.id = :categoryId)
 			AND (:status IS NULL OR p.status = :status)
+			AND p.isDeleted = false
 			""")
 	Page<Product> findProductsByFilters(@Param("categoryId") Long categoryId, @Param("status") String status,
 			Pageable pageable);
