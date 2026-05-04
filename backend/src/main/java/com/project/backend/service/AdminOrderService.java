@@ -26,6 +26,7 @@ import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.OrderStatus;
+import com.project.backend.entity.PaymentStatus;
 import com.project.backend.entity.WarehouseInventory;
 import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
@@ -249,8 +250,14 @@ public void cancelOrder(Long orderId) {
     
     order.setStatus(OrderStatus.CANCELLED);
     orderRepository.save(order);
-    
+
     log.info("Order {} cancelled successfully", orderId);
+
+    try {
+        emailService.sendOrderCancellationEmail(order.getUser(), order);
+    } catch (Exception e) {
+        log.warn("Failed to send cancellation email for orderId={}: {}", orderId, e.getMessage());
+    }
 }
 
 	private void validateCancellation(Order order) {
@@ -295,6 +302,15 @@ public void cancelOrder(Long orderId) {
 		// Admin is allowed to jump directly to any non-terminal status
 		// (e.g. PENDING → DELIVERED for COD orders marked delivered on spot)
 		// No further restrictions — admin has full control
+	}
+
+	@Transactional
+	public OrderResponseDto updatePaymentStatus(Long orderId, PaymentStatus newStatus) {
+		if (orderId == null) throw new BadRequestException("Order ID cannot be null");
+		if (newStatus == null) throw new BadRequestException("Payment status cannot be null");
+		Order order = getOrder(orderId);
+		order.setPaymentStatus(newStatus);
+		return OrderMapper.toDto(orderRepository.save(order));
 	}
 
 	public PageResponseDto<AdminUserOrderResponseDto> getOrdersOfUser(Long userId, int page, int size) {

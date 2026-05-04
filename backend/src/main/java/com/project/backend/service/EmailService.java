@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
+import com.project.backend.entity.Return;
 import com.project.backend.entity.User;
 
 import lombok.extern.slf4j.Slf4j;
@@ -116,6 +117,52 @@ public class EmailService {
     }
 
     // ─────────────────────────────────────────────
+    //  ORDER CANCELLATION
+    // ─────────────────────────────────────────────
+
+    @Async
+    public void sendOrderCancellationEmail(User user, Order order) {
+
+        String to = user.getEmail();
+        if (to == null || to.isBlank()) {
+            log.info("Skipping cancellation email — user {} has no email", user.getId());
+            return;
+        }
+
+        if (apiKey.isEmpty() || fromEmail.isEmpty()) {
+            log.warn("SendGrid not configured, skipping cancellation email to {}", to);
+            return;
+        }
+
+        try {
+            Email from      = new Email(fromEmail, "Rich & Retired");
+            Email recipient = new Email(to);
+
+            String subject = "Order #" + order.getId() + " Cancelled — Rich & Retired";
+            String body    = buildCancellationHtml(user, order);
+
+            Mail mail = new Mail(from, subject, recipient, new Content("text/html", body));
+
+            SendGrid sg = new SendGrid(apiKey);
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            Response response = sg.api(request);
+
+            if (response.getStatusCode() == 202) {
+                log.info("Cancellation email sent to {} for orderId={}", to, order.getId());
+            } else {
+                log.error("SendGrid cancellation failed: status={}, body={}", response.getStatusCode(), response.getBody());
+            }
+
+        } catch (Exception e) {
+            log.error("SendGrid cancellation exception for orderId={}: {}", order.getId(), e.getMessage(), e);
+        }
+    }
+
+    // ─────────────────────────────────────────────
     //  ORDER STATUS UPDATE
     // ─────────────────────────────────────────────
 
@@ -159,6 +206,120 @@ public class EmailService {
 
         } catch (Exception e) {
             log.error("SendGrid status update exception for orderId={}: {}", order.getId(), e.getMessage(), e);
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  RETURN REQUEST RECEIVED
+    // ─────────────────────────────────────────────
+
+    @Async
+    public void sendReturnRequestEmail(User user, Return returnRecord) {
+
+        String to = user.getEmail();
+        if (to == null || to.isBlank()) return;
+        if (apiKey.isEmpty() || fromEmail.isEmpty()) {
+            log.warn("SendGrid not configured, skipping return request email to {}", to);
+            return;
+        }
+
+        try {
+            Email from      = new Email(fromEmail, "Rich & Retired");
+            Email recipient = new Email(to);
+            String subject  = "Return Request Received #" + returnRecord.getId() + " — Rich & Retired";
+            String body     = buildReturnRequestHtml(user, returnRecord);
+
+            Mail mail = new Mail(from, subject, recipient, new Content("text/html", body));
+            SendGrid sg = new SendGrid(apiKey);
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+
+            if (response.getStatusCode() == 202) {
+                log.info("Return request email sent to {} for returnId={}", to, returnRecord.getId());
+            } else {
+                log.error("SendGrid return request failed: status={}", response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("Return request email exception for returnId={}: {}", returnRecord.getId(), e.getMessage(), e);
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  RETURN APPROVED
+    // ─────────────────────────────────────────────
+
+    @Async
+    public void sendReturnApprovedEmail(User user, Return returnRecord) {
+
+        String to = user.getEmail();
+        if (to == null || to.isBlank()) return;
+        if (apiKey.isEmpty() || fromEmail.isEmpty()) {
+            log.warn("SendGrid not configured, skipping return approved email to {}", to);
+            return;
+        }
+
+        try {
+            Email from      = new Email(fromEmail, "Rich & Retired");
+            Email recipient = new Email(to);
+            String subject  = "Return Approved — Pickup Scheduled #" + returnRecord.getId() + " — Rich & Retired";
+            String body     = buildReturnApprovedHtml(user, returnRecord);
+
+            Mail mail = new Mail(from, subject, recipient, new Content("text/html", body));
+            SendGrid sg = new SendGrid(apiKey);
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+
+            if (response.getStatusCode() == 202) {
+                log.info("Return approved email sent to {} for returnId={}", to, returnRecord.getId());
+            } else {
+                log.error("SendGrid return approved failed: status={}", response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("Return approved email exception for returnId={}: {}", returnRecord.getId(), e.getMessage(), e);
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  RETURN REJECTED
+    // ─────────────────────────────────────────────
+
+    @Async
+    public void sendReturnRejectedEmail(User user, Return returnRecord, String rejectionReason) {
+
+        String to = user.getEmail();
+        if (to == null || to.isBlank()) return;
+        if (apiKey.isEmpty() || fromEmail.isEmpty()) {
+            log.warn("SendGrid not configured, skipping return rejected email to {}", to);
+            return;
+        }
+
+        try {
+            Email from      = new Email(fromEmail, "Rich & Retired");
+            Email recipient = new Email(to);
+            String subject  = "Return Request Update #" + returnRecord.getId() + " — Rich & Retired";
+            String body     = buildReturnRejectedHtml(user, returnRecord, rejectionReason);
+
+            Mail mail = new Mail(from, subject, recipient, new Content("text/html", body));
+            SendGrid sg = new SendGrid(apiKey);
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+
+            if (response.getStatusCode() == 202) {
+                log.info("Return rejected email sent to {} for returnId={}", to, returnRecord.getId());
+            } else {
+                log.error("SendGrid return rejected failed: status={}", response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("Return rejected email exception for returnId={}: {}", returnRecord.getId(), e.getMessage(), e);
         }
     }
 
@@ -327,6 +488,96 @@ public class EmailService {
                         address);
     }
 
+    private String buildCancellationHtml(User user, Order order) {
+
+        String name = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : "Valued Customer";
+        boolean refundPending = order.getPaymentStatus() != null &&
+                order.getPaymentStatus().name().equalsIgnoreCase("REFUND_PENDING");
+
+        String refundSection = refundPending ? """
+                    <div style="margin-top:20px;padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
+                      <p style="margin:0;font-size:14px;color:#dc2626;font-weight:600;">💳 Refund Processing</p>
+                      <p style="margin:6px 0 0;font-size:13px;color:#555;">
+                        Your refund of <strong>₹%.2f</strong> is being processed and will be credited to your original payment method within 5–7 business days.
+                      </p>
+                    </div>
+                    """.formatted(order.getTotalAmount()) : "";
+
+        return """
+                <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:580px;margin:auto;background:#fff;">
+
+                  <!-- Header -->
+                  <div style="background:#0a0a0a;padding:28px 32px;">
+                    <h1 style="color:#fff;font-size:22px;letter-spacing:3px;text-transform:uppercase;font-weight:300;margin:0;">
+                      Rich &amp; Retired
+                    </h1>
+                    <p style="color:#aaa;font-size:12px;margin:6px 0 0;">Order Cancellation</p>
+                  </div>
+
+                  <!-- Body -->
+                  <div style="padding:32px;">
+                    <p style="font-size:16px;color:#333;">Hi <strong>%s</strong>,</p>
+                    <p style="font-size:15px;color:#555;margin-bottom:24px;">
+                      Your order <strong>#%d</strong> worth <strong>₹%.2f</strong> has been successfully cancelled.
+                    </p>
+
+                    <!-- Status Badge -->
+                    <div style="text-align:center;padding:24px;background:#fef2f2;border-radius:12px;margin-bottom:24px;">
+                      <div style="font-size:40px;margin-bottom:8px;">❌</div>
+                      <div style="display:inline-block;padding:8px 24px;border-radius:20px;background:#dc2626;color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">
+                        ORDER CANCELLED
+                      </div>
+                    </div>
+
+                    <!-- Order Details -->
+                    <table style="width:100%%;background:#f9f9f9;border-radius:8px;margin-bottom:20px;">
+                      <tr>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Order ID</span>
+                          <span style="font-size:16px;font-weight:700;color:#0a0a0a;">#%d</span>
+                        </td>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Order Total</span>
+                          <span style="font-size:16px;font-weight:700;color:#0a0a0a;">₹%.2f</span>
+                        </td>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Status</span>
+                          <span style="font-size:14px;font-weight:600;color:#dc2626;">Cancelled</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    %s
+
+                    <!-- Shop Again CTA -->
+                    <div style="text-align:center;margin-top:28px;padding:24px;border:1px dashed #e5e7eb;border-radius:8px;">
+                      <p style="color:#555;font-size:14px;margin:0 0 14px;">Looking for something else? Explore our latest collection.</p>
+                      <a href="https://richnretired.com/shop"
+                         style="display:inline-block;padding:12px 32px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13px;letter-spacing:2px;text-transform:uppercase;border-radius:6px;">
+                        Shop Now
+                      </a>
+                    </div>
+
+                    <p style="margin-top:24px;font-size:13px;color:#888;">
+                      Need help? Contact us at
+                      <a href="mailto:support@richnretired.com" style="color:#0a0a0a;">support@richnretired.com</a>
+                    </p>
+                  </div>
+
+                  <!-- Footer -->
+                  <div style="background:#f5f5f5;padding:20px 32px;text-align:center;">
+                    <p style="color:#888;font-size:12px;margin:0;">
+                      <a href="https://richnretired.com" style="color:#0a0a0a;">richnretired.com</a>
+                    </p>
+                    <p style="color:#ccc;font-size:11px;margin:8px 0 0;">&copy; 2025 Rich and Retired. All rights reserved.</p>
+                  </div>
+                </div>
+                """.formatted(
+                        name, order.getId(), order.getTotalAmount(),
+                        order.getId(), order.getTotalAmount(),
+                        refundSection);
+    }
+
     private String buildStatusUpdateHtml(User user, Order order, String statusLabel) {
 
         String name = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : "Valued Customer";
@@ -439,6 +690,137 @@ public class EmailService {
             case "RETURN_REQUESTED" -> "Your return request has been received. We'll get back to you shortly.";
             default           -> "Your order status has been updated.";
         };
+    }
+
+    private String buildReturnRequestHtml(User user, Return returnRecord) {
+        String name = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : "Valued Customer";
+        String amount = returnRecord.getTotalRefundAmount() != null
+                ? "₹" + String.format("%.2f", returnRecord.getTotalRefundAmount())
+                : "—";
+        return """
+                <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:auto;background:#fff;">
+                  <div style="background:#0a0a0a;padding:28px 32px;">
+                    <h1 style="color:#fff;font-size:22px;letter-spacing:3px;text-transform:uppercase;font-weight:300;margin:0;">Rich &amp; Retired</h1>
+                    <p style="color:#aaa;font-size:12px;margin:6px 0 0;">Return Request Received</p>
+                  </div>
+                  <div style="padding:32px;">
+                    <p style="font-size:16px;color:#333;">Hi <strong>%s</strong>,</p>
+                    <p style="font-size:15px;color:#555;">We've received your return request and it is currently under review.</p>
+                    <div style="text-align:center;padding:24px;background:#fefce8;border-radius:12px;margin:24px 0;">
+                      <div style="font-size:40px;margin-bottom:8px;">📦</div>
+                      <div style="display:inline-block;padding:8px 24px;border-radius:20px;background:#ca8a04;color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">PENDING REVIEW</div>
+                    </div>
+                    <table style="width:100%%;background:#f9f9f9;border-radius:8px;margin-bottom:24px;">
+                      <tr>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Return ID</span>
+                          <span style="font-size:16px;font-weight:700;color:#0a0a0a;">#%d</span>
+                        </td>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Order ID</span>
+                          <span style="font-size:16px;font-weight:700;color:#0a0a0a;">#%d</span>
+                        </td>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Refund Amount</span>
+                          <span style="font-size:16px;font-weight:700;color:#0a0a0a;">%s</span>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="font-size:14px;color:#555;">Our team will review your request within 1–2 business days. Once approved, we'll schedule a pickup from your delivery address.</p>
+                    <p style="margin-top:24px;font-size:13px;color:#888;">Need help? Contact us at <a href="mailto:support@richnretired.com" style="color:#0a0a0a;">support@richnretired.com</a></p>
+                  </div>
+                  <div style="background:#f5f5f5;padding:20px 32px;text-align:center;">
+                    <p style="color:#ccc;font-size:11px;margin:0;">&copy; 2025 Rich and Retired. All rights reserved.</p>
+                  </div>
+                </div>
+                """.formatted(name, returnRecord.getId(), returnRecord.getOrder().getId(), amount);
+    }
+
+    private String buildReturnApprovedHtml(User user, Return returnRecord) {
+        String name = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : "Valued Customer";
+        String amount = returnRecord.getTotalRefundAmount() != null
+                ? "₹" + String.format("%.2f", returnRecord.getTotalRefundAmount())
+                : "—";
+        String tracking = returnRecord.getTrackingId() != null ? returnRecord.getTrackingId() : "Will be shared soon";
+        return """
+                <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:auto;background:#fff;">
+                  <div style="background:#0a0a0a;padding:28px 32px;">
+                    <h1 style="color:#fff;font-size:22px;letter-spacing:3px;text-transform:uppercase;font-weight:300;margin:0;">Rich &amp; Retired</h1>
+                    <p style="color:#aaa;font-size:12px;margin:6px 0 0;">Return Approved</p>
+                  </div>
+                  <div style="padding:32px;">
+                    <p style="font-size:16px;color:#333;">Hi <strong>%s</strong>,</p>
+                    <p style="font-size:15px;color:#555;">Great news! Your return request has been <strong>approved</strong> and pickup has been scheduled. 🎉</p>
+                    <div style="text-align:center;padding:24px;background:#f0fdf4;border-radius:12px;margin:24px 0;">
+                      <div style="font-size:40px;margin-bottom:8px;">✅</div>
+                      <div style="display:inline-block;padding:8px 24px;border-radius:20px;background:#16a34a;color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">PICKUP SCHEDULED</div>
+                    </div>
+                    <table style="width:100%%;background:#f9f9f9;border-radius:8px;margin-bottom:24px;">
+                      <tr>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Return ID</span>
+                          <span style="font-size:16px;font-weight:700;color:#0a0a0a;">#%d</span>
+                        </td>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Tracking ID</span>
+                          <span style="font-size:14px;font-weight:600;color:#0a0a0a;">%s</span>
+                        </td>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Refund</span>
+                          <span style="font-size:16px;font-weight:700;color:#16a34a;">%s</span>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="font-size:14px;color:#555;">Please keep the items ready for pickup. Once we receive and verify the items, your refund of <strong>%s</strong> will be processed within 5–7 business days.</p>
+                    <p style="margin-top:24px;font-size:13px;color:#888;">Need help? Contact us at <a href="mailto:support@richnretired.com" style="color:#0a0a0a;">support@richnretired.com</a></p>
+                  </div>
+                  <div style="background:#f5f5f5;padding:20px 32px;text-align:center;">
+                    <p style="color:#ccc;font-size:11px;margin:0;">&copy; 2025 Rich and Retired. All rights reserved.</p>
+                  </div>
+                </div>
+                """.formatted(name, returnRecord.getId(), tracking, amount, amount);
+    }
+
+    private String buildReturnRejectedHtml(User user, Return returnRecord, String rejectionReason) {
+        String name = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : "Valued Customer";
+        String reason = (rejectionReason != null && !rejectionReason.isBlank()) ? rejectionReason : "Does not meet return policy criteria";
+        return """
+                <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:auto;background:#fff;">
+                  <div style="background:#0a0a0a;padding:28px 32px;">
+                    <h1 style="color:#fff;font-size:22px;letter-spacing:3px;text-transform:uppercase;font-weight:300;margin:0;">Rich &amp; Retired</h1>
+                    <p style="color:#aaa;font-size:12px;margin:6px 0 0;">Return Request Update</p>
+                  </div>
+                  <div style="padding:32px;">
+                    <p style="font-size:16px;color:#333;">Hi <strong>%s</strong>,</p>
+                    <p style="font-size:15px;color:#555;">We've reviewed your return request and unfortunately we're unable to process it at this time.</p>
+                    <div style="text-align:center;padding:24px;background:#fef2f2;border-radius:12px;margin:24px 0;">
+                      <div style="font-size:40px;margin-bottom:8px;">❌</div>
+                      <div style="display:inline-block;padding:8px 24px;border-radius:20px;background:#dc2626;color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">RETURN REJECTED</div>
+                    </div>
+                    <table style="width:100%%;background:#f9f9f9;border-radius:8px;margin-bottom:24px;">
+                      <tr>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Return ID</span>
+                          <span style="font-size:16px;font-weight:700;color:#0a0a0a;">#%d</span>
+                        </td>
+                        <td style="padding:14px 16px;">
+                          <span style="font-size:11px;color:#888;display:block;text-transform:uppercase;letter-spacing:1px;">Order ID</span>
+                          <span style="font-size:16px;font-weight:700;color:#0a0a0a;">#%d</span>
+                        </td>
+                      </tr>
+                    </table>
+                    <div style="padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:24px;">
+                      <p style="margin:0;font-size:13px;font-weight:600;color:#dc2626;">Reason for rejection:</p>
+                      <p style="margin:6px 0 0;font-size:14px;color:#555;">%s</p>
+                    </div>
+                    <p style="font-size:14px;color:#555;">If you believe this is an error or have further questions, please contact our support team. We're happy to help.</p>
+                    <p style="margin-top:24px;font-size:13px;color:#888;">Need help? Contact us at <a href="mailto:support@richnretired.com" style="color:#0a0a0a;">support@richnretired.com</a></p>
+                  </div>
+                  <div style="background:#f5f5f5;padding:20px 32px;text-align:center;">
+                    <p style="color:#ccc;font-size:11px;margin:0;">&copy; 2025 Rich and Retired. All rights reserved.</p>
+                  </div>
+                </div>
+                """.formatted(name, returnRecord.getId(), returnRecord.getOrder().getId(), reason);
     }
 
     private void sendEmail(String to, String subject, String htmlBody) throws Exception {

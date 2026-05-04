@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.project.backend.ResponseDto.AdminUserOrderResponseDto;
 import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.entity.OrderStatus;
+import com.project.backend.entity.PaymentStatus;
 import com.project.backend.requestDto.PageResponseDto;
 import com.project.backend.requestDto.UpdateOrderStatusDto;
 import com.project.backend.service.AdminOrderService;
@@ -73,6 +74,15 @@ public class AdminOrderController {
 	public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
 		adminOrderService.cancelOrder(orderId);
 		return ResponseEntity.ok().build();
+	}
+
+	@Operation(summary = "Update order payment status", security = @SecurityRequirement(name = "Bearer Authentication"))
+	@PutMapping("/{orderId}/payment-status")
+	public ResponseEntity<OrderResponseDto> updatePaymentStatus(
+			@PathVariable Long orderId,
+			@RequestBody java.util.Map<String, String> body) {
+		PaymentStatus status = PaymentStatus.valueOf(body.get("paymentStatus"));
+		return ResponseEntity.ok(adminOrderService.updatePaymentStatus(orderId, status));
 	}
 
 	@GetMapping("/user/{userId}/orders")

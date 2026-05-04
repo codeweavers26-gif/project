@@ -37,6 +37,7 @@ public class RazorpayService {
     private final @org.springframework.lang.Nullable RazorpayClient razorpayClient;
     private final OrderRepository orderRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final EmailService emailService;
     
     @Value("${razorpay.key.id:}")
     private String razorpayKeyId;
@@ -185,7 +186,14 @@ public class RazorpayService {
                 orderRepository.save(order);
                 
                 log.info("Payment verified successfully for order: {}", order.getId());
-                
+
+                // Notify customer that payment is confirmed and order is placed
+                try {
+                    emailService.sendOrderStatusUpdate(order.getUser(), order);
+                } catch (Exception ex) {
+                    log.warn("Failed to send payment confirmation email for orderId={}: {}", order.getId(), ex.getMessage());
+                }
+
                 return PaymentResponse.builder()
                     .success(true)
                     .message("Payment successful")

@@ -78,6 +78,7 @@ public class AdminReturnService {
 	private final RefundRepository refundRepository;
 	private final ShiprocketService shiprocketService;
 	private final RazorpayService razorpayService;
+	private final EmailService emailService;
 
 	private final PaymentTransactionRepository paymentTransactionRepository;
 
@@ -599,10 +600,16 @@ public ReturnDto rejectReturn(Long returnId, RejectReturnRequest request, User u
         returnRecord.setStatus("REJECTED");
         returnRecord.setRejectedAt(LocalDateTime.now());
         returnRecord.setRejectionReason(request.getRejectionReason());
-        returnRecord.setUpdatedAt(LocalDateTime.now()); 
+        returnRecord.setUpdatedAt(LocalDateTime.now());
 
         returnRecord = returnRepository.save(returnRecord);
-        
+
+        try {
+            emailService.sendReturnRejectedEmail(returnRecord.getUser(), returnRecord, request.getRejectionReason());
+        } catch (Exception e) {
+            log.warn("Failed to send return rejected email for returnId={}: {}", returnRecord.getId(), e.getMessage());
+        }
+
         return convertToDto(returnRecord);
         
     } catch (NotFoundException | IllegalStateException e) {
@@ -833,9 +840,15 @@ public Return requestReturn(User user, Long orderId, ReturnRequestDto request) {
     ret.setItems(returnItems);
 
     Return savedReturn = returnRepository.save(ret);
-    
+
     log.info("Return request created for order {} with {} items", orderId, returnItems.size());
-    
+
+    try {
+        emailService.sendReturnRequestEmail(user, savedReturn);
+    } catch (Exception e) {
+        log.warn("Failed to send return request email for returnId={}: {}", savedReturn.getId(), e.getMessage());
+    }
+
     return savedReturn;
 }
 
@@ -866,9 +879,15 @@ public ReturnDto  approveReturn(Long returnId) {
     ret.setStatus("PICKUP_SCHEDULED");
     ret.setUpdatedAt(LocalDateTime.now());
 
-   Return updatedReturn =  returnRepository.save(ret);
+    Return updatedReturn = returnRepository.save(ret);
 
-	   return convertToDto(updatedReturn);
+    try {
+        emailService.sendReturnApprovedEmail(updatedReturn.getUser(), updatedReturn);
+    } catch (Exception e) {
+        log.warn("Failed to send return approved email for returnId={}: {}", updatedReturn.getId(), e.getMessage());
+    }
+
+    return convertToDto(updatedReturn);
 }
 
 public ReturnResponseDto getReturn(Long orderId) {
