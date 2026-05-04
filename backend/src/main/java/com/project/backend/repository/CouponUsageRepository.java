@@ -16,9 +16,41 @@ import java.util.Optional;
 @Repository
 public interface CouponUsageRepository extends JpaRepository<CouponUsage, Long> {
 Page<CouponUsage> findByCouponId(Long couponId, Pageable pageable);
-    Long countByCouponIdAndUserId(Long couponId, Long userId);
 
+    // Raw count (all statuses) — used for stats/display only
+    Long countByCouponIdAndUserId(Long couponId, Long userId);
     Long countByCouponId(Long couponId);
+
+    /**
+     * Count usages only for CONFIRMED orders.
+     * Pending-payment / abandoned / cancelled orders must NOT count against the coupon limit
+     * — the coupon is only considered "used" when the order is actually placed/paid.
+     */
+    @Query("SELECT COUNT(u) FROM CouponUsage u " +
+           "WHERE u.coupon.id = :couponId AND u.user.id = :userId " +
+           "AND u.order.status IN " +
+           "  (com.project.backend.entity.OrderStatus.PLACED, " +
+           "   com.project.backend.entity.OrderStatus.PAID, " +
+           "   com.project.backend.entity.OrderStatus.PREPAID, " +
+           "   com.project.backend.entity.OrderStatus.SHIPPED, " +
+           "   com.project.backend.entity.OrderStatus.DELIVERED, " +
+           "   com.project.backend.entity.OrderStatus.PARTIALLY_CANCELLED)")
+    Long countConfirmedByCouponIdAndUserId(@Param("couponId") Long couponId,
+                                           @Param("userId") Long userId);
+
+    /**
+     * Count total confirmed usages for a coupon (for global usage-limit check).
+     */
+    @Query("SELECT COUNT(u) FROM CouponUsage u " +
+           "WHERE u.coupon.id = :couponId " +
+           "AND u.order.status IN " +
+           "  (com.project.backend.entity.OrderStatus.PLACED, " +
+           "   com.project.backend.entity.OrderStatus.PAID, " +
+           "   com.project.backend.entity.OrderStatus.PREPAID, " +
+           "   com.project.backend.entity.OrderStatus.SHIPPED, " +
+           "   com.project.backend.entity.OrderStatus.DELIVERED, " +
+           "   com.project.backend.entity.OrderStatus.PARTIALLY_CANCELLED)")
+    Long countConfirmedByCouponId(@Param("couponId") Long couponId);
 
     boolean existsByCouponIdAndUserIdAndOrderId(Long couponId, Long userId, Long orderId);
 

@@ -419,9 +419,13 @@ private void validateDates(LocalDateTime from, LocalDateTime to) {
             throw new BadRequestException("Coupon has expired. Expired on: " + coupon.getValidTo());
         }
 
-        if (coupon.getUsageLimit() != null && 
-            coupon.getTotalUsedCount() >= coupon.getUsageLimit()) {
-            throw new BadRequestException("Coupon usage limit reached");
+        // Only count CONFIRMED orders (PLACED/PAID/SHIPPED/DELIVERED) against the global usage limit.
+        // Pending-payment and cancelled orders must NOT consume coupon quota.
+        if (coupon.getUsageLimit() != null) {
+            Long confirmedUsages = usageRepository.countConfirmedByCouponId(coupon.getId());
+            if (confirmedUsages >= coupon.getUsageLimit()) {
+                throw new BadRequestException("Coupon usage limit reached");
+            }
         }
 
         if (request.getOrderAmount().compareTo(coupon.getMinOrderAmount()) < 0) {
@@ -429,10 +433,12 @@ private void validateDates(LocalDateTime from, LocalDateTime to) {
                 String.format("Minimum order amount of %.2f required", coupon.getMinOrderAmount()));
         }
     }
-private void validateUserEligibility(Coupon coupon, Long userId, 
+private void validateUserEligibility(Coupon coupon, Long userId,
                                      ApplyCouponRequest request, List<String> warnings) {
-    
-    Long userUsageCount = usageRepository.countByCouponIdAndUserId(coupon.getId(), userId);
+
+    // Only count CONFIRMED orders against the per-user limit.
+    // A coupon is NOT considered used if the order was cancelled, abandoned, or stuck in payment.
+    Long userUsageCount = usageRepository.countConfirmedByCouponIdAndUserId(coupon.getId(), userId);
     if (userUsageCount >= coupon.getUsagePerUser()) {
         throw new BadRequestException(
             String.format("You have already used this coupon %d times", userUsageCount));

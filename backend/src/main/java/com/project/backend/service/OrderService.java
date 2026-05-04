@@ -774,6 +774,13 @@ public void cancelFullOrder(Long orderId, User user) {
     }
 
     log.info("Full order cancelled {}", orderId);
+
+    // Send cancellation email asynchronously
+    try {
+        emailService.sendOrderCancellationEmail(user, order);
+    } catch (Exception e) {
+        log.warn("Failed to send cancellation email for orderId={}: {}", orderId, e.getMessage());
+    }
 }
 @Transactional
 public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
@@ -831,6 +838,13 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
         order.setStatus(OrderStatus.CANCELLED);
     } else {
         order.setStatus(OrderStatus.PARTIALLY_CANCELLED);
+    }
+
+    // Send cancellation/partial-cancellation email asynchronously
+    try {
+        emailService.sendOrderCancellationEmail(user, order);
+    } catch (Exception e) {
+        log.warn("Failed to send cancellation email for orderId={}: {}", orderId, e.getMessage());
     }
 }
     @Transactional(readOnly = true)
