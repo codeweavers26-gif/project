@@ -13,6 +13,7 @@ import com.project.backend.exception.NotFoundException;
 import com.project.backend.repository.CategoryRepository;
 import com.project.backend.repository.SectionRepository;
 import com.project.backend.requestDto.CategoryRequest;
+import com.project.backend.requestDto.SectionRequestDto;
 import com.project.backend.requestDto.UpdateCategoryRequest;
 
 import jakarta.transaction.Transactional;
@@ -30,6 +31,15 @@ public class CatalogService {
 
     public List<Section> getActiveSections() {
         return sectionRepo.findByIsActiveTrue();
+    }
+
+    public Section createSection(SectionRequestDto dto) {
+        Section section = Section.builder()
+                .name(dto.getName().trim())
+                .imageUrl(dto.getImageUrl())
+                .isActive(true)
+                .build();
+        return sectionRepo.save(section);
     }
 
     public List<CategoryResponseDto> getCategoriesBySection(Long sectionId) {

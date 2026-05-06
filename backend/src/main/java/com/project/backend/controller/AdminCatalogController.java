@@ -53,6 +53,12 @@ public class AdminCatalogController {
         return ResponseEntity.ok(catalogService.getActiveSections());
     }
 
+    @Operation(summary = "Create a new section", security = @SecurityRequirement(name = "Bearer Authentication"))
+    @PostMapping("/sections")
+    public ResponseEntity<Section> createSection(@RequestBody SectionRequestDto dto) {
+        return ResponseEntity.ok(catalogService.createSection(dto));
+    }
+
     @Operation(summary = "Get categories by section", security = @SecurityRequirement(name = "Bearer Authentication"))
     @GetMapping("/categories")
     public ResponseEntity<List<CategoryResponseDto>> getCategories(@RequestParam Long sectionId) {
