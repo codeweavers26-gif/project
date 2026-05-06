@@ -313,6 +313,7 @@ public void cancelOrder(Long orderId) {
 		return OrderMapper.toDto(orderRepository.save(order));
 	}
 
+	@Transactional(readOnly = true)
 	public PageResponseDto<AdminUserOrderResponseDto> getOrdersOfUser(Long userId, int page, int size) {
 	
 			Page<Order> orders = orderRepository.findByUserId(userId,
