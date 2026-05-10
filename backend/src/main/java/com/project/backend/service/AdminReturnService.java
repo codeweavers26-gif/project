@@ -82,6 +82,7 @@ public class AdminReturnService {
 
 	private final PaymentTransactionRepository paymentTransactionRepository;
 
+@Transactional(readOnly = true)
 public PageResponseDto<ReturnDto> getUserReturns(User user, ReturnStatus status, int page, int size) {
 
     Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -181,6 +182,7 @@ private ReturnDetailDto convertToReturnDetailDto(Return returnRecord) {
 		return dto;
 	}
 
+	@Transactional(readOnly = true)
 	public ReturnDto getReturn(Long userId, Long returnId) {
 		try {
 			Return returnRecord = returnRepository.findById(returnId)
@@ -513,13 +515,12 @@ public void retryReturn(Long returnId) {
 	// 			.build();
 	// 	timelineRepository.save(timeline);
 	// }
+@Transactional(readOnly = true)
 public PageResponseDto<ReturnDto> getAllReturns(ReturnStatus status, String search, Long productId,
         LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
-    try { 
-		  String statusString = status != null ? status.name() : null;
-        
+    try {
+        String statusString = status != null ? status.name() : null;
         Page<Return> returns = returnRepository.findByFilters(statusString, search, productId, fromDate, toDate, pageable);
-        
         return PageResponseDto.<ReturnDto>builder()
                 .content(returns.getContent().stream().map(this::convertToDto).collect(Collectors.toList()))
                 .page(returns.getNumber())
@@ -534,6 +535,7 @@ public PageResponseDto<ReturnDto> getAllReturns(ReturnStatus status, String sear
 }
 	
 
+	@Transactional(readOnly = true)
 	public ReturnDetailDto getReturnById(Long returnId) {
 		try {
 			Return returnRecord = returnRepository.findById(returnId)
@@ -546,6 +548,7 @@ public PageResponseDto<ReturnDto> getAllReturns(ReturnStatus status, String sear
 		}
 	}
 
+	@Transactional(readOnly = true)
 	public ReturnDto getReturnByOrderItem(Long orderItemId) {
 		try {
 			Return returnRecord = returnRepository.findByOrderItemId(orderItemId)
@@ -558,6 +561,7 @@ public PageResponseDto<ReturnDto> getAllReturns(ReturnStatus status, String sear
 		}
 	}
 
+@Transactional(readOnly = true)
 public List<ReturnDto> getPendingReturns() {
     try {
         List<Return> returns = returnRepository.findByStatus("PENDING_APPROVAL");
@@ -893,6 +897,7 @@ public ReturnDto  approveReturn(Long returnId) {
     return convertToDto(updatedReturn);
 }
 
+@Transactional(readOnly = true)
 public ReturnResponseDto getReturn(Long orderId) {
 
     Return ret = returnRepository.findByOrderId(orderId)
