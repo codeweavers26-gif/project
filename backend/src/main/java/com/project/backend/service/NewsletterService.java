@@ -1,5 +1,7 @@
 package com.project.backend.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,5 +41,10 @@ public class NewsletterService {
         repository.save(subscriber);
         log.info("New newsletter subscriber: {}", normalised);
         return "Subscribed successfully!";
+    }
+
+    @Transactional(readOnly = true)
+    public List<NewsletterSubscriber> getAll() {
+        return repository.findAll();
     }
 }

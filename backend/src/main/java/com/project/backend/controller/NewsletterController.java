@@ -1,14 +1,17 @@
 package com.project.backend.controller;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.project.backend.ResponseDto.MessageResponse;
+import com.project.backend.entity.NewsletterSubscriber;
 import com.project.backend.service.NewsletterService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,5 +36,11 @@ public class NewsletterController {
         }
         String msg = newsletterService.subscribe(email);
         return ResponseEntity.ok(new MessageResponse(msg));
+    }
+
+    @Operation(summary = "Admin — get all subscribers")
+    @GetMapping("/subscribers")
+    public ResponseEntity<List<NewsletterSubscriber>> getAll() {
+        return ResponseEntity.ok(newsletterService.getAll());
     }
 }
