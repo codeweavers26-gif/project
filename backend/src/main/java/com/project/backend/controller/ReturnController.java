@@ -140,18 +140,14 @@ public class ReturnController {
 
 
  @PostMapping("/{orderId}/return")
- 
     @Operation(summary = "Request product return",
     security = @SecurityRequirement(name = "Bearer Authentication"))
-    public ResponseEntity<?> requestReturn(
+    public ResponseEntity<ReturnDto> requestReturn(
             @PathVariable Long orderId,
             @RequestBody ReturnRequestDto request,
-            Authentication auth) {  
-                User user = getCurrentUser(auth);
-
-        return ResponseEntity.ok(
-                returnService.requestReturn(user, orderId, request)
-        );
+            Authentication auth) {
+        User user = getCurrentUser(auth);
+        return ResponseEntity.ok(returnService.requestReturn(user, orderId, request));
     }
 
    @GetMapping("/{orderId}/return")

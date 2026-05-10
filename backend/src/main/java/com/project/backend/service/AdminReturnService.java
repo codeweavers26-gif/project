@@ -765,7 +765,7 @@ public ReturnDto rejectReturn(Long returnId, RejectReturnRequest request, User u
     return dto;
 }
 @Transactional
-public Return requestReturn(User user, Long orderId, ReturnRequestDto request) {
+public ReturnDto requestReturn(User user, Long orderId, ReturnRequestDto request) {
 
     Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new NotFoundException("Order not found"));
@@ -843,13 +843,16 @@ public Return requestReturn(User user, Long orderId, ReturnRequestDto request) {
 
     log.info("Return request created for order {} with {} items", orderId, returnItems.size());
 
+    // Convert to DTO *inside* the transaction so lazy proxies are still accessible
+    ReturnDto result = convertToDto(savedReturn);
+
     try {
         emailService.sendReturnRequestEmail(user, savedReturn);
     } catch (Exception e) {
         log.warn("Failed to send return request email for returnId={}: {}", savedReturn.getId(), e.getMessage());
     }
 
-    return savedReturn;
+    return result;
 }
 
 @Transactional
