@@ -55,9 +55,12 @@ public class AdminOrderService {
 	private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
 	private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
-	/** Linear progression chain — order matters */
+	/**
+	 * Linear progression chain — order matters.
+	 * PENDING is intentionally excluded: it means "payment pending (COD)",
+	 * not a general order lifecycle step.
+	 */
 	private static final List<OrderStatus> PROGRESSION = List.of(
-		OrderStatus.PENDING,
 		OrderStatus.PLACED,
 		OrderStatus.PAID,
 		OrderStatus.SHIPPED,
