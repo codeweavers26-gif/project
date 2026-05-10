@@ -215,6 +215,8 @@ protected void releaseReservedStock(Order order) {
                                     .orElseThrow(() -> new BadRequestException("Variant missing in inventory"))
                     ));
 
+    List<WarehouseInventory> modified = new ArrayList<>();
+
     for (OrderItem item : items) {
 
         Long variantId = item.getVariantId();
@@ -233,9 +235,9 @@ protected void releaseReservedStock(Order order) {
 
             if (reserved > 0) {
                 int releaseFromThis = Math.min(reserved, remainingToRelease);
-
                 inventory.setReservedQuantity(reserved - releaseFromThis);
                 remainingToRelease -= releaseFromThis;
+                modified.add(inventory);
             }
         }
 
@@ -247,6 +249,12 @@ protected void releaseReservedStock(Order order) {
         }
     }
 
+    // Explicitly save all modified inventories now so they are no longer dirty
+    // in the persistence context. This prevents Hibernate from auto-flushing them
+    // mid-stream during subsequent queries and causing Illegal pop() errors.
+    if (!modified.isEmpty()) {
+        warehouseInventoryRepository.saveAll(modified);
+    }
 }
 
 protected void updateInventoryOnDelivery(Order order) {
@@ -265,6 +273,8 @@ protected void updateInventoryOnDelivery(Order order) {
                                     .map(v -> v.getId())
                                     .orElseThrow(() -> new BadRequestException("Variant missing in inventory"))
                     ));
+
+    List<WarehouseInventory> modified = new ArrayList<>();
 
     for (OrderItem item : items) {
 
@@ -289,11 +299,10 @@ protected void updateInventoryOnDelivery(Order order) {
 
             if (reserved > 0) {
                 int deductFromThis = Math.min(reserved, remainingToDeduct);
-
                 inventory.setAvailableQuantity(available - deductFromThis);
                 inventory.setReservedQuantity(reserved - deductFromThis);
-
                 remainingToDeduct -= deductFromThis;
+                modified.add(inventory);
             }
         }
 
@@ -303,6 +312,13 @@ protected void updateInventoryOnDelivery(Order order) {
                     "Inventory inconsistency: Not enough reserved stock for " + item.getProductName()
             );
         }
+    }
+
+    // Explicitly save all modified inventories now so they are no longer dirty
+    // in the persistence context. This prevents Hibernate from auto-flushing them
+    // mid-stream during subsequent queries and causing Illegal pop() errors.
+    if (!modified.isEmpty()) {
+        warehouseInventoryRepository.saveAll(modified);
     }
 }
 
