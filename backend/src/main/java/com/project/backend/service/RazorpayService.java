@@ -17,7 +17,9 @@ import com.project.backend.entity.User;
 import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.exception.UnauthorizedException;
+import com.project.backend.entity.OrderStatusHistory;
 import com.project.backend.repository.OrderRepository;
+import com.project.backend.repository.OrderStatusHistoryRepository;
 import com.project.backend.repository.PaymentTransactionRepository;
 import com.project.backend.requestDto.PaymentRequest;
 import com.project.backend.requestDto.VerifyPaymentRequest;
@@ -37,6 +39,7 @@ public class RazorpayService {
     private final @org.springframework.lang.Nullable RazorpayClient razorpayClient;
     private final OrderRepository orderRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final EmailService emailService;
     
     @Value("${razorpay.key.id:}")
@@ -181,10 +184,25 @@ public class RazorpayService {
                 
                 paymentTransactionRepository.save(transaction);
                 
-                order.setPaymentStatus(PaymentStatus.SUCCESS); 
-                order.setStatus(OrderStatus.PLACED);
+                order.setPaymentStatus(PaymentStatus.SUCCESS);
+                order.setStatus(OrderStatus.PROCESSING);
                 orderRepository.save(order);
-                
+
+                // Auto-record PLACED + PROCESSING history for prepaid order
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                java.util.List<OrderStatusHistory> historyEntries = new java.util.ArrayList<>();
+                OrderStatusHistory placed = new OrderStatusHistory();
+                placed.setOrder(order);
+                placed.setStatus(OrderStatus.PLACED.name());
+                placed.setChangedAt(now.minusMinutes(1));
+                historyEntries.add(placed);
+                OrderStatusHistory processing = new OrderStatusHistory();
+                processing.setOrder(order);
+                processing.setStatus(OrderStatus.PROCESSING.name());
+                processing.setChangedAt(now);
+                historyEntries.add(processing);
+                orderStatusHistoryRepository.saveAll(historyEntries);
+
                 log.info("Payment verified successfully for order: {}", order.getId());
 
                 // Notify customer that payment is confirmed and order is placed

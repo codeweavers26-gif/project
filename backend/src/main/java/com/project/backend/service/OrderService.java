@@ -499,7 +499,7 @@ try {
 	                .deliveryCountry(address.getCountry())
 	                .paymentMethod(paymentMethod)
 	                .status(paymentMethod == PaymentMethod.COD ? 
-	                        OrderStatus.PENDING : OrderStatus.PENDING_PAYMENT)
+	                        OrderStatus.PROCESSING : OrderStatus.PENDING_PAYMENT)
 	                .paymentStatus(PaymentStatus.PENDING)
 	                .paymentExpiry(paymentMethod == PaymentMethod.PREPAID ? 
 	                               LocalDateTime.now().plusMinutes(15) : null)
@@ -552,7 +552,7 @@ try {
                 .quantity(quantity)
                 .size(variant.getSize())
                 .color(variant.getColor())
-                .status(paymentMethod == PaymentMethod.COD ? OrderStatus.PENDING : OrderStatus.PENDING_PAYMENT)
+                .status(paymentMethod == PaymentMethod.COD ? OrderStatus.PROCESSING : OrderStatus.PENDING_PAYMENT)
                 .build());
    savedOrderItems.add(orderItem); 
         reserveStock(inventories, quantity);
@@ -571,6 +571,11 @@ try {
     order.setTotalAmount(total.doubleValue());
 
     orderRepository.save(order);
+
+    // Auto-record PLACED + PROCESSING history for COD (payment already confirmed by intent)
+    if (paymentMethod == PaymentMethod.COD) {
+        saveInitialStatusHistory(order);
+    }
 
 	    try {
         cart.getItems().clear();
@@ -1130,7 +1135,7 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
                     .deliveryPostalCode(address.getPostalCode())
                     .deliveryCountry(address.getCountry())
                     .paymentMethod(request.getPaymentMethod())
-                    .status(request.getPaymentMethod() == PaymentMethod.COD ? OrderStatus.PENDING
+                    .status(request.getPaymentMethod() == PaymentMethod.COD ? OrderStatus.PROCESSING
                             : OrderStatus.PENDING_PAYMENT)
                     .paymentStatus(PaymentStatus.PENDING)
                     .paymentExpiry(request.getPaymentMethod() != PaymentMethod.COD ? LocalDateTime.now().plusMinutes(15)
@@ -1155,13 +1160,18 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
                     .quantity(quantity)
                     .size(variant.getSize())
                     .color(variant.getColor())
-                    .status(request.getPaymentMethod() == PaymentMethod.COD ? OrderStatus.PENDING : OrderStatus.PENDING_PAYMENT)
+                    .status(request.getPaymentMethod() == PaymentMethod.COD ? OrderStatus.PROCESSING : OrderStatus.PENDING_PAYMENT)
                     .build();
             orderItemRepository.save(orderItem);
 
             reserveStock(variant, quantity);
 
             log.info("Buy now order placed successfully: orderId={}", order.getId());
+
+            // Auto-record PLACED + PROCESSING history for COD
+            if (request.getPaymentMethod() == PaymentMethod.COD) {
+                saveInitialStatusHistory(order);
+            }
 
             // Send order confirmation email (async)
             emailService.sendOrderConfirmation(user, order, List.of(orderItem));
@@ -1199,6 +1209,30 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
         if (remainingToReserve > 0) {
             throw new BadRequestException("Failed to reserve stock");
         }
+    }
+
+    /**
+     * Records PLACED + PROCESSING history entries when an order is auto-confirmed
+     * (COD on placement, Prepaid on payment verification).
+     * PLACED gets timestamp 1 minute before PROCESSING so the timeline looks correct.
+     */
+    private void saveInitialStatusHistory(com.project.backend.entity.Order order) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.util.List<OrderStatusHistory> entries = new java.util.ArrayList<>();
+
+        OrderStatusHistory placed = new OrderStatusHistory();
+        placed.setOrder(order);
+        placed.setStatus(OrderStatus.PLACED.name());
+        placed.setChangedAt(now.minusMinutes(1));
+        entries.add(placed);
+
+        OrderStatusHistory processing = new OrderStatusHistory();
+        processing.setOrder(order);
+        processing.setStatus(OrderStatus.PROCESSING.name());
+        processing.setChangedAt(now);
+        entries.add(processing);
+
+        orderStatusHistoryRepository.saveAll(entries);
     }
 
     public TrackingResponseDto getTracking(Long orderId) {

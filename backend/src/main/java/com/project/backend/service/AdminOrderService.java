@@ -56,13 +56,13 @@ public class AdminOrderService {
 	private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
 	/**
-	 * Linear progression chain — order matters.
-	 * PENDING is intentionally excluded: it means "payment pending (COD)",
-	 * not a general order lifecycle step.
+	 * Linear order lifecycle — PLACED → PROCESSING → SHIPPED → DELIVERED.
+	 * PLACED + PROCESSING are auto-set on order creation/payment; admin only sets SHIPPED/DELIVERED.
+	 * autoFillStatusHistory will backfill any missing steps when admin jumps ahead.
 	 */
 	private static final List<OrderStatus> PROGRESSION = List.of(
 		OrderStatus.PLACED,
-		OrderStatus.PAID,
+		OrderStatus.PROCESSING,
 		OrderStatus.SHIPPED,
 		OrderStatus.DELIVERED
 	);
@@ -346,46 +346,50 @@ public void cancelOrder(Long orderId) {
 		if (order.getStatus() == OrderStatus.CANCELLED) {
 			throw new BadRequestException("Order is already cancelled");
 		}
-
 		if (order.getStatus() == OrderStatus.DELIVERED) {
-			throw new BadRequestException("Delivered order cannot be cancelled");
+			throw new BadRequestException("Delivered order cannot be cancelled. Request a return instead.");
 		}
-
 		if (order.getStatus() == OrderStatus.SHIPPED) {
-			throw new BadRequestException("Shipped order cannot be cancelled. Please request return instead.");
+			throw new BadRequestException("Shipped order cannot be cancelled. Request a return instead.");
 		}
 		if (order.getStatus() == OrderStatus.RETURN_REQUESTED) {
-			throw new BadRequestException(
-					"Order with return request cannot be cancelled. Please process return first.");
+			throw new BadRequestException("Return already requested for this order.");
 		}
-
+		// PLACED, PROCESSING, PENDING — can be cancelled freely
 	}
 
 	private Order getOrder(Long id) {
 		return orderRepository.findById(id)
-				.orElseThrow(() -> new NotFoundException( "Order not found"));
+				.orElseThrow(() -> new NotFoundException("Order not found"));
 	}
 
 	private void validateStatusTransition(OrderStatus current, OrderStatus next) {
 
-		// Terminal states — cannot be changed
+		// CANCELLED is a hard terminal — nothing can come after it
 		if (current == OrderStatus.CANCELLED) {
 			throw new BadRequestException("Cannot change status of a CANCELLED order");
 		}
 
-		// Admin can set any status on a DELIVERED order only back to specific states:
-		// RETURN_REQUESTED — customer initiated a return
-		// PAID            — COD order: admin marks cash collected after delivery
-		if (current == OrderStatus.DELIVERED &&
-			next != OrderStatus.RETURN_REQUESTED &&
-			next != OrderStatus.PAID) {
+		// After DELIVERED the only allowed moves are:
+		//   RETURN_REQUESTED — customer initiated a return
+		//   PAID             — COD: admin marks cash collected after delivery
+		if (current == OrderStatus.DELIVERED
+				&& next != OrderStatus.RETURN_REQUESTED
+				&& next != OrderStatus.PAID) {
 			throw new BadRequestException(
-				"A DELIVERED order can only be moved to RETURN_REQUESTED or PAID (COD cash collection)");
+				"A DELIVERED order can only move to RETURN_REQUESTED or PAID (COD cash collection)");
 		}
 
-		// Admin is allowed to jump directly to any non-terminal status
-		// (e.g. PENDING → DELIVERED for COD orders marked delivered on spot)
-		// No further restrictions — admin has full control
+		// RETURN_REQUESTED can only be cancelled (rejected/closed), not re-opened
+		if (current == OrderStatus.RETURN_REQUESTED
+				&& next != OrderStatus.CANCELLED) {
+			throw new BadRequestException(
+				"A RETURN_REQUESTED order cannot be moved back into the delivery lifecycle");
+		}
+
+		// For all other statuses (PROCESSING, SHIPPED, legacy PENDING, etc.)
+		// admin has full control — they can jump ahead and autoFillStatusHistory
+		// will backfill any missing steps.
 	}
 
 	@Transactional
