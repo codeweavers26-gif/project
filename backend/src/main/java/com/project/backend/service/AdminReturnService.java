@@ -62,7 +62,7 @@ import com.project.backend.requestDto.ReturnItemRequestDto;
 import com.project.backend.requestDto.ReturnRequestDto;
 import com.project.backend.requestDto.UpdateReturnStatusRequest;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 @Slf4j
