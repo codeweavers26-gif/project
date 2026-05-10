@@ -195,7 +195,6 @@ public class AdminOrderService {
 			statusHistoryRepository.saveAll(toSave);
 		}
 	}
-@Transactional
 protected void releaseReservedStock(Order order) {
 
     List<OrderItem> items = order.getItems();
@@ -245,10 +244,8 @@ protected void releaseReservedStock(Order order) {
         }
     }
 
-    warehouseInventoryRepository.flush();
-}	
+}
 
-@Transactional
 protected void updateInventoryOnDelivery(Order order) {
 
     List<OrderItem> items = order.getItems();
@@ -304,8 +301,6 @@ protected void updateInventoryOnDelivery(Order order) {
             );
         }
     }
-
-    warehouseInventoryRepository.flush();
 }
 
 	@Transactional
