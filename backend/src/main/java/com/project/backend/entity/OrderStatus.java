@@ -4,25 +4,19 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum OrderStatus {
-
-    // ── Active lifecycle statuses (used in new orders) ──────────────────
-    PLACED,          // Order confirmed, awaiting processing
-    PROCESSING,      // Warehouse is packing / preparing shipment
-    SHIPPED,         // Handed to courier, tracking available
-    DELIVERED,       // Successfully delivered to customer
-
-    // ── Terminal / side-branch statuses ─────────────────────────────────
-    CANCELLED,       // Order cancelled (before shipping)
-    RETURN_REQUESTED,// Customer initiated return after delivery
-
-    // ── Legacy statuses — kept for backward-compatibility only ───────────
-    // These existed in old orders; do NOT use for new order creation.
-    PAID,            // Old "payment confirmed" order state (now tracked via paymentStatus)
-    PENDING,         // Old COD "awaiting payment" state
-    PENDING_PAYMENT,
+    PAID,
+    SHIPPED,
+    DELIVERED,
+    CANCELLED,
+    PLACED,
+    PARTIALLY_CANCELLED,
+    RETURN_REQUESTED,
+    PENDING,
     PREPAID,
     CREATED,
-    PARTIALLY_CANCELLED;
+    PENDING_PAYMENT;
+    
+    
 
     @JsonCreator
     public static OrderStatus fromValue(String value) {
