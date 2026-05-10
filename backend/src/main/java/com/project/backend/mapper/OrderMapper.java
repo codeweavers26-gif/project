@@ -4,28 +4,47 @@
 	import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 import com.project.backend.ResponseDto.OrderItemResponseDto;
 import com.project.backend.ResponseDto.OrderResponseDto;
+import com.project.backend.ResponseDto.OrderStatusHistoryDto;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
+import com.project.backend.entity.OrderStatusHistory;
 import com.project.backend.entity.Product;
 import com.project.backend.entity.ProductImage;
 import com.project.backend.entity.User;
 
 	public class OrderMapper {
 
-		/** Preferred: pass a productId->imageUrl map so images are included. */
-		public static OrderResponseDto toDto(Order order, Map<Long, String> imageMap) {
+		/** Full: images + status history. */
+		public static OrderResponseDto toDto(Order order, Map<Long, String> imageMap, List<OrderStatusHistory> history) {
 
 		    User user = order.getUser();
+
+		    double subtotal = order.getItems() != null
+		            ? order.getItems().stream().mapToDouble(i -> i.getPrice() * i.getQuantity()).sum()
+		            : 0.0;
+
+		    List<OrderStatusHistoryDto> historyDtos = history != null
+		            ? history.stream()
+		                .sorted(Comparator.comparing(OrderStatusHistory::getChangedAt))
+		                .map(h -> OrderStatusHistoryDto.builder()
+		                        .status(h.getStatus())
+		                        .changedAt(h.getChangedAt())
+		                        .build())
+		                .toList()
+		            : new ArrayList<>();
 
 		    return OrderResponseDto.builder()
 
 		            .orderId(order.getId())
 
 		            .totalAmount(order.getTotalAmount())
+		            .subtotal(subtotal)
 		            .taxAmount(order.getTaxAmount())
 		            .shippingCharges(order.getShippingCharges())
 		            .discountAmount(order.getDiscountAmount())
@@ -51,12 +70,19 @@ import com.project.backend.entity.User;
 		                        .toList()
 		                    : new ArrayList<>())
 
+		            .statusHistory(historyDtos)
+
 		            .build();
 		}
 
-		/** Fallback: no images. */
+		/** Images only, no history. */
+		public static OrderResponseDto toDto(Order order, Map<Long, String> imageMap) {
+		    return toDto(order, imageMap, Collections.emptyList());
+		}
+
+		/** Fallback: no images, no history. */
 		public static OrderResponseDto toDto(Order order) {
-		    return toDto(order, Collections.emptyMap());
+		    return toDto(order, Collections.emptyMap(), Collections.emptyList());
 		}
 
 		private static OrderItemResponseDto mapItemToResponse(OrderItem item, Map<Long, String> imageMap) {

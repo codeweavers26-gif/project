@@ -2,6 +2,7 @@ package com.project.backend.service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +27,14 @@ import com.project.backend.ResponseDto.OrderResponseDto;
 import com.project.backend.entity.Order;
 import com.project.backend.entity.OrderItem;
 import com.project.backend.entity.OrderStatus;
+import com.project.backend.entity.OrderStatusHistory;
 import com.project.backend.entity.PaymentStatus;
 import com.project.backend.entity.WarehouseInventory;
 import com.project.backend.exception.BadRequestException;
 import com.project.backend.exception.NotFoundException;
 import com.project.backend.mapper.OrderMapper;
 import com.project.backend.repository.OrderRepository;
+import com.project.backend.repository.OrderStatusHistoryRepository;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.repository.WarehouseInventoryRepository;
 import com.project.backend.requestDto.PageResponseDto;
@@ -48,11 +51,24 @@ public class AdminOrderService {
 	private final UserRepository userRepository;
 	private final WarehouseInventoryRepository warehouseInventoryRepository;
 	private final EmailService emailService;
+	private final OrderStatusHistoryRepository statusHistoryRepository;
 	private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
 	private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
+	/** Linear progression chain — order matters */
+	private static final List<OrderStatus> PROGRESSION = List.of(
+		OrderStatus.PENDING,
+		OrderStatus.PLACED,
+		OrderStatus.PAID,
+		OrderStatus.SHIPPED,
+		OrderStatus.DELIVERED
+	);
+
+	@Transactional(readOnly = true)
 	public OrderResponseDto getOrderById(Long orderId) {
-		return OrderMapper.toDto(getOrder(orderId));
+		Order order = getOrder(orderId);
+		List<OrderStatusHistory> history = statusHistoryRepository.findByOrder_IdOrderByChangedAtAsc(orderId);
+		return OrderMapper.toDto(order, java.util.Collections.emptyMap(), history);
 	}
 
 	public PageResponseDto<OrderResponseDto> searchOrders(OrderStatus status, Long userId, Long orderId, String email,
@@ -122,10 +138,62 @@ public class AdminOrderService {
 		order.setStatus(newStatus);
 		Order saved = orderRepository.save(order);
 
+		// Auto-backfill all intermediate statuses in the progression chain
+		autoFillStatusHistory(saved, newStatus);
+
 		// Send status update email to customer (async, fire-and-forget)
 		emailService.sendOrderStatusUpdate(saved.getUser(), saved);
 
-		return OrderMapper.toDto(saved);
+		List<OrderStatusHistory> history = statusHistoryRepository.findByOrder_IdOrderByChangedAtAsc(saved.getId());
+		return OrderMapper.toDto(saved, java.util.Collections.emptyMap(), history);
+	}
+
+	/**
+	 * When admin sets a status, auto-insert all previous statuses in the
+	 * progression chain that don't already have a history entry.
+	 * e.g. jumping PENDING → DELIVERED auto-adds PLACED, PAID, SHIPPED, DELIVERED.
+	 * Each missing step gets a timestamp spread 30 min apart (earlier = further back).
+	 */
+	private void autoFillStatusHistory(Order order, OrderStatus newStatus) {
+		int newIndex = PROGRESSION.indexOf(newStatus);
+
+		// Get already-recorded statuses
+		Set<String> existing = statusHistoryRepository
+			.findByOrder_IdOrderByChangedAtAsc(order.getId())
+			.stream()
+			.map(OrderStatusHistory::getStatus)
+			.collect(Collectors.toSet());
+
+		LocalDateTime now = LocalDateTime.now();
+		List<OrderStatusHistory> toSave = new ArrayList<>();
+
+		if (newIndex >= 0) {
+			// In the linear chain — backfill everything up to and including newStatus
+			for (int i = 0; i <= newIndex; i++) {
+				OrderStatus step = PROGRESSION.get(i);
+				if (!existing.contains(step.name())) {
+					OrderStatusHistory entry = new OrderStatusHistory();
+					entry.setOrder(order);
+					entry.setStatus(step.name());
+					// Spread: older steps get earlier timestamps
+					entry.setChangedAt(now.minusMinutes((long) (newIndex - i) * 30));
+					toSave.add(entry);
+				}
+			}
+		} else {
+			// Off-chain status (CANCELLED, RETURN_REQUESTED, etc.) — single entry
+			if (!existing.contains(newStatus.name())) {
+				OrderStatusHistory entry = new OrderStatusHistory();
+				entry.setOrder(order);
+				entry.setStatus(newStatus.name());
+				entry.setChangedAt(now);
+				toSave.add(entry);
+			}
+		}
+
+		if (!toSave.isEmpty()) {
+			statusHistoryRepository.saveAll(toSave);
+		}
 	}
 @Transactional
 protected void releaseReservedStock(Order order) {

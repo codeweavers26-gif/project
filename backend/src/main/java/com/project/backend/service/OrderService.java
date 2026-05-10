@@ -72,7 +72,9 @@ import com.project.backend.requestDto.BuyNowRequestDto;
 import com.project.backend.requestDto.CheckoutRequestDto;
 import com.project.backend.requestDto.OrderFilter;
 import com.project.backend.requestDto.PageResponseDto;
+import com.project.backend.repository.OrderStatusHistoryRepository;
 import com.project.backend.repository.ShipmentRepository;
+import com.project.backend.entity.OrderStatusHistory;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -101,6 +103,7 @@ public class OrderService {
     private final ShipmentRepository shipmentRepository;
     private final com.project.backend.repository.ProductImageRepository productImageRepository;
     private final AdminReturnService refundSevice;
+    private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final ShippingAsyncService shippingAsyncService;
     private final EmailService emailService;
 
@@ -857,7 +860,8 @@ public void cancelOrderItems(Long orderId, List<Long> itemIds, User user) {
         }
 
         Map<Long, String> imageMap = buildProductImageMap(java.util.List.of(order));
-        return OrderMapper.toDto(order, imageMap);
+        List<OrderStatusHistory> history = orderStatusHistoryRepository.findByOrder_IdOrderByChangedAtAsc(orderId);
+        return OrderMapper.toDto(order, imageMap, history);
     }
 
     @Transactional
