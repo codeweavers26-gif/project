@@ -205,6 +205,38 @@ public AuthResponse verifyOtp(String rawIdentifier,
 
 
 
+@Transactional
+public void resetPassword(String rawIdentifier, String otpInput, String newPassword) {
+    String identifier = normalize(rawIdentifier);
+
+    Otp otp = otpRepository.findActiveOtpForUpdate(identifier)
+            .orElseThrow(() -> new BadRequestException("Invalid or expired OTP"));
+
+    if (otp.isUsed()) throw new BadRequestException("OTP already used");
+    if (Instant.now().isAfter(otp.getExpiryTime())) {
+        otp.setUsed(true); otpRepository.save(otp);
+        throw new BadRequestException("OTP expired");
+    }
+    if (otp.getAttempts() >= 5) {
+        otp.setUsed(true); otpRepository.save(otp);
+        throw new BadRequestException("Too many attempts");
+    }
+    if (!passwordEncoder.matches(otpInput, otp.getOtpHash())) {
+        otp.setAttempts(otp.getAttempts() + 1); otpRepository.save(otp);
+        throw new BadRequestException("Invalid OTP");
+    }
+    otp.setUsed(true); otpRepository.save(otp);
+
+    User user = userRepository.findByEmailOrPhoneNumber(identifier, identifier)
+            .orElseThrow(() -> new NotFoundException("User not found"));
+
+    if (newPassword == null || newPassword.length() < 6)
+        throw new BadRequestException("Password must be at least 6 characters");
+
+    user.setPassword(passwordEncoder.encode(newPassword));
+    userRepository.save(user);
+}
+
 private String normalize(String input) {
     input = input.trim();
 

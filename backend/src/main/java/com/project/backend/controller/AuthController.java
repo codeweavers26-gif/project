@@ -106,6 +106,13 @@ public ResponseEntity<AuthResponse> verifyOtp(
     );
 }
 
+@PostMapping("/reset-password")
+public ResponseEntity<MessageResponse> resetPassword(
+        @RequestBody java.util.Map<String, String> body) {
+    authService.resetPassword(body.get("identifier"), body.get("otp"), body.get("newPassword"));
+    return ResponseEntity.ok(new MessageResponse("Password reset successfully"));
+}
+
 @PostMapping("/request-otp")
 public ResponseEntity<MessageResponse> requestOtp(
         @Validated @RequestBody RequestOtpRequest req,
