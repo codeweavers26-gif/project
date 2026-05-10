@@ -357,12 +357,14 @@ public void cancelOrder(Long orderId) {
 			throw new BadRequestException("Cannot change status of a CANCELLED order");
 		}
 
-		// Admin can set any status on a DELIVERED order only back to specific states
-		// (e.g. RETURN_REQUESTED), but not re-open it to PENDING/PLACED
+		// Admin can set any status on a DELIVERED order only back to specific states:
+		// RETURN_REQUESTED — customer initiated a return
+		// PAID            — COD order: admin marks cash collected after delivery
 		if (current == OrderStatus.DELIVERED &&
-			next != OrderStatus.RETURN_REQUESTED) {
+			next != OrderStatus.RETURN_REQUESTED &&
+			next != OrderStatus.PAID) {
 			throw new BadRequestException(
-				"A DELIVERED order can only be moved to RETURN_REQUESTED");
+				"A DELIVERED order can only be moved to RETURN_REQUESTED or PAID (COD cash collection)");
 		}
 
 		// Admin is allowed to jump directly to any non-terminal status
