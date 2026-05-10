@@ -105,6 +105,7 @@ public PageResponseDto<ReturnDto> getUserReturns(User user, ReturnStatus status,
             .last(returns.isLast())
             .build();
 }
+	@Transactional(readOnly = true)
 	public ReturnDetailDto getReturnDetails(User user, Long returnId) {
 		try {
 			Return returnRecord = returnRepository.findById(returnId)
@@ -284,6 +285,7 @@ private ReturnDto convertToDto(Return returnRecord) {
 
     return dto;
 }
+@Transactional(readOnly = true)
 public EligibilityCheckDto checkReturnEligibility(Long userId, ReturnEligibilityRequest request) {
 		try {
 			EligibilityCheckDto result = new EligibilityCheckDto();
@@ -912,12 +914,15 @@ List<ReturnItemDto> items = ret.getItems() != null
         .collect(Collectors.toList())
     : new ArrayList<>();
     return ReturnResponseDto.builder()
+            .returnId(ret.getId())
             .orderId(orderId)
             .status(ret.getStatus())
             .reason(ret.getReason())
             .trackingId(ret.getTrackingId())
             .refundAmount(ret.getRefundAmount())
             .items(items)
+            .createdAt(ret.getCreatedAt())
+            .updatedAt(ret.getUpdatedAt())
             .build();
 }
 @Transactional
